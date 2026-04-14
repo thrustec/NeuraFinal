@@ -75,7 +75,7 @@ class _EmpaticaScreenState extends State<EmpaticaScreen> {
             _hastaOzet(),
             const SizedBox(height: 14),
 
-            // ── Son Ölçüm Kartları ───────────────────────────
+            // ── Son Ölçüm Kartları ──────────────────────────
             const Text('SON ÖLÇÜM',
                 style: TextStyle(fontSize: 11,
                     fontWeight: FontWeight.w600,
