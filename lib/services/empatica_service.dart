@@ -22,7 +22,7 @@ Map<String, String> _headers() {
     'Content-Type': 'application/json',
   };
 }
-// ───────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────
 
 class EmpaticaService {
 
