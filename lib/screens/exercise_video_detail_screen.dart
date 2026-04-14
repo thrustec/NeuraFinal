@@ -28,11 +28,9 @@ class _ExerciseVideoDetailScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Video Oynatıcı Alanı ─────────────────────
             _videoOynatici(),
             const SizedBox(height: 16),
 
-            // ── Video Başlığı ────────────────────────────
             Text(v.baslik,
                 style: const TextStyle(
                     fontSize: 20,
@@ -40,11 +38,9 @@ class _ExerciseVideoDetailScreenState
                     color: Color(0xFF1E293B))),
             const SizedBox(height: 10),
 
-            // ── Hızlı Bilgiler ──────────────────────────
             _hizliBilgiler(),
             const SizedBox(height: 16),
 
-            // ── Açıklama ────────────────────────────────
             if (v.aciklama != null) ...[
               _bolumBaslik(Icons.description_outlined, 'Açıklama'),
               const SizedBox(height: 8),
@@ -55,7 +51,7 @@ class _ExerciseVideoDetailScreenState
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border:
-                      Border.all(color: const Color(0xFFE2E8F0)),
+                  Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Text(v.aciklama!,
                     style: const TextStyle(
@@ -66,13 +62,11 @@ class _ExerciseVideoDetailScreenState
               const SizedBox(height: 16),
             ],
 
-            // ── Detay Bilgileri ──────────────────────────
             _bolumBaslik(Icons.info_outline, 'Detaylar'),
             const SizedBox(height: 8),
             _detayKart(),
             const SizedBox(height: 16),
 
-            // ── Uyarılar ────────────────────────────────
             _uyariKutusu(),
           ],
         ),
@@ -86,34 +80,29 @@ class _ExerciseVideoDetailScreenState
     return GestureDetector(
       onTap: () {
         setState(() => _videoOynatiliyor = !_videoOynatiliyor);
-        // Gerçek uygulamada burada url_launcher veya
-        // video_player kullanılacak
       },
       child: Container(
         height: 220,
         decoration: BoxDecoration(
-          color: _kategoriArkaplan(v.kategori),
+          color: _kategoriArkaplan(v.kisaKategori),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: _kategoriRenk(v.kategori).withOpacity(0.2),
+            color: _kategoriRenk(v.kisaKategori).withOpacity(0.2),
           ),
         ),
         child: Stack(
           children: [
-            // Arka plan ikonu
             Center(
               child: Icon(
-                _kategoriIkon(v.kategori),
+                _kategoriIkon(v.kisaKategori),
                 size: 80,
-                color:
-                    _kategoriRenk(v.kategori).withOpacity(0.15),
+                color: _kategoriRenk(v.kisaKategori)
+                    .withOpacity(0.15),
               ),
             ),
-            // Play / Pause butonu
             Center(
               child: Container(
-                width: 64,
-                height: 64,
+                width: 64, height: 64,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.95),
                   shape: BoxShape.circle,
@@ -129,15 +118,13 @@ class _ExerciseVideoDetailScreenState
                   _videoOynatiliyor
                       ? Icons.pause
                       : Icons.play_arrow,
-                  color: _kategoriRenk(v.kategori),
+                  color: _kategoriRenk(v.kisaKategori),
                   size: 36,
                 ),
               ),
             ),
-            // Süre
             Positioned(
-              right: 12,
-              bottom: 12,
+              right: 12, bottom: 12,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 5),
@@ -151,7 +138,7 @@ class _ExerciseVideoDetailScreenState
                     const Icon(Icons.access_time,
                         size: 14, color: Colors.white),
                     const SizedBox(width: 4),
-                    Text('${v.sureDakika} dakika',
+                    Text(v.formatliSure,
                         style: const TextStyle(
                             fontSize: 13,
                             color: Colors.white,
@@ -160,63 +147,6 @@ class _ExerciseVideoDetailScreenState
                 ),
               ),
             ),
-            // Zorluk
-            Positioned(
-              left: 12,
-              top: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Color(v.zorlukRengi).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color:
-                        Color(v.zorlukRengi).withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.speed,
-                        size: 14,
-                        color: Color(v.zorlukRengi)),
-                    const SizedBox(width: 4),
-                    Text(v.zorlukSeviyesi,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(v.zorlukRengi))),
-                  ],
-                ),
-              ),
-            ),
-            // Video bilgisi
-            if (_videoOynatiliyor)
-              Positioned(
-                left: 12,
-                bottom: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: kPrimary.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.info_outline,
-                          size: 13, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text('Video player entegrasyonu yapılacak',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white)),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -229,23 +159,15 @@ class _ExerciseVideoDetailScreenState
     return Row(
       children: [
         _hizliBilgiChip(
-          ikon: _kategoriIkon(v.kategori),
-          etiket: v.kategori,
-          renk: _kategoriRenk(v.kategori),
-          arkaplan: _kategoriArkaplan(v.kategori),
+          ikon: _kategoriIkon(v.kisaKategori),
+          etiket: v.kisaKategori,
+          renk: _kategoriRenk(v.kisaKategori),
+          arkaplan: _kategoriArkaplan(v.kisaKategori),
         ),
-        const SizedBox(width: 8),
-        if (v.hedefHastalik != null)
-          _hizliBilgiChip(
-            ikon: Icons.medical_services_outlined,
-            etiket: v.hedefHastalik!,
-            renk: kPrimary,
-            arkaplan: const Color(0xFFEFF6FF),
-          ),
         const SizedBox(width: 8),
         _hizliBilgiChip(
           ikon: Icons.timer_outlined,
-          etiket: '${v.sureDakika} dk',
+          etiket: v.formatliSure,
           renk: const Color(0xFF475569),
           arkaplan: const Color(0xFFF1F5F9),
         ),
@@ -261,7 +183,7 @@ class _ExerciseVideoDetailScreenState
   }) {
     return Container(
       padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: arkaplan,
         borderRadius: BorderRadius.circular(20),
@@ -292,25 +214,11 @@ class _ExerciseVideoDetailScreenState
       ),
       child: Column(
         children: [
-          _detaySatir('Kategori', v.kategori,
+          _detaySatir('Kategori', v.kategoriAdi ?? v.kisaKategori,
               Icons.category_outlined),
           _ayirici(),
-          _detaySatir('Hedef Hastalık',
-              v.hedefHastalik ?? 'Genel',
-              Icons.medical_services_outlined),
-          _ayirici(),
-          _detaySatir('Hedef Bölge', v.hedefBolge ?? 'Belirtilmemiş',
-              Icons.accessibility_new),
-          _ayirici(),
-          _detaySatir('Ekipman', v.ekipman ?? 'Gerekli değil',
-              Icons.sports_gymnastics),
-          _ayirici(),
-          _detaySatir('Süre', '${v.sureDakika} dakika',
+          _detaySatir('Süre', v.formatliSure,
               Icons.timer_outlined),
-          _ayirici(),
-          _detaySatir('Zorluk', v.zorlukSeviyesi,
-              Icons.speed,
-              degerRengi: Color(v.zorlukRengi)),
         ],
       ),
     );
@@ -333,17 +241,14 @@ class _ExerciseVideoDetailScreenState
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color:
-                      degerRengi ?? const Color(0xFF1E293B))),
+                  color: degerRengi ?? const Color(0xFF1E293B))),
         ],
       ),
     );
   }
 
-  Widget _ayirici() {
-    return const Divider(
-        height: 1, color: Color(0xFFE2E8F0));
-  }
+  Widget _ayirici() =>
+      const Divider(height: 1, color: Color(0xFFE2E8F0));
 
   // ── Uyarı Kutusu ──────────────────────────────────────────
   Widget _uyariKutusu() {
@@ -352,8 +257,7 @@ class _ExerciseVideoDetailScreenState
       decoration: BoxDecoration(
         color: const Color(0xFFFFFBEB),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: const Color(0xFFFDE68A)),
+        border: Border.all(color: const Color(0xFFFDE68A)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,8 +277,8 @@ class _ExerciseVideoDetailScreenState
                 SizedBox(height: 4),
                 Text(
                   'Egzersizlere başlamadan önce klinisyeninize '
-                  'danışın. Ağrı veya rahatsızlık hissederseniz '
-                  'egzersizi durdurun.',
+                      'danışın. Ağrı veya rahatsızlık hissederseniz '
+                      'egzersizi durdurun.',
                   style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF92400E),
@@ -388,7 +292,6 @@ class _ExerciseVideoDetailScreenState
     );
   }
 
-  // ── Bölüm Başlığı ────────────────────────────────────────
   Widget _bolumBaslik(IconData ikon, String baslik) {
     return Row(
       children: [
@@ -410,77 +313,42 @@ class _ExerciseVideoDetailScreenState
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border:
-            Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
       ),
       child: SafeArea(
         child: Row(
           children: [
-            // Favorilere Ekle
+            // Kaydet — fonksiyonsuz
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text(
-                          'Favorilere eklendi'),
-                      backgroundColor:
-                          const Color(0xFF16A34A),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(8)),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.bookmark_border,
-                    size: 18),
+                onPressed: () {},
+                icon: const Icon(Icons.bookmark_border, size: 18),
                 label: const Text('Kaydet'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: kPrimary,
                   side: const BorderSide(color: kPrimary),
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            // Hastaya Ata
+            // Hastaya Ata — fonksiyonsuz
             Expanded(
               flex: 2,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  // Hastaya atama ekranı
-                  // Merge sonrası bağlanacak
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text(
-                          'Hastaya atama özelliği yakında'),
-                      backgroundColor: kPrimary,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(8)),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.person_add_outlined,
-                    size: 18),
+                onPressed: () {},
+                icon: const Icon(Icons.person_add_outlined, size: 18),
                 label: const Text('Hastaya Ata',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kPrimary,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ),
@@ -490,11 +358,10 @@ class _ExerciseVideoDetailScreenState
     );
   }
 
-  // ── AppBar ────────────────────────────────────────────────
+  // ── AppBar — paylaş ikonu kaldırıldı ──────────────────────
   AppBar _appBar() {
     return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
+      backgroundColor: Colors.white, elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new,
             color: Color(0xFF1E293B), size: 18),
@@ -507,20 +374,13 @@ class _ExerciseVideoDetailScreenState
               fontSize: 18)),
       centerTitle: false,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.share_outlined,
-              color: Color(0xFF1E293B)),
-          onPressed: () {},
-        ),
         Padding(
           padding: const EdgeInsets.only(right: 12),
-          child: CircleAvatar(
-              radius: 17,
+          child: CircleAvatar(radius: 17,
               backgroundColor: kPrimary,
               child: const Text('AK',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+                      color: Colors.white, fontSize: 12,
                       fontWeight: FontWeight.bold))),
         ),
       ],
@@ -532,60 +392,36 @@ class _ExerciseVideoDetailScreenState
   }
 
   // ── Yardımcılar ───────────────────────────────────────────
-  Color _kategoriRenk(String kategori) {
-    switch (kategori) {
-      case 'Denge':
-        return const Color(0xFF0891B2);
-      case 'Kuvvet':
-        return const Color(0xFFDC2626);
-      case 'Esneklik':
-        return const Color(0xFF9333EA);
-      case 'Kardiyovaskuler':
-        return const Color(0xFFD97706);
-      case 'Solunum':
-        return const Color(0xFF0F766E);
-      case 'Kognitif':
-        return const Color(0xFF2563EB);
-      default:
-        return const Color(0xFF64748B);
+  Color _kategoriRenk(String kisaAd) {
+    switch (kisaAd) {
+      case 'Denge':     return const Color(0xFF0891B2);
+      case 'Guc':       return const Color(0xFFDC2626);
+      case 'Esneklik':  return const Color(0xFF9333EA);
+      case 'Solunum':   return const Color(0xFF0F766E);
+      case 'Kognitif':  return const Color(0xFF2563EB);
+      default:          return const Color(0xFF64748B);
     }
   }
 
-  Color _kategoriArkaplan(String kategori) {
-    switch (kategori) {
-      case 'Denge':
-        return const Color(0xFFECFEFF);
-      case 'Kuvvet':
-        return const Color(0xFFFFF1F2);
-      case 'Esneklik':
-        return const Color(0xFFFAF5FF);
-      case 'Kardiyovaskuler':
-        return const Color(0xFFFFFBEB);
-      case 'Solunum':
-        return const Color(0xFFF0FDFA);
-      case 'Kognitif':
-        return const Color(0xFFEFF6FF);
-      default:
-        return const Color(0xFFF8FAFC);
+  Color _kategoriArkaplan(String kisaAd) {
+    switch (kisaAd) {
+      case 'Denge':     return const Color(0xFFECFEFF);
+      case 'Guc':       return const Color(0xFFFFF1F2);
+      case 'Esneklik':  return const Color(0xFFFAF5FF);
+      case 'Solunum':   return const Color(0xFFF0FDFA);
+      case 'Kognitif':  return const Color(0xFFEFF6FF);
+      default:          return const Color(0xFFF8FAFC);
     }
   }
 
-  IconData _kategoriIkon(String kategori) {
-    switch (kategori) {
-      case 'Denge':
-        return Icons.accessibility_new;
-      case 'Kuvvet':
-        return Icons.fitness_center;
-      case 'Esneklik':
-        return Icons.self_improvement;
-      case 'Kardiyovaskuler':
-        return Icons.directions_run;
-      case 'Solunum':
-        return Icons.air;
-      case 'Kognitif':
-        return Icons.psychology;
-      default:
-        return Icons.sports_gymnastics;
+  IconData _kategoriIkon(String kisaAd) {
+    switch (kisaAd) {
+      case 'Denge':     return Icons.accessibility_new;
+      case 'Guc':       return Icons.fitness_center;
+      case 'Esneklik':  return Icons.self_improvement;
+      case 'Solunum':   return Icons.air;
+      case 'Kognitif':  return Icons.psychology;
+      default:          return Icons.sports_gymnastics;
     }
   }
 }
