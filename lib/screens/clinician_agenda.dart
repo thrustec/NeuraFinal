@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../../core/theme.dart';
 
 class ClinicianAgenda extends StatefulWidget {
   const ClinicianAgenda({super.key});
@@ -11,7 +10,10 @@ class ClinicianAgenda extends StatefulWidget {
 }
 
 class _ClinicianAgendaState extends State<ClinicianAgenda> {
-  static const Color _green = Color(0xFF1DB954);
+  // Merve'nin Klinisyen Teması
+  static const Color _green = Color(0xFF0F766E); // Spotify yeşili yerine bizim yeşilimiz
+  static const Color kBackground = Color(0xFFF8F9FC);
+
   static const String _baseUrl = 'https://griteunvazwekosffmjo.supabase.co';
   static const String _anonKey =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU';
@@ -45,6 +47,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
     super.dispose();
   }
 
+  // ---- MANTIK (LOGIC) KISMI: HİÇBİR ŞEY DEĞİŞTİRİLMEDİ ----
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     await Future.wait([_loadPatients(), _loadAppointments()]);
@@ -54,11 +58,9 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
   Future<void> _loadPatients() async {
     try {
       final response = await http.get(
-        Uri.parse(
-            '$_baseUrl/rest/v1/hastalar?select=hastaId,kullanicilar(ad,soyad)'),
+        Uri.parse('$_baseUrl/rest/v1/hastalar?select=hastaId,kullanicilar(ad,soyad)'),
         headers: _headers,
       );
-      print('Patients response: ${response.statusCode} ${response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
         setState(() {
@@ -85,7 +87,6 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
             '$_baseUrl/rest/v1/toplantilar?select=toplantiId,baslik,baslangicZamani,notlar,hastalar(kullanicilar(ad,soyad))'),
         headers: _headers,
       );
-      print('Appointments response: ${response.statusCode} ${response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
         setState(() {
@@ -181,8 +182,6 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         }),
       );
 
-      print('Create appointment: ${response.statusCode} ${response.body}');
-
       if (response.statusCode == 201 || response.statusCode == 200) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -210,276 +209,289 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
     }
   }
 
+  // ---- UI (TASARIM) KISMI: SADECE GÖRSELLİK YENİLENDİ ----
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NeuraTheme.background,
+      backgroundColor: kBackground,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: _green),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Klinisyen Ajandası',
           style: TextStyle(
-            color: _green,
+            color: Color(0xFF1E293B),
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 18,
           ),
         ),
-        centerTitle: true,
+        centerTitle: false,
       ),
       body: _isLoading
-          ? const Center(
-        child: CircularProgressIndicator(color: _green),
-      )
+          ? const Center(child: CircularProgressIndicator(color: _green))
           : SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Hasta Seçimi
-              _SectionLabel(icon: Icons.person, label: 'Hasta'),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Hasta adı veya ID yazın...',
-                  filled: true,
-                  fillColor: const Color(0xFFEAF4FB),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
+              // PLAN OLUŞTURMA KART (Beyaz zeminli, ferah tasarım)
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF4FB),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)
+                  ],
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedPatientId,
-                    hint: const Text('Bir hasta seçin'),
-                    isExpanded: true,
-                    items: _patients
-                        .map((p) => DropdownMenuItem(
-                      value: p['id'] as String,
-                      child: Text(p['name'] as String),
-                    ))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedPatientId = val;
-                        _selectedPatientName = _patients
-                            .firstWhere((p) => p['id'] == val)['name'];
-                      });
-                    },
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Tarih
-              _SectionLabel(
-                  icon: Icons.calendar_today, label: 'Tarih'),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _pickDate,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF4FB),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today_outlined,
-                          size: 16, color: _green),
-                      const SizedBox(width: 8),
-                      Text(
-                        _selectedDate == null
-                            ? 'Tarih seçin'
-                            : '${_selectedDate!.day.toString().padLeft(2, '0')}.${_selectedDate!.month.toString().padLeft(2, '0')}.${_selectedDate!.year}',
-                        style: TextStyle(
-                          color: _selectedDate == null
-                              ? NeuraTheme.textGrey
-                              : NeuraTheme.textDark,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Saat
-              _SectionLabel(
-                  icon: Icons.access_time, label: 'Saat'),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _pickTime,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF4FB),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.access_time_outlined,
-                          size: 16, color: _green),
-                      const SizedBox(width: 8),
-                      Text(
-                        _selectedTime == null
-                            ? 'Saat seçin'
-                            : '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          color: _selectedTime == null
-                              ? NeuraTheme.textGrey
-                              : NeuraTheme.textDark,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Tekrar
-              _SectionLabel(icon: Icons.repeat, label: 'Tekrar'),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF4FB),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _repeat,
-                    isExpanded: true,
-                    items: ['Tek Sefer', 'Haftalık', 'Aylık']
-                        .map((r) => DropdownMenuItem(
-                      value: r,
-                      child: Text(r),
-                    ))
-                        .toList(),
-                    onChanged: (val) =>
-                        setState(() => _repeat = val!),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Plan Oluştur Butonu
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _createPlan,
-                  icon: const Icon(Icons.save_outlined, size: 18),
-                  label: const Text(
-                    'Plan Oluştur',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // Mevcut Randevular başlık
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: NeuraTheme.surface,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: const [
-                        Icon(Icons.calendar_month_outlined,
-                            color: _green, size: 18),
+                    const Row(
+                      children: [
+                        Icon(Icons.add_task, color: _green, size: 20),
                         SizedBox(width: 8),
-                        Text(
-                          'Mevcut Randevular',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: _green,
-                            fontSize: 15,
+                        Text('Yeni Plan Oluştur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Hasta Seçimi
+                    _SectionLabel(icon: Icons.person, label: 'Hasta'),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Hasta adı veya ID yazın...',
+                        hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+                        filled: true,
+                        fillColor: const Color(0xFFF1F5F9),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedPatientId,
+                          hint: const Text('Bir hasta seçin', style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
+                          isExpanded: true,
+                          items: _patients.map((p) {
+                            return DropdownMenuItem<String>(
+                              value: p['id'].toString(),
+                              child: Text(p['name'] as String),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedPatientId = val;
+                              _selectedPatientName = _patients.firstWhere((p) => p['id'] == val)['name'];
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Tarih ve Saat Yan Yana
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionLabel(icon: Icons.calendar_today, label: 'Tarih'),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: _pickDate,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.calendar_today_outlined, size: 16, color: _green),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _selectedDate == null
+                                            ? 'Seçiniz'
+                                            : '${_selectedDate!.day.toString().padLeft(2, '0')}.${_selectedDate!.month.toString().padLeft(2, '0')}.${_selectedDate!.year}',
+                                        style: TextStyle(
+                                          color: _selectedDate == null ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+                                          fontSize: 13,
+                                          fontWeight: _selectedDate == null ? FontWeight.normal : FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionLabel(icon: Icons.access_time, label: 'Saat'),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: _pickTime,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.access_time_outlined, size: 16, color: _green),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _selectedTime == null
+                                            ? 'Seçiniz'
+                                            : '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}',
+                                        style: TextStyle(
+                                          color: _selectedTime == null ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+                                          fontSize: 13,
+                                          fontWeight: _selectedTime == null ? FontWeight.normal : FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    GestureDetector(
-                      onTap: _loadAppointments,
-                      child: const Icon(Icons.refresh,
-                          color: _green),
+
+                    const SizedBox(height: 20),
+
+                    // Tekrar
+                    _SectionLabel(icon: Icons.repeat, label: 'Tekrar'),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _repeat,
+                          isExpanded: true,
+                          items: ['Tek Sefer', 'Haftalık', 'Aylık']
+                              .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                              .toList(),
+                          onChanged: (val) => setState(() => _repeat = val!),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Plan Oluştur Butonu
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _createPlan, // Eray'ın fonksiyonu geri geldi
+                        icon: const Icon(Icons.save_outlined, size: 20, color: Colors.white),
+                        label: const Text(
+                          'Randevu Oluştur',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white, letterSpacing: 0.5),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _green,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
 
+              const SizedBox(height: 32),
+
+              // Mevcut Randevular başlık
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'MEVCUT RANDEVULAR',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _loadAppointments,
+                    child: const Icon(Icons.refresh, color: _green, size: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
               // Randevu listesi boşsa
               if (_appointments.isEmpty)
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(40),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: const Center(
                     child: Text(
-                      'Henüz randevu yok',
-                      style: TextStyle(color: Colors.grey),
+                      'Henüz randevu yok.',
+                      style: TextStyle(color: Color(0xFF94A3B8)),
                     ),
                   ),
                 ),
 
-              // Randevu kartları
+              // Randevu kartları (Eray'ın tüm onay butonları duruyor, sadece yuvarlandı)
               ..._appointments.asMap().entries.map((entry) {
                 final i = entry.key;
                 final apt = entry.value;
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 1),
+                  margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border:
-                    Border.all(color: Colors.grey.shade200),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8)
+                      ]
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -487,71 +499,66 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.person_outline,
-                              size: 14, color: _green),
-                          const SizedBox(width: 4),
-                          Text(
-                            apt['patient'],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: _green.withOpacity(0.1),
+                            child: const Icon(Icons.person, size: 16, color: _green),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              apt['patient'],
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B)),
                             ),
                           ),
-                          const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius:
-                              BorderRadius.circular(8),
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               apt['diagnosis'],
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.blue.shade700,
-                              ),
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
-                          const Icon(Icons.calendar_today_outlined,
-                              size: 13, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(apt['date'],
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey)),
-                          const SizedBox(width: 12),
-                          const Icon(Icons.access_time_outlined,
-                              size: 13, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(apt['time'],
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey)),
+                          const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF94A3B8)),
+                          const SizedBox(width: 6),
+                          Text(apt['date'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
+                          const SizedBox(width: 16),
+                          const Icon(Icons.access_time_outlined, size: 14, color: Color(0xFF94A3B8)),
+                          const SizedBox(width: 6),
+                          Text(apt['time'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                      ),
                       Row(
-                        mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: apt['approved'] == true
-                                  ? Colors.green.shade50
-                                  : apt['approved'] == false
-                                  ? Colors.red.shade50
-                                  : Colors.blue.shade50,
-                              borderRadius:
-                              BorderRadius.circular(8),
+                                color: apt['approved'] == true
+                                    ? const Color(0xFFF0FDF4)
+                                    : apt['approved'] == false
+                                    ? const Color(0xFFFEF2F2)
+                                    : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: apt['approved'] == true
+                                        ? Colors.green.shade200
+                                        : apt['approved'] == false
+                                        ? Colors.red.shade200
+                                        : const Color(0xFFE2E8F0)
+                                )
                             ),
                             child: Text(
                               apt['approved'] == true
@@ -561,50 +568,32 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                                   : apt['status'],
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.bold,
                                 color: apt['approved'] == true
-                                    ? Colors.green
+                                    ? Colors.green.shade700
                                     : apt['approved'] == false
-                                    ? Colors.red
-                                    : Colors.blue,
+                                    ? Colors.red.shade700
+                                    : const Color(0xFF64748B),
                               ),
                             ),
                           ),
                           Row(
                             children: [
                               GestureDetector(
-                                onTap: () => setState(() =>
-                                _appointments[i]
-                                ['approved'] = true),
+                                onTap: () => setState(() => _appointments[i]['approved'] = true),
                                 child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius:
-                                    BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.check,
-                                      color: Colors.white,
-                                      size: 18),
+                                  width: 36, height: 36,
+                                  decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(10)),
+                                  child: const Icon(Icons.check, color: Colors.white, size: 20),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               GestureDetector(
-                                onTap: () => setState(() =>
-                                _appointments[i]
-                                ['approved'] = false),
+                                onTap: () => setState(() => _appointments[i]['approved'] = false),
                                 child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius:
-                                    BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.close,
-                                      color: Colors.white,
-                                      size: 18),
+                                  width: 36, height: 36,
+                                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 20),
                                 ),
                               ),
                             ],
@@ -635,14 +624,14 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: NeuraTheme.textGrey),
+        Icon(icon, size: 14, color: const Color(0xFF94A3B8)),
         const SizedBox(width: 6),
         Text(
           label,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: NeuraTheme.textGrey,
+            color: Color(0xFF64748B),
           ),
         ),
       ],

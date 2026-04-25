@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
-import '../widgets/custom_button.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -11,6 +9,25 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
+  bool _isClinician = false; // Rolü tutacağımız değişken
+
+  static const Color kBackground = Color(0xFFF8F9FC);
+  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kTextGrey = Color(0xFF64748B);
+  static const Color kInputFill = Color(0xFFF1F5F9);
+
+  // Dinamik Tema Rengimiz
+  Color get _primaryColor => _isClinician ? const Color(0xFF0F766E) : const Color(0xFF2563EB);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Login sayfasından gelen 'patient' veya 'clinician' bilgisini yakalıyoruz
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null && args is String) {
+      _isClinician = args == 'clinician';
+    }
+  }
 
   @override
   void dispose() {
@@ -29,44 +46,39 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.all(24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_outline,
-                color: NeuraTheme.primary, size: 48),
+            Icon(Icons.check_circle_outline, color: _primaryColor, size: 56), // Dinamik Renk
             const SizedBox(height: 16),
             const Text(
               'E-posta Gönderildi!',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: kTextDark),
             ),
             const SizedBox(height: 12),
             const Text(
               'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: NeuraTheme.textGrey,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: kTextGrey, fontSize: 14, height: 1.5),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
+              height: 48,
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: NeuraTheme.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  backgroundColor: _primaryColor, // Dinamik Renk
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Tamam'),
+                child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
           ],
@@ -78,74 +90,91 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NeuraTheme.background,
+      backgroundColor: kBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: NeuraTheme.primary),
+          icon: const Icon(Icons.arrow_back_ios_new, color: kTextDark, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
-
-              // Başlık
-              const Text(
-                'Şifremi Unuttum!',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: NeuraTheme.textDark,
+              Center(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  height: 60,
+                  fit: BoxFit.contain,
                 ),
               ),
+              const SizedBox(height: 40),
 
-              const SizedBox(height: 28),
-
-              // E-posta
               const Text(
-                'E-posta',
-                style: TextStyle(fontSize: 13, color: NeuraTheme.textGrey),
+                'Şifremi Unuttum',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: kTextDark,
+                ),
               ),
+              const SizedBox(height: 8),
+              const Text(
+                'Endişelenmeyin! E-posta adresinizi girin, size şifrenizi sıfırlamanız için bir bağlantı göndereceğiz.',
+                style: TextStyle(fontSize: 14, color: kTextGrey, height: 1.5),
+              ),
+
+              const SizedBox(height: 32),
+
+              const Text('E-posta', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: kTextGrey)),
               const SizedBox(height: 8),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(fontSize: 15, color: kTextDark),
                 decoration: InputDecoration(
-                  hintText: 'E-posta adresiniz',
+                  hintText: 'ornek@email.com',
+                  hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                  prefixIcon: Icon(Icons.email_outlined, color: _primaryColor, size: 22), // Dinamik Renk
                   filled: true,
-                  fillColor: const Color(0xFFEAF4FB),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                  fillColor: kInputFill,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: _primaryColor, width: 1.5)), // Dinamik Renk
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor, // Dinamik Renk
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
+                  child: const Text('Devam Et', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5)),
                 ),
               ),
 
               const SizedBox(height: 24),
 
-              // Devam Et butonu
-              CustomButton(
-                text: 'Devam Et',
-                onPressed: _submit,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Giriş Ekranına Dön
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
+                  child: Text(
                     'Giriş Ekranına Dön',
                     style: TextStyle(
-                      color: NeuraTheme.primary,
-                      fontWeight: FontWeight.w500,
+                      color: _primaryColor, // Dinamik Renk
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
                   ),
                 ),
