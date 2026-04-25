@@ -20,6 +20,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
     'Content-Type': 'application/json',
     'apikey': _anonKey,
     'Authorization': 'Bearer $_anonKey',
+    'Accept-Profile': 'neura',
+    'Content-Profile': 'neura',
   };
 
   final TextEditingController _searchController = TextEditingController();
@@ -30,6 +32,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
   String _repeat = 'Tek Sefer';
 
   List<Map<String, dynamic>> _patients = [];
+  List<Map<String, dynamic>> _filteredPatients = [];
   List<Map<String, dynamic>> _appointments = [];
   bool _isLoading = true;
 
@@ -55,7 +58,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
     try {
       final response = await http.get(
         Uri.parse(
-            '$_baseUrl/rest/v1/hastalar?select=hastaId,kullanicilar(ad,soyad)'),
+            '$_baseUrl/rest/v1/hastalar?select=hastaId,kullanicilar!inner(ad,soyad)'),
         headers: _headers,
       );
       print('Patients response: ${response.statusCode} ${response.body}');
@@ -71,18 +74,22 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                   : 'Hasta ${p['hastaId']}',
             };
           }).toList();
+          _filteredPatients = _patients;
         });
+      } else {
+        print('Patients error body: ${response.body}');
       }
     } catch (e) {
       print('Patients error: $e');
     }
+
   }
 
   Future<void> _loadAppointments() async {
     try {
       final response = await http.get(
         Uri.parse(
-            '$_baseUrl/rest/v1/toplantilar?select=toplantiId,baslik,baslangicZamani,notlar,hastalar(kullanicilar(ad,soyad))'),
+            '$_baseUrl/rest/v1/toplantilar?select=toplantiId,baslik,baslangicZamani,notlar,hastalar!inner(kullanicilar!inner(ad,soyad))'),
         headers: _headers,
       );
       print('Appointments response: ${response.statusCode} ${response.body}');
@@ -246,8 +253,28 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
               const SizedBox(height: 8),
               TextField(
                 controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _filteredPatients = _patients
+                        .where((p) =>
+                    (p['name'] as String)
+                        .toLowerCase()
+                        .contains(value.toLowerCase()) ||
+                        (p['id'] as String).contains(value))
+                        .toList();
+                    // Arama değişince seçimi sıfırla
+                    if (_selectedPatientId != null) {
+                      final still = _filteredPatients
+                          .any((p) => p['id'] == _selectedPatientId);
+                      if (!still) {
+                        _selectedPatientId = null;
+                        _selectedPatientName = null;
+                      }
+                    }
+                  });
+                },
                 decoration: InputDecoration(
-                  hintText: 'Hasta adı veya ID yazın...',
+                  hintText: 'Hasta adı giriniz',  // ← değişti
                   filled: true,
                   fillColor: const Color(0xFFEAF4FB),
                   border: OutlineInputBorder(
@@ -270,7 +297,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                     value: _selectedPatientId,
                     hint: const Text('Bir hasta seçin'),
                     isExpanded: true,
-                    items: _patients
+                    items: _filteredPatients
                         .map((p) => DropdownMenuItem(
                       value: p['id'] as String,
                       child: Text(p['name'] as String),
