@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
-import 'screens/patient_list_screen.dart';
+import 'package:provider/provider.dart';
+import 'core/theme.dart';
+import 'providers/auth_provider.dart';
+import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/patient_home.dart';
+import 'screens/clinician_home.dart';
+import 'screens/clinician_agenda.dart';
+import 'screens/forget_password.dart';
+import 'screens/register_clinician_screen.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.init();
   runApp(const NeuraApp());
 }
 
@@ -10,16 +23,24 @@ class NeuraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'NeuraApp',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A73E8),
-        ),
-        useMaterial3: true,
+    return ChangeNotifierProvider(
+      create: (_) => AuthProvider(),
+      child: MaterialApp(
+        title: 'Neura',
+        debugShowCheckedModeBanner: false,
+        theme: NeuraTheme.theme,
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const SplashScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/patient-home': (context) => const PatientHome(),
+          '/clinician-home': (context) => const ClinicianHome(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/register-clinician': (context) => const RegisterClinicianScreen(),
+          '/clinician-agenda': (context) => const ClinicianAgenda(),
+        },
       ),
-      home: const PatientListScreen(),
     );
   }
 }
