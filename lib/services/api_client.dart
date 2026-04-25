@@ -74,6 +74,18 @@ class ApiClient {
     });
   }
 
+  // DELETE — veri silme
+  Future<dynamic> delete(String path) async {
+    return _execute(() async {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$path');
+      debugPrint('DELETE => $uri');
+      return _http.delete(
+        uri,
+        headers: _headers(select: '*'),
+      );
+    });
+  }
+
   Future<dynamic> _execute(Future<http.Response> Function() call) async {
     try {
       final response = await call().timeout(const Duration(seconds: 30));

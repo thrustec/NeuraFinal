@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../models/patient.dart';
 import '../utils/api_constants.dart';
 import 'api_client.dart';
+import '../models/evaluation_model.dart' hide Patient;
 
 class EvaluationService {
   final ApiClient _client;
@@ -194,5 +195,95 @@ class EvaluationService {
       birim: map['birim'] as String? ?? 'Puan',
       isLowerBetter: false, // testMetrikleri'nden gelecek
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Clinical Evaluation module methods
+  // ---------------------------------------------------------------------------
+
+  String get _clinicalEvaluationSelect =>
+      'degerlendirmeId,hastaId,klinisyenId,sigaraDurumId,'
+          'degerlendirmeTarihi,notlar,hikaye,kullanilanIlaclar,'
+          'sporAliskanligi,yardimciCihaz,bakiciKisi,klinisyenNotlari,'
+          'hastalikId,hastaliklar(hastalikAdi),'
+          'hastalar(hastaId,kullaniciId,kullanicilar(ad,soyad,eposta))';
+
+  Future<List<Evaluation>> getAll({int? klinisyenId}) async {
+    try {
+      var path =
+          '${ApiConstants.degerlendirmeler}?select=$_clinicalEvaluationSelect&order=degerlendirmeTarihi.desc';
+
+      if (klinisyenId != null) {
+        path += '&klinisyenId=eq.$klinisyenId';
+      }
+
+      final data = await _client.get(path);
+      return data
+          .map<Evaluation>(
+            (item) => Evaluation.fromJson(item as Map<String, dynamic>),
+      )
+          .toList();
+    } catch (e) {
+      debugPrint('EvaluationService.getAll error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Evaluation>> getByPatient(int hastaId) async {
+    try {
+      final path =
+          '${ApiConstants.degerlendirmeler}?select=$_clinicalEvaluationSelect&hastaId=eq.$hastaId&order=degerlendirmeTarihi.desc';
+
+      final data = await _client.get(path);
+      return data
+          .map<Evaluation>(
+            (item) => Evaluation.fromJson(item as Map<String, dynamic>),
+      )
+          .toList();
+    } catch (e) {
+      debugPrint('EvaluationService.getByPatient error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Evaluation> create(Evaluation evaluation) async {
+    try {
+      final data = await _client.post(
+        '${ApiConstants.degerlendirmeler}?select=$_clinicalEvaluationSelect',
+        evaluation.toCreateJson(),
+      );
+
+      final map = data is List ? data.first : data;
+      return Evaluation.fromJson(Map<String, dynamic>.from(map));
+    } catch (e) {
+      debugPrint('EvaluationService.create error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Evaluation> update(int id, Evaluation evaluation) async {
+    try {
+      final data = await _client.patch(
+        '${ApiConstants.degerlendirmeler}?degerlendirmeId=eq.$id&select=$_clinicalEvaluationSelect',
+        evaluation.toUpdateJson(),
+      );
+
+      final map = data is List ? data.first : data;
+      return Evaluation.fromJson(Map<String, dynamic>.from(map));
+    } catch (e) {
+      debugPrint('EvaluationService.update error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> delete(int id) async {
+    try {
+      await _client.delete(
+        '${ApiConstants.degerlendirmeler}?degerlendirmeId=eq.$id',
+      );
+    } catch (e) {
+      debugPrint('EvaluationService.delete error: $e');
+      rethrow;
+    }
   }
 }
