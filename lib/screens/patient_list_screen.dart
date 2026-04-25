@@ -17,21 +17,20 @@ class _PatientListScreenState extends State<PatientListScreen> {
   String? _hata;
   final TextEditingController _aramaCtrl = TextEditingController();
 
-  static const Color kPrimary = Color(0xFF2563EB);
+  static const Color kPrimary = Color(0xFF0F766E);
 
   @override
-  void initState() {  // sayfa yüklenirken verileri oto çekmek için Flutter'in yaşam döngüsü metodu
+  void initState() {
     super.initState();
-    _hastalariYukle(); // ekran açılınca otomatik çalışır
+    _hastalariYukle();
   }
 
   @override
-  void dispose() { // sayfa kapatıldığında arkada boşuna RAM tüketmesin diye dispose metodu ile bellekten temizlenir
+  void dispose() {
     _aramaCtrl.dispose();
     super.dispose();
   }
 
-  //veri yüklenirken yükleniyor animasyonu çıkması için
   Future<void> _hastalariYukle() async {
     setState(() {
       _yukleniyor = true;
@@ -52,8 +51,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
     }
   }
 
-  // kullanıcı arama yaptığında her harfte veritabanına sorgu atmak yerine sadece _filtrelenmis güncelleniyor
-  void _aramaYap(String sorgu) { // kullanıcı yazdıkça _filtrelenmis listesi güncelleniyor
+  void _aramaYap(String sorgu) {
     setState(() {
       if (sorgu.isEmpty) {
         _filtrelenmis = _hastalar;
@@ -61,7 +59,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
         final q = sorgu.toLowerCase();
         _filtrelenmis = _hastalar
             .where((h) =>
-        h.tamAd.toLowerCase().contains(q) || //hem isim hem hasta ID
+        h.tamAd.toLowerCase().contains(q) ||
             h.hastaId.toString().contains(q))
             .toList();
       }
@@ -74,84 +72,78 @@ class _PatientListScreenState extends State<PatientListScreen> {
       MaterialPageRoute(
           builder: (_) => PatientDetailScreen(hasta: hasta)),
     );
-    if (guncellendi == true) _hastalariYukle(); // güncellendiyse listeyi yenile
+    if (guncellendi == true) _hastalariYukle();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC),
-      appBar: _appBar(),
-      bottomNavigationBar: _altMenu(),
-      body: Column(
-        children: [
-          // ── Başlık + Arama ───────────────────────────────
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    width: 38, height: 38,
-                    decoration: BoxDecoration(
-                      color: kPrimary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.people_alt_outlined,
-                        color: kPrimary, size: 20),
+    return Column(
+      children: [
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(width: 10),
-                  const Text('Hasta Listesi',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B))),
-                ]),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _aramaCtrl,
-                  onChanged: _aramaYap,
-                  decoration: InputDecoration(
-                    hintText: 'İsim veya hasta ID ile ara...',
-                    hintStyle: const TextStyle(
-                        color: Color(0xFF94A3B8), fontSize: 14),
-                    prefixIcon: const Icon(Icons.search,
-                        color: Color(0xFF94A3B8), size: 20),
-                    suffixIcon: _aramaCtrl.text.isNotEmpty
-                        ? IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Color(0xFF94A3B8), size: 18),
-                        onPressed: () {
-                          _aramaCtrl.clear();
-                          _aramaYap('');
-                        })
-                        : null,
-                    filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0), width: 1)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                            color: kPrimary, width: 1.5)),
-                  ),
+                  child: const Icon(Icons.people_alt_outlined,
+                      color: kPrimary, size: 20),
                 ),
-              ],
-            ),
+                const SizedBox(width: 10),
+                const Text('Hasta Listesi',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E293B))),
+              ]),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _aramaCtrl,
+                onChanged: _aramaYap,
+                decoration: InputDecoration(
+                  hintText: 'İsim veya hasta ID ile ara...',
+                  hintStyle: const TextStyle(
+                      color: Color(0xFF94A3B8), fontSize: 14),
+                  prefixIcon: const Icon(Icons.search,
+                      color: Color(0xFF94A3B8), size: 20),
+                  suffixIcon: _aramaCtrl.text.isNotEmpty
+                      ? IconButton(
+                      icon: const Icon(Icons.close,
+                          color: Color(0xFF94A3B8), size: 18),
+                      onPressed: () {
+                        _aramaCtrl.clear();
+                        _aramaYap('');
+                      })
+                      : null,
+                  filled: true,
+                  fillColor: const Color(0xFFF1F5F9),
+                  contentPadding:
+                  const EdgeInsets.symmetric(vertical: 12),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                          color: Color(0xFFE2E8F0), width: 1)),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                          color: kPrimary, width: 1.5)),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 1),
-          Expanded(child: _govde()),
-        ],
-      ),
+        ),
+        const SizedBox(height: 1),
+        Expanded(child: _govde()),
+      ],
     );
   }
 
@@ -244,106 +236,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
       ),
     );
   }
-
-  AppBar _appBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.menu, color: Color(0xFF1E293B)),
-        onPressed: () {},
-      ),
-      title: const Text('Hastalar',
-          style: TextStyle(
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w600,
-              fontSize: 18)),
-      centerTitle: false,
-      actions: [
-        Stack(children: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: Color(0xFF1E293B)),
-            onPressed: () {},
-          ),
-          Positioned(
-              right: 10,
-              top: 10,
-              child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle))),
-        ]),
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: CircleAvatar(
-              radius: 17,
-              backgroundColor: kPrimary,
-              child: const Text('AK',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold))),
-        ),
-      ],
-      bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child:
-          Container(color: const Color(0xFFE2E8F0), height: 1)),
-    );
-  }
-
-  Widget _altMenu() {
-    final items = [
-      {'icon': Icons.home_outlined, 'label': 'Ana Sayfa'},
-      {'icon': Icons.people_alt_outlined, 'label': 'Hastalar'},
-      {'icon': Icons.person_add_outlined, 'label': 'Kayıt'},
-      {'icon': Icons.assignment_outlined, 'label': 'Değerlendir'},
-      {'icon': Icons.bar_chart_outlined, 'label': 'Raporlar'},
-    ];
-    return Container(
-      decoration: const BoxDecoration(
-          color: Colors.white,
-          border:
-          Border(top: BorderSide(color: Color(0xFFE2E8F0)))),
-      child: SafeArea(
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (i) {
-              final aktif = i == 1;
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(items[i]['icon'] as IconData,
-                      color: aktif
-                          ? kPrimary
-                          : const Color(0xFF94A3B8),
-                      size: 22),
-                  const SizedBox(height: 3),
-                  Text(items[i]['label'] as String,
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: aktif
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                          color: aktif
-                              ? kPrimary
-                              : const Color(0xFF94A3B8))),
-                ],
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-// ── Hasta Kartı ──────────────────────────────────────────────
 class _HastaKarti extends StatelessWidget {
   final Patient hasta;
   final VoidCallback onTap;
@@ -380,7 +274,7 @@ class _HastaKarti extends StatelessWidget {
           child: Row(children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: const Color(0xFFEFF6FF),
+              backgroundColor: const Color(0xFFF0FDFA),
               child: Text(
                 hasta.ad.isNotEmpty
                     ? hasta.ad[0].toUpperCase()
@@ -388,7 +282,7 @@ class _HastaKarti extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2563EB)),
+                    color: Color(0xFF0F766E)),
               ),
             ),
             const SizedBox(width: 12),
@@ -451,8 +345,8 @@ class _Etiket extends StatelessWidget {
   final Color arkaplan;
   const _Etiket({
     required this.label,
-    this.renk = const Color(0xFF1D4ED8),
-    this.arkaplan = const Color(0xFFEFF6FF),
+    this.renk = const Color(0xFF0F766E),
+    this.arkaplan = const Color(0xFFF0FDFA),
   });
 
   @override
