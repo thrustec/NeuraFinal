@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/patient_model.dart';
-import '../models/evaluation_model.dart';
+import '../models/evaluation_model.dart' hide Patient;
 import '../services/patient_service.dart';
 import '../services/empatica_service.dart';
 import 'empatica_screen.dart';

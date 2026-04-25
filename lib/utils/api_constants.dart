@@ -20,4 +20,5 @@ class ApiConstants {
   static const String toplantiIstekleri = '/toplantiIstekleri';
   static const String kullanicilar = '/kullanicilar';
   static const String hastaliklar = '/hastaliklar';
+  static const String schema = 'neura';
 }
