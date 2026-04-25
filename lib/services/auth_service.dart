@@ -38,7 +38,7 @@ class AuthService {
         // Kullanıcı bilgilerini kullanicilar tablosundan çek
         final userResponse = await http.get(
           Uri.parse(
-              '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=*,roller(rolAdi)'),
+              '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId,ad,soyad,eposta,rolId,roller(rolAdi)'),
           headers: {
             ..._headers,
             'Authorization': 'Bearer $accessToken',
@@ -58,7 +58,7 @@ class AuthService {
               'eposta': user['eposta'] ?? eposta,
               'telefon': '',
               'rolId': user['rolId'] ?? 1,
-              'rolAdi': user['roller']?['rolAdi'] ?? 'Hasta',
+              'rolAdi': user['rolId'] == 2 ? 'Klinisyen' : 'Hasta',
               'token': accessToken,
             });
           }
@@ -133,7 +133,7 @@ class AuthService {
             'soyad': soyad,
             'eposta': eposta,
             'sifreHash': sifre,
-            'rolId': rolId,
+            'rolId': rolAdi == 'Klinisyen' ? 2 : 1,
             'aktifMi': true,
           }),
         ).timeout(const Duration(seconds: 30));

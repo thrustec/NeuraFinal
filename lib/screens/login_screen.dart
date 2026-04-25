@@ -45,6 +45,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
+      // Seçilen rol ile gerçek rol uyuşuyor mu kontrol et
+      final gercekRol = auth.isPatient ? 'patient' : 'clinician';
+      if (gercekRol != _selectedRole) {
+        // Rol uyuşmuyor, çıkış yap ve hata göster
+        await auth.logout();
+        _showErrorDialog('ROL_UYUSMUYOR');
+        return;
+      }
+
       if (auth.isPatient) {
         Navigator.pushReplacementNamed(context, '/patient-home');
       } else {
@@ -60,10 +69,16 @@ class _LoginScreenState extends State<LoginScreen> {
     String message;
     String buttonText;
 
+    if (errorType == 'ROL_UYUSMUYOR') {
+      title = 'GEÇERSİZ GİRİŞ';
+      message =
+      'Girdiğiniz bilgilere ait bir hasta bulunmamaktır';
+      buttonText = 'Tekrar Dene';
+    } else
     if (errorType == 'GEÇERSİZ_GİRİŞ') {
       title = 'GEÇERSİZ GİRİŞ';
       message =
-      'Bu e-posta adresi/telefon numarasıyla daha önce bir hesap oluşturulmamış. Şifrenizi hatırlamıyorsanız, "Şifremi Unuttum" seçeneğine tıklayabilirsiniz.';
+      'Bu e-posta adresi daha önce bir hesap oluşturulmamış. Şifrenizi hatırlamıyorsanız, "Şifremi Unuttum" seçeneğine tıklayabilirsiniz.';
       buttonText = 'Tekrar Dene';
     } else {
       title = 'BAĞLANTI HATASI';
@@ -197,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 28),
 
               const Text(
-                'Email veya Telefon Numarası',
+                'Email',
                 style: TextStyle(
                   fontSize: 13,
                   color: NeuraTheme.textGrey,
@@ -208,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  hintText: 'Email veya telefon numaranız',
+                  hintText: 'Email',
                   hintStyle:
                   TextStyle(color: _primaryColor, fontSize: 13),
                   prefixIcon: Icon(Icons.email_outlined,
