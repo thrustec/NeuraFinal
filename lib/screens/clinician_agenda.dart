@@ -22,6 +22,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
     'Content-Type': 'application/json',
     'apikey': _anonKey,
     'Authorization': 'Bearer $_anonKey',
+    'Accept-Profile': 'neura',
+    'Content-Profile': 'neura',
   };
 
   final TextEditingController _searchController = TextEditingController();
@@ -32,6 +34,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
   String _repeat = 'Tek Sefer';
 
   List<Map<String, dynamic>> _patients = [];
+  List<Map<String, dynamic>> _filteredPatients = [];
   List<Map<String, dynamic>> _appointments = [];
   bool _isLoading = true;
 
@@ -58,7 +61,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
   Future<void> _loadPatients() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/rest/v1/hastalar?select=hastaId,kullanicilar(ad,soyad)'),
+        Uri.parse(
+            '$_baseUrl/rest/v1/hastalar?select=hastaId,kullanicilar!inner(ad,soyad)'),
         headers: _headers,
       );
       if (response.statusCode == 200) {
@@ -73,18 +77,22 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                   : 'Hasta ${p['hastaId']}',
             };
           }).toList();
+          _filteredPatients = _patients;
         });
+      } else {
+        print('Patients error body: ${response.body}');
       }
     } catch (e) {
       print('Patients error: $e');
     }
+
   }
 
   Future<void> _loadAppointments() async {
     try {
       final response = await http.get(
         Uri.parse(
-            '$_baseUrl/rest/v1/toplantilar?select=toplantiId,baslik,baslangicZamani,notlar,hastalar(kullanicilar(ad,soyad))'),
+            '$_baseUrl/rest/v1/toplantilar?select=toplantiId,baslik,baslangicZamani,notlar,hastalar!inner(kullanicilar!inner(ad,soyad))'),
         headers: _headers,
       );
       if (response.statusCode == 200) {
