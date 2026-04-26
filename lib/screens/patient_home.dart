@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../core/theme.dart';
-import 'comparison_screen.dart';
 import 'patient_agenda_screen.dart';
 import 'telerehab_patient_screen.dart';
 import '../models/patient.dart' as sila;
@@ -223,13 +221,6 @@ class PatientHome extends StatelessWidget {
       physics: const BouncingScrollPhysics(),
       child: Row(
         children: [
-          _QuickActionTile(
-            icon: Icons.assignment_outlined,
-            label: 'Değerlendirmeler',
-            color: Colors.indigo,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ComparisonScreen())),
-          ),
-          const SizedBox(width: 12),
           _QuickActionTile(
             icon: Icons.monitor_heart_outlined,
             label: 'Sensör Verileri',
