@@ -204,6 +204,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
           _selectedDate = null;
           _selectedTime = null;
           _searchController.clear();
+          _filteredPatients = _patients;
         });
         await _loadAppointments();
       } else {
@@ -276,8 +277,28 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _filteredPatients = _patients
+                              .where((p) =>
+                          (p['name'] as String)
+                              .toLowerCase()
+                              .contains(value.toLowerCase()) ||
+                              (p['id'] as String).contains(value))
+                              .toList();
+                          // Seçili hasta filtre dışında kaldıysa sıfırla
+                          if (_selectedPatientId != null) {
+                            final halaVar = _filteredPatients
+                                .any((p) => p['id'] == _selectedPatientId);
+                            if (!halaVar) {
+                              _selectedPatientId = null;
+                              _selectedPatientName = null;
+                            }
+                          }
+                        });
+                      },
                       decoration: InputDecoration(
-                        hintText: 'Hasta adı veya ID yazın...',
+                        hintText: 'Hasta adı giriniz',
                         hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
                         filled: true,
                         fillColor: const Color(0xFFF1F5F9),
@@ -301,7 +322,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                           value: _selectedPatientId,
                           hint: const Text('Bir hasta seçin', style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
                           isExpanded: true,
-                          items: _patients.map((p) {
+                          items: _filteredPatients.map((p) {
                             return DropdownMenuItem<String>(
                               value: p['id'].toString(),
                               child: Text(p['name'] as String),
@@ -310,7 +331,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                           onChanged: (val) {
                             setState(() {
                               _selectedPatientId = val;
-                              _selectedPatientName = _patients.firstWhere((p) => p['id'] == val)['name'];
+                              _selectedPatientName = _filteredPatients
+                                  .firstWhere((p) => p['id'] == val)['name'];
                             });
                           },
                         ),
@@ -427,7 +449,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton.icon(
-                        onPressed: _createPlan, // Eray'ın fonksiyonu geri geldi
+                        onPressed: _createPlan,
                         icon: const Icon(Icons.save_outlined, size: 20, color: Colors.white),
                         label: const Text(
                           'Randevu Oluştur',
@@ -487,7 +509,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                   ),
                 ),
 
-              // Randevu kartları (Eray'ın tüm onay butonları duruyor, sadece yuvarlandı)
+              // Randevu kartları
               ..._appointments.asMap().entries.map((entry) {
                 final i = entry.key;
                 final apt = entry.value;
