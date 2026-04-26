@@ -3,6 +3,14 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../core/theme.dart';
 
+// NeuraApp Design System — Klinisyen Renk Paleti
+const Color kBackground = Color(0xFFF8F9FC);
+const Color kPrimary = Color(0xFF0F766E);
+const Color kTextDark = Color(0xFF1E293B);
+const Color kTextGrey = Color(0xFF64748B);
+const Color kTextHint = Color(0xFF94A3B8);
+const Color kInputFill = Color(0xFFF1F5F9);
+
 class RegisterClinicianScreen extends StatefulWidget {
   const RegisterClinicianScreen({super.key});
 
@@ -18,8 +26,6 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
   final _passwordConfirmController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
-
-  static const Color _green = Color(0xFF1DB954);
 
   @override
   void dispose() {
@@ -102,36 +108,55 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded,
-                color: Colors.orange, size: 48),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.warning_amber_rounded,
+                  color: Colors.orange, size: 28),
+            ),
             const SizedBox(height: 16),
             const Text(
               'Geçersiz Bilgi',
-              style:
-              TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: kTextDark,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: NeuraTheme.textGrey, fontSize: 13),
+              style: const TextStyle(color: kTextGrey, fontSize: 13, height: 1.5),
             ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
+              height: 46,
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: NeuraTheme.textDark,
+                  backgroundColor: kTextDark,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Tamam'),
+                child: const Text(
+                  'Tamam',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
@@ -146,8 +171,7 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
 
     if (errorType == 'EMAIL_KAYITLI') {
       title = 'E-posta Kayıtlı';
-      message =
-      'Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın.';
+      message = 'Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın.';
     } else {
       title = 'Bağlantı Hatası';
       message =
@@ -158,24 +182,40 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded,
-                color: Colors.orange, size: 48),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.warning_amber_rounded,
+                  color: Colors.orange, size: 28),
+            ),
             const SizedBox(height: 16),
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: NeuraTheme.textGrey, fontSize: 13)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: kTextDark,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: kTextGrey, fontSize: 13, height: 1.5),
+            ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
+              height: 46,
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
@@ -183,15 +223,51 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
                       .clearError();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: NeuraTheme.textDark,
+                  backgroundColor: kTextDark,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Tamam'),
+                child: const Text(
+                  'Tamam',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData prefixIcon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
+      prefixIcon: Icon(prefixIcon, color: kPrimary, size: 20),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: kInputFill,
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: kPrimary, width: 1.5),
       ),
     );
   }
@@ -201,182 +277,264 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
     final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      backgroundColor: NeuraTheme.background,
+      backgroundColor: kBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: _green),
+          icon: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.arrow_back_ios_new,
+                color: kPrimary, size: 16),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Yeni Hesap',
-          style: TextStyle(color: _green, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: kTextDark,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding:
-          const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tam Adı
-              const Text('Tam Adınız',
-                  style: TextStyle(
-                      fontSize: 13, color: NeuraTheme.textGrey)),
+              // Header
               const SizedBox(height: 8),
-              TextField(
-                controller: _fullNameController,
-                decoration: InputDecoration(
-                  hintText: 'Ad Soyad',
-                  prefixIcon: const Icon(Icons.person_outline,
-                      color: _green, size: 20),
-                  filled: true,
-                  fillColor: const Color(0xFFEAF4FB),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Email
-              const Text('Email',
-                  style: TextStyle(
-                      fontSize: 13, color: NeuraTheme.textGrey)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'ornek@email.com',
-                  prefixIcon: const Icon(Icons.email_outlined,
-                      color: _green, size: 20),
-                  filled: true,
-                  fillColor: const Color(0xFFEAF4FB),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Şifre
-              const Text('Şifre',
-                  style: TextStyle(
-                      fontSize: 13, color: NeuraTheme.textGrey)),
-              const SizedBox(height: 4),
-              const Text(
-                'En az 8 karakter, büyük/küçük harf ve rakam içermeli',
-                style:
-                TextStyle(fontSize: 11, color: NeuraTheme.textGrey),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: '••••••••',
-                  prefixIcon: const Icon(Icons.lock_outline,
-                      color: _green, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: _green,
-                      size: 20,
-                    ),
-                    onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+              Center(
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  filled: true,
-                  fillColor: const Color(0xFFEAF4FB),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
+                  child: const Icon(Icons.person_add_outlined,
+                      color: kPrimary, size: 30),
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Şifre Tekrar
-              const Text('Şifre Tekrar',
-                  style: TextStyle(
-                      fontSize: 13, color: NeuraTheme.textGrey)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordConfirmController,
-                obscureText: _obscurePasswordConfirm,
-                decoration: InputDecoration(
-                  hintText: '••••••••',
-                  prefixIcon: const Icon(Icons.lock_outline,
-                      color: _green, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePasswordConfirm
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: _green,
-                      size: 20,
-                    ),
-                    onPressed: () => setState(() =>
-                    _obscurePasswordConfirm =
-                    !_obscurePasswordConfirm),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFEAF4FB),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                ),
-              ),
-
               const SizedBox(height: 12),
-
-              RichText(
-                text: const TextSpan(
-                  text: 'Devam ederek şunları kabul ediyorsunuz: ',
+              const Center(
+                child: Text(
+                  'Hesap oluşturun',
                   style: TextStyle(
-                      color: NeuraTheme.textGrey, fontSize: 12),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: kTextDark,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Center(
+                child: Text(
+                  'Bilgilerinizi girerek kayıt olun',
+                  style: TextStyle(fontSize: 13, color: kTextGrey),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Form Card
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextSpan(
-                        text: 'Kullanım Şartları',
-                        style:
-                        TextStyle(color: _green, fontSize: 12)),
-                    TextSpan(text: ' ve '),
-                    TextSpan(
-                        text: 'Gizlilik Politikası',
-                        style:
-                        TextStyle(color: _green, fontSize: 12)),
+                    // Tam Adı
+                    const Text(
+                      'Tam Adınız',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: kTextDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _fullNameController,
+                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      decoration: _inputDecoration(
+                        hint: 'Ad Soyad',
+                        prefixIcon: Icons.person_outline,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Email
+                    const Text(
+                      'E-posta Adresi',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: kTextDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      decoration: _inputDecoration(
+                        hint: 'ornek@email.com',
+                        prefixIcon: Icons.email_outlined,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Şifre
+                    const Text(
+                      'Şifre',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: kTextDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'En az 8 karakter, büyük/küçük harf ve rakam içermeli',
+                      style: TextStyle(fontSize: 11, color: kTextGrey),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      decoration: _inputDecoration(
+                        hint: '••••••••',
+                        prefixIcon: Icons.lock_outline,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: kTextGrey,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Şifre Tekrar
+                    const Text(
+                      'Şifre Tekrar',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: kTextDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _passwordConfirmController,
+                      obscureText: _obscurePasswordConfirm,
+                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      decoration: _inputDecoration(
+                        hint: '••••••••',
+                        prefixIcon: Icons.lock_outline,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePasswordConfirm
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: kTextGrey,
+                            size: 20,
+                          ),
+                          onPressed: () => setState(
+                                  () => _obscurePasswordConfirm = !_obscurePasswordConfirm),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
+              // Terms
+              RichText(
+                text: const TextSpan(
+                  text: 'Devam ederek şunları kabul ediyorsunuz: ',
+                  style: TextStyle(color: kTextGrey, fontSize: 12, height: 1.5),
+                  children: [
+                    TextSpan(
+                      text: 'Kullanım Şartları',
+                      style: TextStyle(
+                        color: kPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    TextSpan(text: ' ve '),
+                    TextSpan(
+                      text: 'Gizlilik Politikası',
+                      style: TextStyle(
+                        color: kPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Register Button
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
                   onPressed: auth.isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _green,
+                    backgroundColor: kPrimary,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                   child: auth.isLoading
-                      ? const CircularProgressIndicator(
-                      color: Colors.white)
+                      ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
                       : const Text(
                     'Kayıt Ol',
                     style: TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
@@ -385,25 +543,30 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
 
               const SizedBox(height: 16),
 
+              // Login redirect
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: RichText(
                     text: const TextSpan(
                       text: 'Zaten hesabın var mı? ',
-                      style: TextStyle(color: NeuraTheme.textGrey),
+                      style: TextStyle(color: kTextGrey, fontSize: 13),
                       children: [
                         TextSpan(
                           text: 'Giriş Yap',
                           style: TextStyle(
-                              color: _green,
-                              fontWeight: FontWeight.w600),
+                            color: kPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
+
+              const SizedBox(height: 16),
             ],
           ),
         ),

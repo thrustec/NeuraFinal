@@ -3,6 +3,12 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../core/theme.dart';
 
+// NeuraApp Design System — Marka Renkleri
+const Color kBackground = Color(0xFFF8F9FC);
+const Color kPrimary = Color(0xFF0F766E);
+const Color kTextDark = Color(0xFF1E293B);
+const Color kTextGrey = Color(0xFF64748B);
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -11,7 +17,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -49,44 +54,34 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NeuraTheme.background,
+      backgroundColor: kBackground,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            RichText(
-              text: const TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'N',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: NeuraTheme.primary,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'eura',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: NeuraTheme.textDark,
-                    ),
-                  ),
-                ],
-              ),
+            // Logo
+            Image.asset(
+              'assets/images/logo.png',
+              width: 220,
+              height: 220,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Sağlık Uygulaması',
-              style: TextStyle(
-                fontSize: 16,
-                color: NeuraTheme.textGrey,
+
+            const SizedBox(height: 24),
+
+            // "Neura" yazısı
+
+
+            const SizedBox(height: 56),
+
+            // Loading indicator
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                color: kPrimary,
+                strokeWidth: 2.5,
+                backgroundColor: kPrimary.withOpacity(0.15),
               ),
-            ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(
-              color: NeuraTheme.primary,
             ),
           ],
         ),

@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
 import '../services/meeting_service.dart';
 
+// NeuraApp Design System — Klinisyen Renk Paleti
+const Color kBackground = Color(0xFFF8F9FC);
+const Color kPrimary = Color(0xFF0F766E);
+const Color kTextDark = Color(0xFF1E293B);
+const Color kTextGrey = Color(0xFF64748B);
+const Color kTextHint = Color(0xFF94A3B8);
+const Color kInputFill = Color(0xFFF1F5F9);
+const Color kSuccess = Color(0xFF16A34A);
+const Color kDanger = Color(0xFFDC2626);
+const Color kWarning = Color(0xFFF59E0B);
+
 class TelerehabClinicianScreen extends StatefulWidget {
   const TelerehabClinicianScreen({super.key});
 
@@ -207,9 +218,7 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Talep durumu güncellendi: $durum'),
-        ),
+        SnackBar(content: Text('Talep durumu güncellendi: $durum')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -253,9 +262,8 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       );
 
       if (selectedEndDateTime.isBefore(selectedStartDateTime)) {
-        selectedEndDateTime = selectedStartDateTime.add(
-          const Duration(minutes: 45),
-        );
+        selectedEndDateTime =
+            selectedStartDateTime.add(const Duration(minutes: 45));
       }
     });
   }
@@ -293,159 +301,367 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
     return '${two(value.day)}/${two(value.month)}/${value.year} ${two(value.hour)}:${two(value.minute)}';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF2563EB);
-    const Color background = Color(0xFFF5F7FB);
-    const Color cardColor = Colors.white;
-    const Color borderColor = Color(0xFFE5E7EB);
-    const Color lightBlue = Color(0xFFEAF2FF);
-    const Color textDark = Color(0xFF1F2937);
-    const Color textMuted = Color(0xFF6B7280);
-    const Color successGreen = Color(0xFF16A34A);
-    const Color dangerRed = Color(0xFFDC2626);
-    const Color warningOrange = Color(0xFFF59E0B);
+  // ── UI Yardımcıları ──────────────────────────────────────
 
-    InputDecoration inputDecoration(String hintText, {Widget? suffixIcon}) {
-      return InputDecoration(
-        hintText: hintText,
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: const Color(0xFFF9FAFB),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryBlue, width: 1.2),
-        ),
-      );
-    }
+  InputDecoration _inputDecoration(String hintText, {Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: kInputFill,
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: kPrimary, width: 1.5),
+      ),
+    );
+  }
 
-    Widget sectionCard({
-      required String sectionLabel,
-      required String title,
-      required IconData icon,
-      required List<Widget> children,
-    }) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: borderColor),
+  Widget _sectionCard({
+    required String sectionLabel,
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: kPrimary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sectionLabel,
+                        style: const TextStyle(
+                          color: kTextGrey,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: kTextDark,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(color: Color(0xFFE2E8F0)),
+            const SizedBox(height: 16),
+            ...children,
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: lightBlue,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: primaryBlue, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          sectionLabel,
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: textDark,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: kTextGrey,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _meetingItem(Map<String, dynamic> meeting) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: kBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            meeting['baslik'] ?? '',
+            style: const TextStyle(
+              color: kTextDark,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _infoRow(Icons.tag, 'Toplantı ID: ${meeting['toplantiId']}'),
+          _infoRow(Icons.play_circle_outline,
+              'Başlangıç: ${meeting['baslangicZamani']}'),
+          _infoRow(
+              Icons.stop_circle_outlined, 'Bitiş: ${meeting['bitisZamani']}'),
+          _infoRow(Icons.notes_outlined, 'Not: ${meeting['notlar'] ?? '-'}'),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.video_call_outlined, size: 18),
+              label: const Text(
+                'Seansı Başlat',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
-              const Divider(color: borderColor),
-              const SizedBox(height: 16),
-              ...children,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _requestItem(Map<String, dynamic> request) {
+    final bool isPending = (request['durum'] ?? '') == 'Beklemede';
+    final bool isProcessing =
+        processingRequestId == request['toplantiIstegiId'];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: kBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Talep ID: ${request['toplantiIstegiId']}',
+                  style: const TextStyle(
+                    color: kTextDark,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kWarning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  request['durum'] ?? '-',
+                  style: const TextStyle(
+                    color: kWarning,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-      );
-    }
+          const SizedBox(height: 8),
+          _infoRow(Icons.person_outline, 'Hasta ID: ${request['hastaId']}'),
+          _infoRow(Icons.medical_services_outlined,
+              'Klinisyen ID: ${request['klinisyenId']}'),
+          _infoRow(Icons.chat_bubble_outline, 'Talep: ${request['talep'] ?? '-'}'),
+          _infoRow(Icons.calendar_today_outlined,
+              'Oluşturma: ${request['olusturmaTarihi'] ?? '-'}'),
+          if (isPending) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: isProcessing
+                        ? null
+                        : () => updateRequestStatus(
+                      toplantiIstegiId:
+                      request['toplantiIstegiId'] as int,
+                      durum: 'Reddedildi',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: kDanger,
+                      side: const BorderSide(color: Color(0xFFE2E8F0)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text(
+                      'Reddet',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: isProcessing
+                        ? null
+                        : () => updateRequestStatus(
+                      toplantiIstegiId:
+                      request['toplantiIstegiId'] as int,
+                      durum: 'Onaylandı',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: isProcessing
+                        ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                        : const Text(
+                      'Onayla',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-    Widget fieldLabel(String text) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
+  Widget _infoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 13, color: kTextHint),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: kTextGrey, fontSize: 12),
+            ),
           ),
-        ),
-      );
-    }
+        ],
+      ),
+    );
+  }
 
+  Widget _emptyState(String message) {
+    return Text(
+      message,
+      style: const TextStyle(color: kTextHint, fontSize: 14),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: kBackground,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: textDark),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          icon: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.arrow_back_ios_new,
+                color: kPrimary, size: 16),
+          ),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Telerehabilitasyon',
           style: TextStyle(
-            color: textDark,
+            color: kTextDark,
             fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: const Color(0xFFE2E8F0), height: 1),
         ),
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.notifications_none, color: textDark),
+            icon: const Icon(Icons.notifications_none, color: kTextGrey),
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: primaryBlue,
-              child: Text(
-                'AK',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: kPrimary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text(
+                  'AK',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -454,386 +670,195 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       ),
       body: SafeArea(
         child: isLoadingDropdownData
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+            child: CircularProgressIndicator(color: kPrimary))
             : SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
           child: Column(
             children: [
-              sectionCard(
+              // ── Yaklaşan Toplantılar ──
+              _sectionCard(
                 sectionLabel: 'Ajanda / neura.toplantilar',
                 title: 'Yaklaşan Toplantılar',
                 icon: Icons.calendar_month_outlined,
                 children: meetings.isEmpty
-                    ? const [
-                  Text(
-                    'Henüz oluşturulmuş toplantı yok.',
-                    style: TextStyle(
-                      color: textMuted,
-                      fontSize: 14,
-                    ),
-                  ),
-                ]
-                    : meetings
-                    .map(
-                      (meeting) => Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          meeting['baslik'] ?? '',
-                          style: const TextStyle(
-                            color: textDark,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Toplantı ID: ${meeting['toplantiId']}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Başlangıç: ${meeting['baslangicZamani']}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Bitiş: ${meeting['bitisZamani']}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Not: ${meeting['notlar'] ?? '-'}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: ElevatedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(
-                              Icons.video_call_outlined,
-                            ),
-                            label: const Text('Seansı Başlat'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryBlue,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                    .toList(),
+                    ? [_emptyState('Henüz oluşturulmuş toplantı yok.')]
+                    : meetings.map(_meetingItem).toList(),
               ),
-              sectionCard(
-                sectionLabel: 'Gelen Talepler / neura.toplantiIstekleri',
+
+              // ── Hasta Talepleri ──
+              _sectionCard(
+                sectionLabel:
+                'Gelen Talepler / neura.toplantiIstekleri',
                 title: 'Hasta Talepleri',
                 icon: Icons.inbox_outlined,
                 children: meetingRequests.isEmpty
-                    ? const [
-                  Text(
-                    'Henüz gelen talep yok.',
-                    style: TextStyle(
-                      color: textMuted,
-                      fontSize: 14,
-                    ),
-                  ),
-                ]
-                    : meetingRequests
-                    .map(
-                      (request) => Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Talep ID: ${request['toplantiIstegiId']}',
-                          style: const TextStyle(
-                            color: textDark,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Hasta ID: ${request['hastaId']}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Klinisyen ID: ${request['klinisyenId']}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Durum: ${request['durum'] ?? '-'}',
-                          style: const TextStyle(
-                            color: warningOrange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Talep: ${request['talep'] ?? '-'}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Oluşturma: ${request['olusturmaTarihi'] ?? '-'}',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if ((request['durum'] ?? '') ==
-                            'Beklemede') ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: processingRequestId ==
-                                      request[
-                                      'toplantiIstegiId']
-                                      ? null
-                                      : () {
-                                    updateRequestStatus(
-                                      toplantiIstegiId:
-                                      request[
-                                      'toplantiIstegiId']
-                                      as int,
-                                      durum: 'Reddedildi',
-                                    );
-                                  },
-                                  child: const Text('Reddet'),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: processingRequestId ==
-                                      request[
-                                      'toplantiIstegiId']
-                                      ? null
-                                      : () {
-                                    updateRequestStatus(
-                                      toplantiIstegiId:
-                                      request[
-                                      'toplantiIstegiId']
-                                      as int,
-                                      durum: 'Onaylandı',
-                                    );
-                                  },
-                                  child: processingRequestId ==
-                                      request[
-                                      'toplantiIstegiId']
-                                      ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child:
-                                    CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                      : const Text('Onayla'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                )
-                    .toList(),
+                    ? [_emptyState('Henüz gelen talep yok.')]
+                    : meetingRequests.map(_requestItem).toList(),
               ),
-              sectionCard(
+
+              // ── Yeni Toplantı Talebi Oluştur ──
+              _sectionCard(
                 sectionLabel: 'Talep / neura.toplantiIstekleri',
                 title: 'Yeni Toplantı Talebi Oluştur',
                 icon: Icons.add_box_outlined,
                 children: [
-                  fieldLabel('HASTA ID (hastaId)'),
+                  _fieldLabel('HASTA ID (hastaId)'),
                   DropdownButtonFormField<int>(
-                    initialValue: selectedPatientId,
-                    decoration: inputDecoration('Hasta seçin'),
+                    value: selectedPatientId,
+                    decoration: _inputDecoration('Hasta seçin'),
+                    icon: const Icon(Icons.keyboard_arrow_down,
+                        color: kPrimary),
                     items: patients
-                        .map(
-                          (patient) => DropdownMenuItem<int>(
-                        value: patient['hastaId'] as int,
-                        child: Text('Hasta ID: ${patient['hastaId']}'),
-                      ),
-                    )
+                        .map((patient) => DropdownMenuItem<int>(
+                      value: patient['hastaId'] as int,
+                      child: Text(
+                          'Hasta ID: ${patient['hastaId']}'),
+                    ))
                         .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedPatientId = value;
-                      });
-                    },
+                    onChanged: (value) =>
+                        setState(() => selectedPatientId = value),
                   ),
                   const SizedBox(height: 16),
-                  fieldLabel('KLİNİSYEN ID (klinisyenId)'),
+                  _fieldLabel('KLİNİSYEN ID (klinisyenId)'),
                   DropdownButtonFormField<int>(
-                    initialValue: selectedClinicianId,
-                    decoration: inputDecoration('Klinisyen seçin'),
+                    value: selectedClinicianId,
+                    decoration: _inputDecoration('Klinisyen seçin'),
+                    icon: const Icon(Icons.keyboard_arrow_down,
+                        color: kPrimary),
                     items: clinicians
-                        .map(
-                          (clinician) => DropdownMenuItem<int>(
-                        value: clinician['kullaniciId'] as int,
-                        child: Text(
-                          '${clinician['ad']} ${clinician['soyad'] ?? ''}',
-                        ),
+                        .map((clinician) => DropdownMenuItem<int>(
+                      value: clinician['kullaniciId'] as int,
+                      child: Text(
+                        '${clinician['ad']} ${clinician['soyad'] ?? ''}',
                       ),
-                    )
+                    ))
                         .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedClinicianId = value;
-                      });
-                    },
+                    onChanged: (value) =>
+                        setState(() => selectedClinicianId = value),
                   ),
                   const SizedBox(height: 16),
-                  fieldLabel('BAŞLIK (baslik)'),
+                  _fieldLabel('BAŞLIK (baslik)'),
                   TextField(
                     controller: titleController,
-                    decoration: inputDecoration('Toplantı başlığı'),
+                    style: const TextStyle(
+                        color: kTextDark, fontSize: 14),
+                    decoration:
+                    _inputDecoration('Toplantı başlığı'),
                   ),
                   const SizedBox(height: 16),
-                  fieldLabel('TALEP METNİ (talep)'),
+                  _fieldLabel('TALEP METNİ (talep)'),
                   TextField(
                     controller: requestController,
                     maxLines: 3,
-                    decoration: inputDecoration('Toplantı talebini girin'),
+                    style: const TextStyle(
+                        color: kTextDark, fontSize: 14),
+                    decoration:
+                    _inputDecoration('Toplantı talebini girin'),
                   ),
                   const SizedBox(height: 16),
-                  fieldLabel('BAŞLANGIÇ ZAMANI (baslangicZamani)'),
+                  _fieldLabel('BAŞLANGIÇ ZAMANI (baslangicZamani)'),
                   TextField(
                     readOnly: true,
                     controller: TextEditingController(
-                      text: formatDateTime(selectedStartDateTime),
-                    ),
+                        text: formatDateTime(selectedStartDateTime)),
                     onTap: _pickStartDateTime,
-                    decoration: inputDecoration(
+                    style: const TextStyle(
+                        color: kTextDark, fontSize: 14),
+                    decoration: _inputDecoration(
                       'Başlangıç zamanı seçin',
-                      suffixIcon: const Icon(Icons.schedule_outlined),
+                      suffixIcon: const Icon(
+                          Icons.schedule_outlined,
+                          color: kPrimary),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  fieldLabel('BİTİŞ ZAMANI (bitisZamani)'),
+                  _fieldLabel('BİTİŞ ZAMANI (bitisZamani)'),
                   TextField(
                     readOnly: true,
                     controller: TextEditingController(
-                      text: formatDateTime(selectedEndDateTime),
-                    ),
+                        text: formatDateTime(selectedEndDateTime)),
                     onTap: _pickEndDateTime,
-                    decoration: inputDecoration(
+                    style: const TextStyle(
+                        color: kTextDark, fontSize: 14),
+                    decoration: _inputDecoration(
                       'Bitiş zamanı seçin',
-                      suffixIcon: const Icon(Icons.schedule_outlined),
+                      suffixIcon: const Icon(
+                          Icons.schedule_outlined,
+                          color: kPrimary),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  fieldLabel('DURUM (durum)'),
+                  _fieldLabel('DURUM (durum)'),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedStatus,
-                    decoration: inputDecoration('Durum seçin'),
+                    value: selectedStatus,
+                    decoration: _inputDecoration('Durum seçin'),
+                    icon: const Icon(Icons.keyboard_arrow_down,
+                        color: kPrimary),
                     items: const [
                       DropdownMenuItem(
-                        value: 'Beklemede',
-                        child: Text('Beklemede'),
-                      ),
+                          value: 'Beklemede',
+                          child: Text('Beklemede')),
                       DropdownMenuItem(
-                        value: 'Onaylandı',
-                        child: Text('Onaylandı'),
-                      ),
+                          value: 'Onaylandı',
+                          child: Text('Onaylandı')),
                       DropdownMenuItem(
-                        value: 'İptal Edildi',
-                        child: Text('İptal Edildi'),
-                      ),
+                          value: 'İptal Edildi',
+                          child: Text('İptal Edildi')),
                     ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedStatus = value ?? 'Beklemede';
-                      });
-                    },
+                    onChanged: (value) => setState(
+                            () => selectedStatus = value ?? 'Beklemede'),
                   ),
                   const SizedBox(height: 16),
-                  fieldLabel('NOTLAR (notlar)'),
+                  _fieldLabel('NOTLAR (notlar)'),
                   TextField(
                     controller: noteController,
                     maxLines: 3,
-                    decoration:
-                    inputDecoration('Klinisyen notlarını girin'),
+                    style: const TextStyle(
+                        color: kTextDark, fontSize: 14),
+                    decoration: _inputDecoration(
+                        'Klinisyen notlarını girin'),
                   ),
                 ],
               ),
-              sectionCard(
-                sectionLabel: 'E-posta Kaydı / neura.toplantiEpostaKayitlari',
+
+              // ── Davet Gönderim Durumu ──
+              _sectionCard(
+                sectionLabel:
+                'E-posta Kaydı / neura.toplantiEpostaKayitlari',
                 title: 'Davet Gönderim Durumu',
                 icon: Icons.mail_outline,
-                children: sampleEmailLogs
-                    .map(
-                      (log) => Container(
+                children: sampleEmailLogs.map((log) {
+                  final bool sent = log['gonderildiMi'] as bool;
+                  return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: kBackground,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: borderColor),
+                      border: Border.all(
+                          color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          (log['gonderildiMi'] as bool)
-                              ? Icons.check_circle
-                              : Icons.error_outline,
-                          color: (log['gonderildiMi'] as bool)
-                              ? successGreen
-                              : dangerRed,
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: sent
+                                ? kSuccess.withOpacity(0.1)
+                                : kDanger.withOpacity(0.1),
+                            borderRadius:
+                            BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            sent
+                                ? Icons.check_circle_outline
+                                : Icons.error_outline,
+                            color: sent ? kSuccess : kDanger,
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -844,26 +869,27 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
                               Text(
                                 log['aliciEposta'] ?? '',
                                 style: const TextStyle(
-                                  color: textDark,
-                                  fontWeight: FontWeight.w700,
+                                  color: kTextDark,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 'Toplantı ID: ${log['toplantiId']}',
                                 style: const TextStyle(
-                                  color: textMuted,
-                                  fontSize: 12,
-                                ),
+                                    color: kTextGrey, fontSize: 12),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                (log['gonderildiMi'] as bool)
+                                sent
                                     ? 'E-posta başarıyla gönderildi'
-                                    : 'E-posta gönderilemedi: ${log['hataMetni'] ?? 'Bilinmeyen hata'}',
-                                style: const TextStyle(
-                                  color: textMuted,
+                                    : 'Gönderilemedi: ${log['hataMetni'] ?? 'Bilinmeyen hata'}',
+                                style: TextStyle(
+                                  color:
+                                  sent ? kSuccess : kDanger,
                                   fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               if (log['gonderimTarihi'] != null) ...[
@@ -871,9 +897,8 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
                                 Text(
                                   'Gönderim zamanı: ${log['gonderimTarihi']}',
                                   style: const TextStyle(
-                                    color: textMuted,
-                                    fontSize: 12,
-                                  ),
+                                      color: kTextGrey,
+                                      fontSize: 12),
                                 ),
                               ],
                             ],
@@ -881,9 +906,8 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
                         ),
                       ],
                     ),
-                  ),
-                )
-                    .toList(),
+                  );
+                }).toList(),
               ),
             ],
           ),
@@ -891,19 +915,23 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       ),
       bottomNavigationBar: Container(
         color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: Row(
           children: [
             Expanded(
               child: OutlinedButton(
                 onPressed: () {},
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: kTextGrey,
                   minimumSize: const Size.fromHeight(52),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                      borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text('E-posta Gönder'),
+                child: const Text(
+                  'E-posta Gönder',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -911,13 +939,12 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
               child: ElevatedButton(
                 onPressed: isCreatingMeeting ? null : createMeeting,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryBlue,
+                  backgroundColor: kPrimary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(52),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: isCreatingMeeting
                     ? const SizedBox(
@@ -928,7 +955,10 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
                     color: Colors.white,
                   ),
                 )
-                    : const Text('Toplantı Oluştur'),
+                    : const Text(
+                  'Toplantı Oluştur',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
