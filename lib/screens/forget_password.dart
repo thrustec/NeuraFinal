@@ -154,7 +154,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Bağlantı hatası. Lütfen tekrar deneyin.'),
+          content: Text('Bağlantı hatası. Lütfen tekrar deneyiniz.'),
           backgroundColor: Colors.red,
         ),
       );
