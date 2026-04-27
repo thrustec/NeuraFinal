@@ -198,6 +198,33 @@ class EvaluationService {
   }
 
   // ---------------------------------------------------------------------------
+  // Clinician id lookup by email
+  // ---------------------------------------------------------------------------
+  Future<int?> getClinicianIdByEmail(String email) async {
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty) return null;
+
+    try {
+      final encodedEmail = Uri.encodeQueryComponent(trimmedEmail);
+      final data = await _client.get(
+        '${ApiConstants.kullanicilar}?select=kullaniciId,rolId,eposta&eposta=eq.$encodedEmail&rolId=eq.1&limit=1',
+      );
+
+      if (data is List && data.isNotEmpty) {
+        final user = data.first as Map<String, dynamic>;
+        final idValue = user['kullaniciId'];
+        if (idValue is int) return idValue;
+        return int.tryParse(idValue?.toString() ?? '');
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('EvaluationService.getClinicianIdByEmail error: $e');
+      return null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Clinical Evaluation module methods
   // ---------------------------------------------------------------------------
 
