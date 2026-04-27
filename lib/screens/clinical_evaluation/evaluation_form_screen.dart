@@ -19,15 +19,14 @@ class EvaluationFormScreen extends StatefulWidget {
 }
 
 class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
-  static const _bg = Color(0xFFF8F9FC);
+  static const _bg = Color(0xFFF5F7FB);
   static const _surface = Colors.white;
-  static const _primary = Color(0xFF0F766E);
-  static const _primarySoft = Color(0xFFE7F5F3);
-  static const _border = Color(0xFFE2E8F0);
-  static const _inputFill = Color(0xFFF1F5F9);
-  static const _textDark = Color(0xFF1E293B);
-  static const _textMid = Color(0xFF64748B);
-  static const _textLight = Color(0xFF94A3B8);
+  static const _primary = Color(0xFF2563F6);
+  static const _primarySoft = Color(0xFFEFF4FF);
+  static const _border = Color(0xFFDDE3EE);
+  static const _textDark = Color(0xFF253043);
+  static const _textMid = Color(0xFF6E778B);
+  static const _textLight = Color(0xFF98A1B3);
   static const _successBg = Color(0xFFE9F7EE);
   static const _successText = Color(0xFF0A8C3B);
 
@@ -291,7 +290,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if (text.isEmpty) return '';
 
     final header = '$title:\n';
-    final start = text.lastIndexOf(header);
+    final start = text.indexOf(header);
     if (start == -1) return '';
 
     final contentStart = start + header.length;
@@ -670,7 +669,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               height: MediaQuery.of(context).size.height * 0.82,
               decoration: const BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: SafeArea(
                 top: false,
@@ -734,11 +733,11 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           icon: const Icon(Icons.person_add_alt_1_rounded),
                           label: const Text('Yeni Hasta Ekle'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _textMid,
-                            side: const BorderSide(color: _border),
+                            foregroundColor: _primary,
+                            side: const BorderSide(color: _primary),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                           ),
                         ),
@@ -771,22 +770,15 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                                 .toUpperCase();
 
                             return InkWell(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(20),
                               onTap: () =>
                                   Navigator.pop(sheetContext, patient),
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: _surface,
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: const Color(0xFFF7F9FD),
+                                  borderRadius: BorderRadius.circular(20),
                                   border: Border.all(color: _border),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x05000000),
-                                      blurRadius: 10,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                                 child: Row(
                                   children: [
@@ -794,9 +786,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: _primarySoft,
+                                        color: const Color(0xFFE8F0FF),
                                         borderRadius:
-                                        BorderRadius.circular(12),
+                                        BorderRadius.circular(16),
                                       ),
                                       child: Center(
                                         child: Text(
@@ -1099,10 +1091,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       ..._cognitiveSymptoms,
       ..._pulmonarySymptoms,
       ..._otherSymptoms,
-    }
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList(growable: false);
+      ..._alzSymptoms,
+      ..._pdSymptoms,
+      ..._alsSymptoms,
+      ..._msSymptoms,
+      ..._ataxiaSymptoms,
+    }.toList();
 
     final symptomsNoteText = _composeSymptomsNote().trim();
     final diseaseNoteText = _composeDiseaseNote().trim();
@@ -1159,7 +1153,6 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       hikaye: packedHikaye.isEmpty ? null : packedHikaye,
 
       notlar: packedNotlar.isEmpty ? null : packedNotlar,
-      // Önemli: update işleminde provider/service bu alanları eski değerlerle birleştirmemeli; tamamen replace etmeli.
 
       klinisyenNotlari:
       packedKlinisyenNotlari.isEmpty ? null : packedKlinisyenNotlari,
@@ -1217,24 +1210,26 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
         fontWeight: FontWeight.w500,
       ),
       filled: true,
-      fillColor: _inputFill,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      fillColor: _surface,
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       suffixIcon: suffixIcon,
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: _border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: _primary, width: 1.5),
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: _primary, width: 1.35),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         borderSide: const BorderSide(color: Colors.redAccent),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        borderRadius: BorderRadius.circular(18),
+        borderSide:
+        const BorderSide(color: Colors.redAccent, width: 1.35),
       ),
     );
   }
@@ -1283,25 +1278,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       backgroundColor: _surface,
       elevation: 0,
       centerTitle: false,
-      leadingWidth: 56,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new,
-              color: _primary,
-              size: 18,
-            ),
-          ),
+      leading: IconButton(
+        onPressed: () => Navigator.pop(context),
+        icon: const Icon(
+          Icons.arrow_back_ios_new,
+          color: _textDark,
+          size: 22,
         ),
       ),
       title: const Text(
@@ -1332,12 +1314,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: _primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: _primary,
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
               Icons.health_and_safety_outlined,
-              color: _primary,
+              color: Colors.white,
             ),
           ),
           const SizedBox(width: 14),
@@ -1370,7 +1352,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               child: Container(
                 padding: const EdgeInsets.only(top: 14, bottom: 12),
                 decoration: BoxDecoration(
-                  color: selected ? _primary.withOpacity(0.06) : _surface,
+                  color: selected ? const Color(0xFFF8FAFF) : _surface,
                   border: Border(
                     bottom: BorderSide(
                       color: selected ? _primary : _border,
@@ -1420,8 +1402,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: _primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(14),
+            color: const Color(0xFFDCE8FF),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Icon(step.icon, color: _primary, size: 28),
         ),
@@ -1463,13 +1445,13 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       padding: padding,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: Color(0x12000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -1487,12 +1469,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return Container(
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 10,
+            color: Color(0x10000000),
+            blurRadius: 14,
             offset: Offset(0, 4),
           ),
         ],
@@ -1501,7 +1483,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
         children: [
           InkWell(
             borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(16)),
+            const BorderRadius.vertical(top: Radius.circular(22)),
             onTap: onTap,
             child: Padding(
               padding:
@@ -1565,7 +1547,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                   }
                 });
               },
-              selectedColor: _primarySoft,
+              selectedColor: const Color(0xFFDCE8FF),
               checkmarkColor: _primary,
               labelStyle: TextStyle(
                 color: isSelected ? _primary : _textDark,
@@ -1640,7 +1622,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: _successBg,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
             ),
             child: Text(
               '${selectedPatient.tamAd} adlı hastanın kaydı gösteriliyor',
@@ -2324,12 +2306,13 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primary,
-                            disabledBackgroundColor: _primary.withOpacity(0.45),
+                            disabledBackgroundColor:
+                            const Color(0xFF94B0FF),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
                                 vertical: 18),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
                         ),

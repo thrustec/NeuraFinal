@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/evaluation_provider.dart';
+import '../patient_list_screen.dart';
 import 'evaluation_form_screen.dart';
 
 class EvaluationListScreen extends StatefulWidget {
@@ -16,19 +17,90 @@ class EvaluationListScreen extends StatefulWidget {
 }
 
 class _EvaluationListScreenState extends State<EvaluationListScreen> {
-  static const _bg = Color(0xFFF8F9FC);
+  static const _bg = Color(0xFFF5F7FB);
   static const _surface = Colors.white;
-  static const _primary = Color(0xFF0F766E);
-  static const _primarySoft = Color(0xFFE7F5F3);
-  static const _border = Color(0xFFE2E8F0);
-  static const _inputFill = Color(0xFFF1F5F9);
-  static const _textDark = Color(0xFF1E293B);
-  static const _textMid = Color(0xFF64748B);
-  static const _textLight = Color(0xFF94A3B8);
+  static const _primary = Color(0xFF2563F6);
+  static const _border = Color(0xFFDDE3EE);
+  static const _textDark = Color(0xFF253043);
+  static const _textMid = Color(0xFF6E778B);
+  static const _textLight = Color(0xFF98A1B3);
   static const _success = Color(0xFF0A8C3B);
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  Widget _bottomNav() {
+    final items = [
+      {'icon': Icons.home_outlined, 'label': 'Ana Sayfa'},
+      {'icon': Icons.people_alt_outlined, 'label': 'Hastalar'},
+      {'icon': Icons.person_add_outlined, 'label': 'Kayıt'},
+      {'icon': Icons.assignment_outlined, 'label': 'Değerlendir'},
+      {'icon': Icons.bar_chart_outlined, 'label': 'Raporlar'},
+    ];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: _border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (i) {
+              final aktif = i == 3;
+              return InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () {
+                  if (i == 3) return;
+
+                  if (i == 1) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PatientListScreen(),
+                      ),
+                    );
+                    return;
+                  }
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Bu menü henüz bağlanmadı.'),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        items[i]['icon'] as IconData,
+                        color: aktif ? _primary : _textLight,
+                        size: 22,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        items[i]['label'] as String,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: aktif ? FontWeight.w700 : FontWeight.normal,
+                          color: aktif ? _primary : _textLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -54,8 +126,9 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: _inputFill,
-        borderRadius: BorderRadius.circular(14),
+        color: _surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _border),
       ),
       child: Row(
         children: [
@@ -71,8 +144,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               },
               decoration: const InputDecoration(
                 border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
                 hintText: 'Hasta adına göre ara',
                 hintStyle: TextStyle(
                   color: _textLight,
@@ -117,11 +188,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       ),
     );
 
-    if (widget.hastaId != null) {
-      await provider.loadEvaluationsByPatient(widget.hastaId!);
-    } else {
-      await provider.loadEvaluations();
-    }
+    await provider.loadEvaluations();
   }
 
   Future<void> _deleteEvaluation(int id) async {
@@ -158,11 +225,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     if (!ok) return;
 
     await provider.delete(id);
-    if (widget.hastaId != null) {
-      await provider.loadEvaluationsByPatient(widget.hastaId!);
-    } else {
-      await provider.loadEvaluations();
-    }
+    await provider.loadEvaluations();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -241,22 +304,9 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       backgroundColor: _surface,
       elevation: 0,
       centerTitle: false,
-      leadingWidth: 56,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {},
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.menu_rounded, color: _primary, size: 22),
-          ),
-        ),
+      leading: IconButton(
+        onPressed: () {},
+        icon: const Icon(Icons.menu_rounded, color: _textDark, size: 28),
       ),
       title: const Text(
         'Klinik Değerlendirmeler',
@@ -292,22 +342,16 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
             ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.only(right: 16, left: 6),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _primary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Text(
-                'AK',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
+        const Padding(
+          padding: EdgeInsets.only(right: 16, left: 6),
+          child: CircleAvatar(
+            radius: 20,
+            backgroundColor: _primary,
+            child: Text(
+              'AK',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -333,16 +377,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: _primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.assignment_outlined, color: _primary),
-          ),
-          const SizedBox(width: 12),
+          const Icon(Icons.assignment_outlined, color: _primary),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               baslik,
@@ -370,8 +406,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               width: 78,
               height: 78,
               decoration: BoxDecoration(
-                color: _primarySoft,
-                borderRadius: BorderRadius.circular(16),
+                color: const Color(0xFFEAF0FF),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
                 Icons.note_alt_outlined,
@@ -415,7 +451,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                 ),
               ),
             ),
@@ -430,7 +466,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     if (text.isEmpty) return '';
 
     final header = '$title:\n';
-    final start = text.lastIndexOf(header);
+    final start = text.indexOf(header);
     if (start == -1) return '';
 
     final contentStart = start + header.length;
@@ -453,7 +489,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     final result = end == null
         ? text.substring(contentStart)
         : text.substring(contentStart, end);
-
     return result.trim();
   }
 
@@ -469,40 +504,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   }
 
   int _savedSymptomCount(dynamic ev) {
-    const emptyValues = {
-      'yok',
-      'none',
-      '-',
-      'seçilmedi',
-      'secilmedi',
-      'boş',
-      'bos',
-    };
-
-    int countListSymptoms(dynamic symptomsValue) {
-      if (symptomsValue is! List) return 0;
-
-      final uniqueSymptoms = <String>{};
-
-      for (final raw in symptomsValue) {
-        final symptom = raw?.toString().trim() ?? '';
-        if (symptom.isEmpty) continue;
-
-        final normalized = symptom.toLowerCase();
-        if (emptyValues.contains(normalized)) continue;
-        if (normalized.startsWith('yeni bulgu:')) continue;
-
-        uniqueSymptoms.add(normalized);
-      }
-
-      return uniqueSymptoms.length;
-    }
-
-    // Güncel kayıt/update akışında en doğru kaynak burasıdır.
-    // notlar bazı durumlarda eski + yeni metni birlikte taşıyabildiği için önce temiz symptoms listesini sayıyoruz.
-    final listCount = countListSymptoms(ev.symptoms);
-    if (listCount > 0) return listCount;
-
     final notlar = (ev.notlar ?? '').toString().trim();
     if (notlar.isEmpty) return 0;
 
@@ -524,13 +525,10 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
 
-      String? matchedLabel;
-      for (final label in labels) {
-        if (line.toLowerCase().startsWith('${label.toLowerCase()}:')) {
-          matchedLabel = label;
-          break;
-        }
-      }
+      final matchedLabel = labels.cast<String?>().firstWhere(
+            (label) => line.toLowerCase().startsWith('${label!.toLowerCase()}:'),
+        orElse: () => null,
+      );
 
       if (matchedLabel == null) continue;
 
@@ -539,22 +537,37 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
       final lower = value.toLowerCase();
       final extraIndex = lower.indexOf('yeni bulgu:');
-
       final selectedPart = extraIndex == -1
           ? value
           : value.substring(0, extraIndex).trim();
 
       if (selectedPart.isEmpty) continue;
 
+      final normalizedWhole = selectedPart.toLowerCase();
+      if (normalizedWhole == 'yok' ||
+          normalizedWhole == 'none' ||
+          normalizedWhole == '-' ||
+          normalizedWhole == 'seçilmedi' ||
+          normalizedWhole == 'secilmedi' ||
+          normalizedWhole == 'boş' ||
+          normalizedWhole == 'bos') {
+        continue;
+      }
+
       for (final item in selectedPart.split(',')) {
         final symptom = item.trim();
         if (symptom.isEmpty) continue;
-
-        final normalized = symptom.toLowerCase();
-        if (emptyValues.contains(normalized)) continue;
-        if (normalized.startsWith('yeni bulgu:')) continue;
-
-        uniqueSymptoms.add(normalized);
+        final low = symptom.toLowerCase();
+        if (low == 'yok' ||
+            low == 'none' ||
+            low == '-' ||
+            low == 'seçilmedi' ||
+            low == 'secilmedi' ||
+            low == 'boş' ||
+            low == 'bos') {
+          continue;
+        }
+        uniqueSymptoms.add(symptom);
       }
     }
 
@@ -572,13 +585,13 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: Color(0x12000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -590,8 +603,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _primarySoft,
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFE8F0FF),
+                  borderRadius: BorderRadius.circular(18),
                 ),
                 child: Center(
                   child: Text(
@@ -660,8 +673,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: _inputFill,
-              borderRadius: BorderRadius.circular(14),
+              color: const Color(0xFFF7F9FD),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
               previewText,
@@ -683,7 +696,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE9F7EE),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   symptomCount == 0
@@ -794,7 +807,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
                   color: _primary,
                   onRefresh: provider.refresh,
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
                     itemCount: filteredEvaluations.length,
                     itemBuilder: (_, i) {
                       final ev = filteredEvaluations[i];
@@ -807,7 +820,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
           );
         },
       ),
-      // bottomNavigationBar removed
+      bottomNavigationBar: _bottomNav(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
         backgroundColor: _primary,
@@ -822,7 +835,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
           ),
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
         ),
       ),
     );
@@ -839,8 +852,8 @@ class _EvaluationSkeletonCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFDDE3EE)),
       ),
     );
   }
