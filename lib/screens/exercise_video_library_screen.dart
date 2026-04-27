@@ -19,11 +19,9 @@ class _ExerciseVideoLibraryScreenState
   String? _hata;
 
   final TextEditingController _aramaCtrl = TextEditingController();
-
-  // Seçili kategori (null = Tümü)
   int? _secilenKategoriId;
 
-  static const Color kPrimary = Color(0xFF2563EB);
+  static const Color kPrimary = Color(0xFF0F766E);
 
   @override
   void initState() {
@@ -57,8 +55,7 @@ class _ExerciseVideoLibraryScreenState
     try {
       final videolar = await ExerciseVideoService.getVideolar(
         kategoriId: _secilenKategoriId,
-        aramaMetni:
-        _aramaCtrl.text.isEmpty ? null : _aramaCtrl.text,
+        aramaMetni: _aramaCtrl.text.isEmpty ? null : _aramaCtrl.text,
       );
       setState(() { _videolar = videolar; _yukleniyor = false; });
     } catch (e) {
@@ -80,8 +77,7 @@ class _ExerciseVideoLibraryScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
-      appBar: _appBar(),
-      bottomNavigationBar: _altMenu(),
+      // AppBar ve BottomNavigationBar silindi, MainScreen bunları zaten veriyor.
       body: Column(
         children: [
           _ustPanel(),
@@ -93,56 +89,62 @@ class _ExerciseVideoLibraryScreenState
     );
   }
 
-  // ── Üst Panel: Başlık + Arama ─────────────────────────────
   Widget _ustPanel() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            )
+          ]
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
             Container(
-              width: 38, height: 38,
+              width: 42, height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFF9333EA).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: kPrimary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.play_circle_outline,
-                  color: Color(0xFF9333EA), size: 20),
+              child: const Icon(Icons.play_circle_outline, color: kPrimary, size: 24),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Egzersiz Video Kütüphanesi',
+                  Text('Egzersiz Kütüphanesi',
                       style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.bold,
                           color: Color(0xFF1E293B))),
+                  SizedBox(height: 2),
                   Text('Nörolojik rehabilitasyon egzersizleri',
                       style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF94A3B8))),
+                          color: Color(0xFF64748B))),
                 ],
               ),
             ),
           ]),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           TextField(
             controller: _aramaCtrl,
             onChanged: _aramaYap,
+            style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
               hintText: 'Egzersiz ara...',
-              hintStyle: const TextStyle(
-                  color: Color(0xFF94A3B8), fontSize: 14),
-              prefixIcon: const Icon(Icons.search,
-                  color: Color(0xFF94A3B8), size: 20),
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8), size: 20),
               suffixIcon: _aramaCtrl.text.isNotEmpty
                   ? IconButton(
-                  icon: const Icon(Icons.close,
-                      color: Color(0xFF94A3B8), size: 18),
+                  icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 18),
                   onPressed: () {
                     _aramaCtrl.clear();
                     _videolariYukle();
@@ -150,19 +152,16 @@ class _ExerciseVideoLibraryScreenState
                   : null,
               filled: true,
               fillColor: const Color(0xFFF1F5F9),
-              contentPadding:
-              const EdgeInsets.symmetric(vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: Color(0xFFE2E8F0), width: 1)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1)),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: kPrimary, width: 1.5)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: kPrimary, width: 1.5)),
             ),
           ),
         ],
@@ -170,20 +169,17 @@ class _ExerciseVideoLibraryScreenState
     );
   }
 
-  // ── Kategori Chip Bar ─────────────────────────────────────
   Widget _kategoriChipBar() {
     return Container(
       color: Colors.white,
-      height: 50,
+      height: 56,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 8),
-        itemCount: _kategoriler.length + 1, // +1 for "Tümü"
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        itemCount: _kategoriler.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           if (i == 0) {
-            // "Tümü" chip
             final secili = _secilenKategoriId == null;
             return _chipWidget(
               etiket: 'Tümü',
@@ -202,8 +198,7 @@ class _ExerciseVideoLibraryScreenState
             ikon: _kategoriIkon(kat.kisaAd),
             secili: secili,
             onTap: () {
-              setState(() =>
-              _secilenKategoriId = kat.egzersizKategoriId);
+              setState(() => _secilenKategoriId = kat.egzersizKategoriId);
               _videolariYukle();
             },
           );
@@ -221,32 +216,30 @@ class _ExerciseVideoLibraryScreenState
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: secili ? kPrimary : const Color(0xFFF1F5F9),
+          color: secili ? kPrimary : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: secili ? kPrimary : const Color(0xFFE2E8F0),
           ),
+          boxShadow: secili
+              ? [BoxShadow(color: kPrimary.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))]
+              : [],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (ikon != null) ...[
-              Icon(ikon, size: 14,
-                  color: secili
-                      ? Colors.white
-                      : const Color(0xFF64748B)),
-              const SizedBox(width: 4),
+              Icon(ikon, size: 14, color: secili ? Colors.white : const Color(0xFF64748B)),
+              const SizedBox(width: 6),
             ],
             Text(etiket,
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: secili
-                      ? Colors.white
-                      : const Color(0xFF64748B),
+                  fontWeight: FontWeight.bold,
+                  color: secili ? Colors.white : const Color(0xFF64748B),
+                  letterSpacing: 0.3,
                 )),
           ],
         ),
@@ -256,27 +249,17 @@ class _ExerciseVideoLibraryScreenState
 
   IconData _kategoriIkon(String kisaAd) {
     switch (kisaAd) {
-      case 'Denge':
-        return Icons.accessibility_new;
-      case 'Guc':
-        return Icons.fitness_center;
-      case 'Esneklik':
-        return Icons.self_improvement;
-      case 'Solunum':
-        return Icons.air;
-      case 'Kognitif':
-        return Icons.psychology;
-      default:
-        return Icons.sports_gymnastics;
+      case 'Denge':     return Icons.accessibility_new;
+      case 'Guc':       return Icons.fitness_center;
+      case 'Esneklik':  return Icons.self_improvement;
+      case 'Solunum':   return Icons.air;
+      case 'Kognitif':  return Icons.psychology;
+      default:          return Icons.sports_gymnastics;
     }
   }
 
-  // ── Gövde ─────────────────────────────────────────────────
   Widget _govde() {
-    if (_yukleniyor) {
-      return const Center(
-          child: CircularProgressIndicator(color: kPrimary));
-    }
+    if (_yukleniyor) return const Center(child: CircularProgressIndicator(color: kPrimary));
     if (_hata != null) return _hataEkrani();
     if (_videolar.isEmpty) return _bosEkran();
 
@@ -284,16 +267,16 @@ class _ExerciseVideoLibraryScreenState
       onRefresh: _videolariYukle,
       color: kPrimary,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
-                Text('${_videolar.length} EGZERSİZ',
+                Text('${_videolar.length} EGZERSİZ BULUNDU',
                     style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                         color: Color(0xFF94A3B8),
                         letterSpacing: 0.8)),
                 const Spacer(),
@@ -301,23 +284,18 @@ class _ExerciseVideoLibraryScreenState
                   GestureDetector(
                     onTap: _filtreleriSifirla,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: kPrimary.withOpacity(0.1),
+                        color: Colors.red.shade50,
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.red.shade100),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.filter_alt_off,
-                              size: 12, color: kPrimary),
-                          SizedBox(width: 3),
-                          Text('Filtreleri Kaldır',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: kPrimary,
-                                  fontWeight: FontWeight.w600)),
+                          Icon(Icons.filter_alt_off, size: 12, color: Colors.red),
+                          SizedBox(width: 4),
+                          Text('Filtreyi Temizle', style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -326,15 +304,12 @@ class _ExerciseVideoLibraryScreenState
             ),
           ),
           ..._videolar.map((video) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 16),
             child: _VideoKarti(
               video: video,
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ExerciseVideoDetailScreen(video: video),
-                ),
+                MaterialPageRoute(builder: (_) => ExerciseVideoDetailScreen(video: video)),
               ),
             ),
           )),
@@ -350,29 +325,20 @@ class _ExerciseVideoLibraryScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline,
-                size: 56, color: Colors.red),
+            const Icon(Icons.error_outline, size: 56, color: Colors.red),
             const SizedBox(height: 12),
-            const Text('Videolar yüklenemedi',
-                style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text('Videolar yüklenemedi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
             const SizedBox(height: 8),
-            Text(_hata!, textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF64748B))),
+            Text(_hata!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF64748B))),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _baslangicYukle,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Tekrar Dene'),
+            ElevatedButton(
+              onPressed: _baslangicYukle,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
+              child: const Text('Tekrar Dene', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         ),
@@ -385,113 +351,27 @@ class _ExerciseVideoLibraryScreenState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.videocam_off_outlined,
-              size: 56, color: Colors.grey[300]),
+          Icon(Icons.videocam_off_outlined, size: 56, color: const Color(0xFFCBD5E1)),
           const SizedBox(height: 12),
           Text(
             _secilenKategoriId != null || _aramaCtrl.text.isNotEmpty
                 ? 'Kriterlere uygun video bulunamadı'
                 : 'Henüz egzersiz videosu yok',
-            style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8)),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
           ),
-          const SizedBox(height: 8),
-          if (_secilenKategoriId != null)
-            TextButton(
+          const SizedBox(height: 12),
+          if (_secilenKategoriId != null || _aramaCtrl.text.isNotEmpty)
+            ActionChip(
               onPressed: _filtreleriSifirla,
-              child: const Text('Filtreleri Temizle'),
+              backgroundColor: kPrimary.withOpacity(0.1),
+              label: const Text('Filtreleri Temizle', style: TextStyle(color: kPrimary, fontWeight: FontWeight.bold)),
             ),
         ],
       ),
     );
   }
-
-  // ── AppBar ────────────────────────────────────────────────
-  AppBar _appBar() {
-    return AppBar(
-      backgroundColor: Colors.white, elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B), size: 18),
-        onPressed: () => Navigator.pop(context),
-      ),
-      title: const Text('Egzersiz Videoları',
-          style: TextStyle(
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w600,
-              fontSize: 18)),
-      centerTitle: false,
-      actions: [
-        Stack(children: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: Color(0xFF1E293B)),
-            onPressed: () {},
-          ),
-          Positioned(right: 10, top: 10,
-              child: Container(width: 8, height: 8,
-                  decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle))),
-        ]),
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: CircleAvatar(radius: 17,
-              backgroundColor: kPrimary,
-              child: const Text('AK',
-                  style: TextStyle(
-                      color: Colors.white, fontSize: 12,
-                      fontWeight: FontWeight.bold))),
-        ),
-      ],
-      bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-              color: const Color(0xFFE2E8F0), height: 1)),
-    );
-  }
-
-  // ── Alt Menü ──────────────────────────────────────────────
-  Widget _altMenu() {
-    final items = [
-      {'icon': Icons.home_outlined, 'label': 'Ana Sayfa'},
-      {'icon': Icons.people_alt_outlined, 'label': 'Hastalar'},
-      {'icon': Icons.person_add_outlined, 'label': 'Kayıt'},
-      {'icon': Icons.assignment_outlined, 'label': 'Değerlendir'},
-      {'icon': Icons.bar_chart_outlined, 'label': 'Raporlar'},
-    ];
-    return Container(
-      decoration: const BoxDecoration(color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0)))),
-      child: SafeArea(
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (i) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(items[i]['icon'] as IconData,
-                      color: const Color(0xFF94A3B8), size: 22),
-                  const SizedBox(height: 3),
-                  Text(items[i]['label'] as String,
-                      style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF94A3B8))),
-                ],
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-// ── Video Kartı ─────────────────────────────────────────────
 class _VideoKarti extends StatelessWidget {
   final EgzersizVideo video;
   final VoidCallback onTap;
@@ -499,76 +379,63 @@ class _VideoKarti extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
+    return Container(
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+          ]
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Thumbnail / Placeholder ────────────────
               Container(
                 height: 140,
                 decoration: BoxDecoration(
                   color: _kategoriArkaplan(video.kisaKategori),
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: Stack(
                   children: [
                     Center(
                       child: Icon(
                         _kategoriIkon(video.kisaKategori),
-                        size: 48,
-                        color: _kategoriRenk(video.kisaKategori)
-                            .withOpacity(0.3),
+                        size: 56,
+                        color: _kategoriRenk(video.kisaKategori).withOpacity(0.15),
                       ),
                     ),
                     Center(
                       child: Container(
-                        width: 48, height: 48,
+                        width: 50, height: 50,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white,
                           shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                            ),
-                          ],
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
                         ),
-                        child: Icon(Icons.play_arrow,
-                            color: _kategoriRenk(video.kisaKategori),
-                            size: 28),
+                        child: Icon(Icons.play_arrow_rounded, color: _kategoriRenk(video.kisaKategori), size: 30),
                       ),
                     ),
                     Positioned(
-                      right: 8, bottom: 8,
+                      right: 12, bottom: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.black.withOpacity(0.75),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.access_time,
-                                size: 12, color: Colors.white),
-                            const SizedBox(width: 3),
-                            Text(video.formatliSure,
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600)),
+                            const Icon(Icons.access_time, size: 12, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(video.formatliSure, style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -576,44 +443,28 @@ class _VideoKarti extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // ── Bilgiler ──────────────────────────────
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(video.baslik,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1E293B))),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                     const SizedBox(height: 6),
                     if (video.aciklama != null)
                       Text(video.aciklama!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF64748B),
-                              height: 1.4)),
-                    const SizedBox(height: 10),
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4)),
+                    const SizedBox(height: 12),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        _etiket(
-                          video.kisaKategori,
-                          _kategoriRenk(video.kisaKategori),
-                          _kategoriArkaplan(video.kisaKategori),
-                        ),
-                        _etiket(
-                          video.formatliSure,
-                          const Color(0xFF475569),
-                          const Color(0xFFF1F5F9),
-                        ),
+                        _etiket(video.kisaKategori, _kategoriRenk(video.kisaKategori), _kategoriArkaplan(video.kisaKategori)),
+                        _etiket(video.formatliSure, const Color(0xFF475569), const Color(0xFFF1F5F9)),
                       ],
                     ),
                   ],
@@ -628,14 +479,9 @@ class _VideoKarti extends StatelessWidget {
 
   Widget _etiket(String text, Color renk, Color arkaplan) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: arkaplan,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(text,
-          style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w600, color: renk)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: arkaplan, borderRadius: BorderRadius.circular(20)),
+      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: renk)),
     );
   }
 

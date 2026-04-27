@@ -2,7 +2,7 @@
 // lib/models/patient.dart
 
 
-import 'comparison_result.dart';
+
 
 class Patient {
   final int hastaId;

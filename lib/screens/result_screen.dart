@@ -4,12 +4,20 @@
 import 'package:flutter/material.dart';
 import '../models/patient.dart';
 import '../models/comparison_result.dart';
-import '../core/app_theme.dart';
+
+
+// NeuraApp Design System — Klinisyen Renk Paleti
+const Color kBackground = Color(0xFFF8F9FC);
+const Color kPrimary = Color(0xFF0F766E);
+const Color kTextDark = Color(0xFF1E293B);
+const Color kTextGrey = Color(0xFF64748B);
+const Color kTextHint = Color(0xFF94A3B8);
+const Color kInputFill = Color(0xFFF1F5F9);
 
 class ResultsScreen extends StatelessWidget {
   final Patient patient;
-  final EvaluationDate startDate;   // degerlendirmeler (başlangıç — baslangicDegerlendirmeId)
-  final EvaluationDate endDate;     // degerlendirmeler (güncel — guncelDegerlendirmeId)
+  final EvaluationDate startDate;
+  final EvaluationDate endDate;
 
   const ResultsScreen({
     super.key,
@@ -20,7 +28,8 @@ class ResultsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<ComparisonResult> dynamicResults = endDate.testSonuclari.map((currentTest) {
+    final List<ComparisonResult> dynamicResults =
+    endDate.testSonuclari.map((currentTest) {
       final baselineTest = startDate.testSonuclari.firstWhere(
             (t) => t.testAdi == currentTest.testAdi,
         orElse: () => currentTest,
@@ -35,11 +44,11 @@ class ResultsScreen extends StatelessWidget {
       );
     }).toList();
 
-    // Kaç metrikte iyileşme var? — header badge için
-    final int iyilesmeCount = dynamicResults.where((r) => r.iyilesme).length;
+    final int iyilesmeCount =
+        dynamicResults.where((r) => r.iyilesme).length;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: kBackground,
       body: Column(
         children: [
           _buildHeader(context, iyilesmeCount, dynamicResults.length),
@@ -49,19 +58,26 @@ class ResultsScreen extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryLight,
-                    borderRadius: BorderRadius.circular(8),
+                    color: kPrimary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.assignment_outlined,
-                    color: AppTheme.primary,
+                    color: kPrimary,
                     size: 18,
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text("Skor Karşılaştırması", style: AppTheme.cardTitle),
+                const Text(
+                  "Skor Karşılaştırması",
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: kTextDark,
+                  ),
+                ),
               ],
             ),
           ),
@@ -79,8 +95,9 @@ class ResultsScreen extends StatelessWidget {
     );
   }
 
-  // Üst başlık
-  Widget _buildHeader(BuildContext context, int iyilesmeCount, int totalCount) {
+  Widget _buildHeader(
+      BuildContext context, int iyilesmeCount, int totalCount) {
+    final bool majorityImproved = iyilesmeCount >= totalCount / 2;
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -89,7 +106,19 @@ class ResultsScreen extends StatelessWidget {
         left: 16,
         right: 16,
       ),
-      decoration: AppTheme.headerDecoration,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(
+          bottom: BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           GestureDetector(
@@ -98,13 +127,13 @@ class ResultsScreen extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppTheme.primaryLight,
+                color: kPrimary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.arrow_back_ios_new,
-                color: AppTheme.primary,
-                size: 18,
+                color: kPrimary,
+                size: 16,
               ),
             ),
           ),
@@ -113,21 +142,29 @@ class ResultsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Karşılaştırma Sonuçları", style: AppTheme.pageTitle),
+                const Text(
+                  "Karşılaştırma Sonuçları",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: kTextDark,
+                  ),
+                ),
                 Text(
                   patient.tamAd,
                   style: const TextStyle(
                     fontSize: 13,
-                    color: AppTheme.textSecondary,
+                    color: kTextGrey,
                   ),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: iyilesmeCount >= totalCount / 2
+              color: majorityImproved
                   ? const Color(0xFFDCFCE7)
                   : const Color(0xFFFEE2E2),
               borderRadius: BorderRadius.circular(20),
@@ -135,10 +172,10 @@ class ResultsScreen extends StatelessWidget {
             child: Text(
               "$iyilesmeCount/$totalCount İyileşti",
               style: TextStyle(
-                color: iyilesmeCount >= totalCount / 2
-                    ? AppTheme.success
-                    : AppTheme.danger,
-                fontWeight: FontWeight.w700,
+                color: majorityImproved
+                    ? const Color(0xFF16A34A)
+                    : const Color(0xFFDC2626),
+                fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
             ),
@@ -148,27 +185,39 @@ class ResultsScreen extends StatelessWidget {
     );
   }
 
-  // Önce → Sonra tarih karşılaştırma kutusu
-  // degerlendirmeTarihi ve notlar
   Widget _buildDatesHeader() {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         children: [
-          Expanded(child: _dateInfoBox("ÖNCE", startDate.tarih, startDate.baslik)),
+          Expanded(
+              child: _dateInfoBox("ÖNCE", startDate.tarih, startDate.baslik)),
           Container(
             width: 32,
             height: 32,
-            decoration: const BoxDecoration(
-              color: AppTheme.primaryLight,
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.arrow_forward, color: AppTheme.primary, size: 16),
+            child: const Icon(Icons.arrow_forward,
+                color: kPrimary, size: 16),
           ),
           Expanded(
-            child: _dateInfoBox("SONRA", endDate.tarih, endDate.baslik, isBlue: true),
+            child: _dateInfoBox("SONRA", endDate.tarih, endDate.baslik,
+                isBlue: true),
           ),
         ],
       ),
@@ -184,9 +233,9 @@ class ResultsScreen extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: isBlue ? AppTheme.primary : AppTheme.textSecondary,
+            color: isBlue ? kPrimary : kTextGrey,
             fontSize: 10,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.bold,
             letterSpacing: 0.8,
           ),
         ),
@@ -194,29 +243,29 @@ class ResultsScreen extends StatelessWidget {
         Text(
           tarih,
           style: const TextStyle(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.bold,
             fontSize: 15,
-            color: AppTheme.textPrimary,
+            color: kTextDark,
           ),
         ),
         Text(
           baslik,
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+          style: const TextStyle(color: kTextGrey, fontSize: 11),
           textAlign: isBlue ? TextAlign.right : TextAlign.left,
         ),
       ],
     );
   }
 
-  // Tek bir testin karşılaştırma kartı
-  // degerlendirmeTestSonuclari + testler + testMetrikleri verilerini gösterir
   Widget _buildMeasureCard(ComparisonResult result) {
     final bool isNeutral = result.fark == 0;
     final Color statusColor = isNeutral
-        ? AppTheme.textSecondary
-        : (result.iyilesme ? AppTheme.success : AppTheme.danger);
+        ? kTextGrey
+        : (result.iyilesme
+        ? const Color(0xFF16A34A)
+        : const Color(0xFFDC2626));
     final Color statusBg = isNeutral
-        ? AppTheme.surface
+        ? kInputFill
         : (result.iyilesme
         ? const Color(0xFFDCFCE7)
         : const Color(0xFFFEE2E2));
@@ -224,17 +273,37 @@ class ResultsScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // testAdi
-              Expanded(child: Text(result.testAdi, style: AppTheme.cardTitle)),
+              Expanded(
+                child: Text(
+                  result.testAdi,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: kTextDark,
+                  ),
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusBg,
                   borderRadius: BorderRadius.circular(20),
@@ -243,7 +312,7 @@ class ResultsScreen extends StatelessWidget {
                   "${result.fark > 0 ? '+' : ''}${result.fark.toStringAsFixed(1)} ${result.birim}",
                   style: TextStyle(
                     color: statusColor,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
                 ),
@@ -253,11 +322,9 @@ class ResultsScreen extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              // olculenDeger (başlangıç)
               _scoreChip("ÖNCE", result.baselineDeger, result.birim,
-                  AppTheme.textSecondary, AppTheme.surface),
+                  kTextGrey, kInputFill),
               const SizedBox(width: 8),
-              // olculenDeger (güncel)
               _scoreChip("SONRA", result.guncelDeger, result.birim,
                   statusColor, statusBg),
             ],
@@ -267,7 +334,7 @@ class ResultsScreen extends StatelessWidget {
             label: "Başlangıç",
             value: result.baselineDeger,
             maxValue: result.maxDeger,
-            color: AppTheme.textHint,
+            color: kTextHint,
           ),
           const SizedBox(height: 8),
           _buildBar(
@@ -275,23 +342,26 @@ class ResultsScreen extends StatelessWidget {
             value: result.guncelDeger,
             maxValue: result.maxDeger,
             color: isNeutral
-                ? AppTheme.primary
-                : (result.iyilesme ? AppTheme.success : AppTheme.danger),
+                ? kPrimary
+                : (result.iyilesme
+                ? const Color(0xFF16A34A)
+                : const Color(0xFFDC2626)),
           ),
         ],
       ),
     );
   }
 
-  Widget _scoreChip(
-      String label, double score, String birim, Color color, Color bgColor) {
+  Widget _scoreChip(String label, double score, String birim, Color color,
+      Color bgColor) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,8 +370,8 @@ class ResultsScreen extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.bold,
+                color: kTextGrey,
                 letterSpacing: 0.5,
               ),
             ),
@@ -310,7 +380,7 @@ class ResultsScreen extends StatelessWidget {
               "${score.toStringAsFixed(score.truncateToDouble() == score ? 0 : 1)} $birim",
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.bold,
                 color: color,
               ),
             ),
@@ -332,7 +402,7 @@ class ResultsScreen extends StatelessWidget {
           width: 52,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+            style: const TextStyle(fontSize: 11, color: kTextGrey),
           ),
         ),
         Expanded(
@@ -340,7 +410,7 @@ class ResultsScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: (value / maxValue).clamp(0.0, 1.0),
-              backgroundColor: AppTheme.divider,
+              backgroundColor: const Color(0xFFE2E8F0),
               color: color,
               minHeight: 10,
             ),
@@ -351,7 +421,7 @@ class ResultsScreen extends StatelessWidget {
           "${value.toStringAsFixed(0)}/${maxValue.toStringAsFixed(0)}",
           style: const TextStyle(
             fontSize: 11,
-            color: AppTheme.textSecondary,
+            color: kTextGrey,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -363,26 +433,46 @@ class ResultsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       decoration: const BoxDecoration(
-        color: AppTheme.background,
-        border: Border(top: BorderSide(color: AppTheme.divider)),
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
       ),
       child: Row(
         children: [
           Expanded(
             child: OutlinedButton.icon(
               onPressed: () {},
-              style: AppTheme.outlinedButtonStyle,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: kTextGrey,
+                minimumSize: const Size.fromHeight(50),
+                elevation: 0,
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
               icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-              label: const Text("PDF Raporu"),
+              label: const Text(
+                "PDF Raporu",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () {},
-              style: AppTheme.primaryButtonStyle,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
               icon: const Icon(Icons.share_outlined, size: 18),
-              label: const Text("Paylaş"),
+              label: const Text(
+                "Paylaş",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],

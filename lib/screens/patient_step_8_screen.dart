@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/patient_form_data.dart';
+import '../providers/auth_provider.dart';
 import 'registration_success_screen.dart';
 import '../services/patient_registration_service.dart';
 
@@ -20,7 +22,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
   bool isSaving = false;
 
   final TextEditingController clinicianNotesController =
-  TextEditingController();
+      TextEditingController();
 
   @override
   void initState() {
@@ -32,6 +34,71 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
   void dispose() {
     clinicianNotesController.dispose();
     super.dispose();
+  }
+
+  Future<void> saveRegistration() async {
+    try {
+      setState(() {
+        isSaving = true;
+      });
+
+      widget.formData.clinicianNotes = clinicianNotesController.text.trim();
+
+      // Oturum açmış klinisyenin kullaniciId'sini al
+      final auth = context.read<AuthProvider>();
+      final userIdStr = auth.user?.id ?? '';
+      final klinisyenId = int.tryParse(userIdStr);
+
+      if (klinisyenId == null || !auth.isClinician) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Hasta kaydı yapmak için klinisyen olarak giriş yapmalısınız.'),
+          ),
+        );
+        return;
+      }
+
+      final result = await patientService.registerPatient(
+        widget.formData,
+        klinisyenId: klinisyenId,
+      );
+
+      if (!mounted) return;
+
+      final int hastaId = result['patient']['hastaId'] as int;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Kayıt başarılı. Hasta ID: $hastaId'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const RegistrationSuccessScreen(),
+        ),
+        (route) => false, // Kayıt sonrası geri dönülmesin, ana sayfaya yönlendirilsin
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Kayıt hatası: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSaving = false;
+        });
+      }
+    }
   }
 
   @override
@@ -62,51 +129,6 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
           borderSide: const BorderSide(color: primaryBlue, width: 1.2),
         ),
       );
-    }
-
-    Future<void> saveRegistration() async {
-      try {
-        setState(() {
-          isSaving = true;
-        });
-
-        widget.formData.clinicianNotes =
-            clinicianNotesController.text.trim();
-
-        final result =
-        await patientService.registerPatient(widget.formData);
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Kayıt başarılı. Hasta ID: ${result['patient']['hastaId']}',
-            ),
-          ),
-        );
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const RegistrationSuccessScreen(),
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kayıt hatası: $e'),
-          ),
-        );
-      } finally {
-        if (mounted) {
-          setState(() {
-            isSaving = false;
-          });
-        }
-      }
     }
 
     return Scaffold(
@@ -216,7 +238,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                             const Expanded(
                               child: Column(
                                 crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     'Ek Bilgiler',
@@ -282,7 +304,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           ),
                           child: const Row(
                             crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                                CrossAxisAlignment.start,
                             children: [
                               Icon(
                                 Icons.info_outline,
@@ -326,14 +348,13 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           onPressed: isSaving
                               ? null
                               : () {
-                            Navigator.pop(context);
-                          },
+                                  Navigator.pop(context);
+                                },
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),
                             side: const BorderSide(color: borderColor),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                              BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           child: const Text('Geri'),
@@ -349,19 +370,18 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                             minimumSize: const Size.fromHeight(48),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                              BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           child: isSaving
                               ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : const Text('Kaydı Tamamla'),
                         ),
                       ),
@@ -385,8 +405,8 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           color: isActive
                               ? primaryBlue
                               : isDone
-                              ? const Color(0xFFDBEAFE)
-                              : const Color(0xFFF3F4F6),
+                                  ? const Color(0xFFDBEAFE)
+                                  : const Color(0xFFF3F4F6),
                           border: Border.all(
                             color: isActive || isDone
                                 ? primaryBlue
@@ -396,20 +416,20 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                         child: Center(
                           child: isDone
                               ? const Icon(
-                            Icons.check,
-                            size: 14,
-                            color: primaryBlue,
-                          )
+                                  Icons.check,
+                                  size: 14,
+                                  color: primaryBlue,
+                                )
                               : Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isActive
-                                  ? Colors.white
-                                  : const Color(0xFF9CA3AF),
-                            ),
-                          ),
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: isActive
+                                        ? Colors.white
+                                        : const Color(0xFF9CA3AF),
+                                  ),
+                                ),
                         ),
                       );
                     }),

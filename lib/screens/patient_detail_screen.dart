@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/patient_model.dart';
 import '../models/evaluation_model.dart' hide Patient;
+import '../providers/evaluation_provider.dart';
 import '../services/patient_service.dart';
 import '../services/empatica_service.dart';
+import 'clinical_evaluation/evaluation_list_screen.dart';
 import 'empatica_screen.dart';
 import 'exercise_video_library_screen.dart';
 
@@ -24,7 +27,8 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
   List<Evaluation> _degerlendirmeler = [];
   bool _degerlendirmeYukleniyor = true;
 
-  static const Color kPrimary = Color(0xFF2563EB);
+  // Klinisyen temasına uygun Teal (Çam Yeşili) rengi
+  static const Color kPrimary = Color(0xFF0F766E);
 
   late TextEditingController _boyCtrl;
   late TextEditingController _kiloCtrl;
@@ -138,12 +142,27 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     }
   }
 
+  void _tumunuGor() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => EvaluationProvider(doctorId: 1),
+          child: EvaluationListScreen(
+            hastaId: _hasta.hastaId,
+            hastaAdi: _hasta.tamAd,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
       appBar: _appBar(),
-      bottomNavigationBar: _altMenu(),
+      // DİKKAT: bottomNavigationBar KALDIRILDI! (Çünkü bu bir iç sayfa)
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -308,9 +327,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             ikon: Icons.assignment_outlined,
             etiket: 'Değerlendirme\nBaşlat',
             renk: kPrimary,
-            arkaplan: const Color(0xFFEFF6FF),
-            // Değerlendirme ekranı başka bir grup üyesinde
-            // Bağlantı merge sırasında yapılacak
+            arkaplan: kPrimary.withOpacity(0.05),
             onTap: () {},
           ),
         ),
@@ -321,7 +338,6 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             etiket: 'Egzersiz\nProgramı',
             renk: const Color(0xFF9333EA),
             arkaplan: const Color(0xFFFAF5FF),
-            // Egzersiz ekranı başka bir grup üyesinde
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -458,34 +474,32 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                   itemBuilder: (_, i) =>
                       _degerlendirmeKarti(_degerlendirmeler[i]),
                 ),
-                  InkWell(
-                    onTap: () {
-                      // Merge sonrası arkadaşın ekranına bağlanacak
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: Color(0xFFE2E8F0)),
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Tümünü Gör',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2563EB),
-                              )),
-                          SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_ios,
-                              size: 13, color: Color(0xFF2563EB)),
-                        ],
+                InkWell(
+                  onTap: _tumunuGor,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Color(0xFFE2E8F0)),
                       ),
                     ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Tümünü Gör',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: kPrimary,
+                            )),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_ios,
+                            size: 13, color: kPrimary),
+                      ],
+                    ),
                   ),
+                ),
               ],
             ),
         ],
@@ -513,7 +527,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: kPrimary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(d.hastalikAdi!,
@@ -548,8 +562,6 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     );
   }
 
-  // ─── Yardımcı Widget'lar ─────────────────────────────────────
-
   Widget _ozetKart() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -561,9 +573,9 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       child: Row(children: [
         CircleAvatar(
           radius: 28,
-          backgroundColor: const Color(0xFFEFF6FF),
+          backgroundColor: kPrimary.withOpacity(0.1),
           child: Text(
-              _hasta.ad.isNotEmpty ? _hasta.ad[0] : '?',
+              _hasta.ad.isNotEmpty ? _hasta.ad[0].toUpperCase() : '?',
               style: const TextStyle(fontSize: 22,
                   fontWeight: FontWeight.bold, color: kPrimary)),
         ),
@@ -584,7 +596,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
               padding: const EdgeInsets.symmetric(
                   horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
+                color: kPrimary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(_hasta.hastalikAdi ?? 'Tanı Yok',
@@ -790,69 +802,10 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                 style: const TextStyle(color: kPrimary,
                     fontWeight: FontWeight.w600)),
           ),
-        Stack(children: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: Color(0xFF1E293B)),
-            onPressed: () {},
-          ),
-          Positioned(right: 10, top: 10,
-              child: Container(width: 8, height: 8,
-                  decoration: const BoxDecoration(
-                      color: Colors.red, shape: BoxShape.circle))),
-        ]),
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: CircleAvatar(radius: 17,
-              backgroundColor: kPrimary,
-              child: const Text('AK', style: TextStyle(
-                  color: Colors.white, fontSize: 12,
-                  fontWeight: FontWeight.bold))),
-        ),
       ],
       bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(color: const Color(0xFFE2E8F0), height: 1)),
-    );
-  }
-
-  Widget _altMenu() {
-    final items = [
-      {'icon': Icons.home_outlined, 'label': 'Ana Sayfa'},
-      {'icon': Icons.people_alt_outlined, 'label': 'Hastalar'},
-      {'icon': Icons.person_add_outlined, 'label': 'Kayıt'},
-      {'icon': Icons.assignment_outlined, 'label': 'Değerlendir'},
-      {'icon': Icons.bar_chart_outlined, 'label': 'Raporlar'},
-    ];
-    return Container(
-      decoration: const BoxDecoration(color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0)))),
-      child: SafeArea(
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (i) {
-              final aktif = i == 1;
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(items[i]['icon'] as IconData,
-                      color: aktif ? kPrimary : const Color(0xFF94A3B8),
-                      size: 22),
-                  const SizedBox(height: 3),
-                  Text(items[i]['label'] as String,
-                      style: TextStyle(fontSize: 10,
-                          fontWeight: aktif
-                              ? FontWeight.w600 : FontWeight.normal,
-                          color: aktif
-                              ? kPrimary : const Color(0xFF94A3B8))),
-                ],
-              );
-            }),
-          ),
-        ),
-      ),
     );
   }
 }

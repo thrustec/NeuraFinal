@@ -12,7 +12,6 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
 
   UserModel? get user => _user;
-  int? get userId => int.tryParse(_user?.id ?? '');
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _user != null;
@@ -60,6 +59,9 @@ class AuthProvider extends ChangeNotifier {
     required String telefon,
     required String sifre,
     required String rolAdi,
+    String? unvan,
+    String? uzmanlikAlani,
+    String? kurumAdi,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -73,6 +75,9 @@ class AuthProvider extends ChangeNotifier {
         telefon: telefon,
         sifre: sifre,
         rolAdi: rolAdi,
+        unvan: unvan,
+        uzmanlikAlani: uzmanlikAlani,
+        kurumAdi: kurumAdi,
       );
       await _saveSession(_user!);
       _isLoading = false;
