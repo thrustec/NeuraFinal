@@ -6,8 +6,9 @@ class PatientService {
   final SupabaseClient _supabase = SupabaseService.client;
 
   Future<Map<String, dynamic>> registerPatient(
-      PatientFormData formData,
-      ) async {
+    PatientFormData formData, {
+    required int klinisyenId,
+  }) async {
     Map<String, dynamic>? createdUser;
     Map<String, dynamic>? createdPatient;
     Map<String, dynamic>? createdEmpatica;
@@ -15,10 +16,7 @@ class PatientService {
 
     try {
       // 1) kullanicilar
-      createdUser = await _supabase
-          .schema('neura')
-          .from('kullanicilar')
-          .insert({
+      createdUser = await _supabase.schema('neura').from('kullanicilar').insert({
         'rolId': formData.rolId,
         'ad': formData.name.trim(),
         'soyad': formData.surname.trim(),
@@ -27,18 +25,12 @@ class PatientService {
             ? 'temp_hash_123'
             : formData.sifreHash.trim(),
         'aktifMi': formData.aktifMi,
-      })
-          .select()
-          .single();
+      }).select().single();
 
-      final int kullaniciId =
-      createdUser['kullaniciId'] as int;
+      final int kullaniciId = createdUser['kullaniciId'] as int;
 
       // 2) hastalar
-      createdPatient = await _supabase
-          .schema('neura')
-          .from('hastalar')
-          .insert({
+      createdPatient = await _supabase.schema('neura').from('hastalar').insert({
         'kullaniciId': kullaniciId,
         'cinsiyetId': formData.genderId,
         'medeniDurumId': formData.maritalStatusId,
@@ -53,74 +45,51 @@ class PatientService {
         'acilKisiTelefonu': formData.emergencyPhone.trim(),
         'boy': formData.heightValue,
         'kilo': formData.weightValue,
-      })
-          .select()
-          .single();
+      }).select().single();
 
-      final int hastaId =
-      createdPatient['hastaId'] as int;
+      final int hastaId = createdPatient['hastaId'] as int;
 
       // 3) empatica (opsiyonel)
       if (formData.empeticaId.trim().isNotEmpty) {
-        createdEmpatica = await _supabase
-            .schema('neura')
-            .from('empatica')
-            .insert({
+        createdEmpatica = await _supabase.schema('neura').from('empatica').insert({
           'hastaId': hastaId,
           'cihazKimlik': formData.empeticaId.trim(),
-        })
-            .select()
-            .single();
+        }).select().single();
 
-        final int empaticaId =
-        createdEmpatica['empaticaId'] as int;
+        final int empaticaId = createdEmpatica['empaticaId'] as int;
 
-        await _supabase
-            .schema('neura')
-            .from('hastalar')
-            .update({
+        await _supabase.schema('neura').from('hastalar').update({
           'empaticaId': empaticaId,
-        })
-            .eq('hastaId', hastaId);
+        }).eq('hastaId', hastaId);
       }
 
       // 4) degerlendirmeler
-      createdEvaluation = await _supabase
-          .schema('neura')
-          .from('degerlendirmeler')
-          .insert({
+      createdEvaluation =
+          await _supabase.schema('neura').from('degerlendirmeler').insert({
         'hastaId': hastaId,
-        'klinisyenId': 1,
+        'klinisyenId': klinisyenId,
         'sigaraDurumId': formData.smokingStatusId,
         'hikaye': formData.complaintHistory.trim().isEmpty
             ? null
             : formData.complaintHistory.trim(),
-        'baslangicTarihi':
-        _convertDateToIso(formData.complaintDate),
+        'baslangicTarihi': _convertDateToIso(formData.complaintDate),
         'hastalikId': formData.diagnosisId,
-        'kullanilanIlaclar':
-        formData.medications.trim().isEmpty
+        'kullanilanIlaclar': formData.medications.trim().isEmpty
             ? null
             : formData.medications.trim(),
-        'sporAliskanligi':
-        formData.exerciseStatus.trim().isEmpty
+        'sporAliskanligi': formData.exerciseStatus.trim().isEmpty
             ? null
             : formData.exerciseStatus.trim(),
-        'yardimciCihaz':
-        formData.assistiveDeviceStatus.trim().isEmpty
+        'yardimciCihaz': formData.assistiveDeviceStatus.trim().isEmpty
             ? null
             : formData.assistiveDeviceStatus.trim(),
-        'bakiciKisi':
-        formData.caregiverStatus.trim().isEmpty
+        'bakiciKisi': formData.caregiverStatus.trim().isEmpty
             ? null
             : formData.caregiverStatus.trim(),
-        'klinisyenNotlari':
-        formData.clinicianNotes.trim().isEmpty
+        'klinisyenNotlari': formData.clinicianNotes.trim().isEmpty
             ? null
             : formData.clinicianNotes.trim(),
-      })
-          .select()
-          .single();
+      }).select().single();
 
       return {
         'user': createdUser,

@@ -7,7 +7,10 @@ import '../patient_list_screen.dart';
 import 'evaluation_form_screen.dart';
 
 class EvaluationListScreen extends StatefulWidget {
-  const EvaluationListScreen({super.key});
+  final int? hastaId;
+  final String? hastaAdi;
+
+  const EvaluationListScreen({super.key, this.hastaId, this.hastaAdi});
 
   @override
   State<EvaluationListScreen> createState() => _EvaluationListScreenState();
@@ -109,7 +112,13 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EvaluationProvider>().loadEvaluations();
+      final provider = context.read<EvaluationProvider>();
+      if (widget.hastaId != null) {
+        provider.loadEvaluationsByPatient(widget.hastaId!);
+      } else {
+        provider.clearFilter();
+        provider.loadEvaluations();
+      }
     });
   }
   Widget _searchBar() {
@@ -356,6 +365,9 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   }
 
   Widget _topHeader() {
+    final baslik = widget.hastaAdi != null
+        ? '${widget.hastaAdi} — Değerlendirmeler'
+        : 'Hasta Değerlendirmelerim';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
@@ -363,16 +375,19 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
         color: _surface,
         border: Border(bottom: BorderSide(color: _border)),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.assignment_outlined, color: _primary),
-          SizedBox(width: 10),
-          Text(
-            'Hasta Değerlendirmelerim',
-            style: TextStyle(
-              color: _textDark,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
+          const Icon(Icons.assignment_outlined, color: _primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              baslik,
+              style: const TextStyle(
+                color: _textDark,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -764,42 +779,42 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               Expanded(
                 child: filteredEvaluations.isEmpty
                     ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(28),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(
-                                Icons.search_off_rounded,
-                                color: _textLight,
-                                size: 42,
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                'Aramaya uygun değerlendirme bulunamadı.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: _textMid,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(
+                          Icons.search_off_rounded,
+                          color: _textLight,
+                          size: 42,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'Aramaya uygun değerlendirme bulunamadı.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _textMid,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      )
+                      ],
+                    ),
+                  ),
+                )
                     : RefreshIndicator(
-                        color: _primary,
-                        onRefresh: provider.refresh,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
-                          itemCount: filteredEvaluations.length,
-                          itemBuilder: (_, i) {
-                            final ev = filteredEvaluations[i];
-                            return _card(provider, ev);
-                          },
-                        ),
-                      ),
+                  color: _primary,
+                  onRefresh: provider.refresh,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
+                    itemCount: filteredEvaluations.length,
+                    itemBuilder: (_, i) {
+                      final ev = filteredEvaluations[i];
+                      return _card(provider, ev);
+                    },
+                  ),
+                ),
               ),
             ],
           );

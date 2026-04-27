@@ -59,6 +59,9 @@ class AuthProvider extends ChangeNotifier {
     required String telefon,
     required String sifre,
     required String rolAdi,
+    String? unvan,
+    String? uzmanlikAlani,
+    String? kurumAdi,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -72,6 +75,9 @@ class AuthProvider extends ChangeNotifier {
         telefon: telefon,
         sifre: sifre,
         rolAdi: rolAdi,
+        unvan: unvan,
+        uzmanlikAlani: uzmanlikAlani,
+        kurumAdi: kurumAdi,
       );
       await _saveSession(_user!);
       _isLoading = false;

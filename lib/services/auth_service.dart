@@ -8,11 +8,23 @@ class AuthService {
   static const String _anonKey =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU';
 
+  // Rol ID eşleştirmesi (DB: 1=Klinisyen, 2=Hasta)
+  static const int _rolIdKlinisyen = 1;
+  static const int _rolIdHasta = 2;
+
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
     'apikey': _anonKey,
     'Authorization': 'Bearer $_anonKey',
+    'Accept-Profile': 'neura',
+    'Content-Profile': 'neura',
   };
+
+  String _rolAdiFromId(int rolId) =>
+      rolId == _rolIdKlinisyen ? 'Klinisyen' : 'Hasta';
+
+  int _rolIdFromAdi(String rolAdi) =>
+      rolAdi == 'Klinisyen' ? _rolIdKlinisyen : _rolIdHasta;
 
   // =====================
   // GİRİŞ YAP
@@ -21,7 +33,11 @@ class AuthService {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/auth/v1/token?grant_type=password'),
-        headers: _headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': _anonKey,
+          'Authorization': 'Bearer $_anonKey',
+        },
         body: jsonEncode({
           'email': eposta,
           'password': sifre,
@@ -38,7 +54,7 @@ class AuthService {
         // Kullanıcı bilgilerini kullanicilar tablosundan çek
         final userResponse = await http.get(
           Uri.parse(
-              '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId,ad,soyad,eposta,rolId,roller(rolAdi)'),
+              '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId,ad,soyad,eposta,rolId'),
           headers: {
             ..._headers,
             'Authorization': 'Bearer $accessToken',
@@ -51,15 +67,50 @@ class AuthService {
           final users = jsonDecode(userResponse.body) as List;
           if (users.isNotEmpty) {
             final user = users.first;
+            final int rolId = user['rolId'] as int? ?? _rolIdHasta;
+            final String rolAdi = _rolAdiFromId(rolId);
+            final int kullaniciId = user['kullaniciId'] as int;
+
+            // Klinisyen ise klinisyenler tablosundan ek bilgi çek
+            String? unvan;
+            String? uzmanlikAlani;
+            String? kurumAdi;
+            String? telefonNo;
+
+            if (rolId == _rolIdKlinisyen) {
+              final clinicianRes = await http.get(
+                Uri.parse(
+                    '$_baseUrl/rest/v1/klinisyenler?kullaniciId=eq.$kullaniciId&select=unvan,uzmanlikAlani,telefonNo,kurumAdi'),
+                headers: {
+                  ..._headers,
+                  'Authorization': 'Bearer $accessToken',
+                },
+              ).timeout(const Duration(seconds: 30));
+
+              if (clinicianRes.statusCode == 200) {
+                final list = jsonDecode(clinicianRes.body) as List;
+                if (list.isNotEmpty) {
+                  final c = list.first as Map<String, dynamic>;
+                  unvan = c['unvan'] as String?;
+                  uzmanlikAlani = c['uzmanlikAlani'] as String?;
+                  telefonNo = c['telefonNo'] as String?;
+                  kurumAdi = c['kurumAdi'] as String?;
+                }
+              }
+            }
+
             return UserModel.fromJson({
-              'id': user['kullaniciId']?.toString() ?? '',
+              'id': kullaniciId.toString(),
               'ad': user['ad'] ?? '',
               'soyad': user['soyad'] ?? '',
               'eposta': user['eposta'] ?? eposta,
-              'telefon': '',
-              'rolId': user['rolId'] ?? 1,
-              'rolAdi': user['rolId'] == 2 ? 'Klinisyen' : 'Hasta',
+              'telefon': telefonNo ?? '',
+              'rolId': rolId,
+              'rolAdi': rolAdi,
               'token': accessToken,
+              'unvan': unvan,
+              'uzmanlikAlani': uzmanlikAlani,
+              'kurumAdi': kurumAdi,
             });
           }
         }
@@ -71,7 +122,7 @@ class AuthService {
           'soyad': '',
           'eposta': eposta,
           'telefon': '',
-          'rolId': 1,
+          'rolId': _rolIdHasta,
           'rolAdi': 'Hasta',
           'token': accessToken,
         });
@@ -99,12 +150,20 @@ class AuthService {
     required String telefon,
     required String sifre,
     required String rolAdi,
+    // Klinisyen alanları (rolAdi == 'Klinisyen' iken kullanılır)
+    String? unvan,
+    String? uzmanlikAlani,
+    String? kurumAdi,
   }) async {
     try {
       // 1. Supabase Auth ile kullanıcı oluştur
       final authResponse = await http.post(
         Uri.parse('$_baseUrl/auth/v1/signup'),
-        headers: _headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': _anonKey,
+          'Authorization': 'Bearer $_anonKey',
+        },
         body: jsonEncode({
           'email': eposta,
           'password': sifre,
@@ -117,15 +176,15 @@ class AuthService {
         final authData = jsonDecode(authResponse.body);
         final accessToken = authData['access_token'] ?? '';
 
-        // 2. Rol ID'sini bul
-        final rolId = rolAdi == 'Klinisyen' ? 2 : 1;
+        final int rolId = _rolIdFromAdi(rolAdi);
 
-        // 3. kullanicilar tablosuna kaydet
+        // 2. kullanicilar tablosuna kaydet
         final userResponse = await http.post(
           Uri.parse('$_baseUrl/rest/v1/kullanicilar'),
           headers: {
             ..._headers,
-            'Authorization': 'Bearer ${accessToken.isNotEmpty ? accessToken : _anonKey}',
+            'Authorization':
+                'Bearer ${accessToken.isNotEmpty ? accessToken : _anonKey}',
             'Prefer': 'return=representation',
           },
           body: jsonEncode({
@@ -133,15 +192,52 @@ class AuthService {
             'soyad': soyad,
             'eposta': eposta,
             'sifreHash': sifre,
-            'rolId': rolAdi == 'Klinisyen' ? 2 : 1,
+            'rolId': rolId,
             'aktifMi': true,
           }),
         ).timeout(const Duration(seconds: 30));
 
-        print('User insert response: ${userResponse.statusCode} ${userResponse.body}');
+        print(
+            'User insert response: ${userResponse.statusCode} ${userResponse.body}');
+
+        // 3. Klinisyen ise klinisyenler tablosuna ek satır
+        int? kullaniciId;
+        if (userResponse.statusCode >= 200 && userResponse.statusCode < 300) {
+          try {
+            final inserted = jsonDecode(userResponse.body);
+            if (inserted is List && inserted.isNotEmpty) {
+              kullaniciId = inserted.first['kullaniciId'] as int?;
+            } else if (inserted is Map<String, dynamic>) {
+              kullaniciId = inserted['kullaniciId'] as int?;
+            }
+          } catch (_) {}
+        }
+
+        if (rolId == _rolIdKlinisyen && kullaniciId != null) {
+          await http.post(
+            Uri.parse('$_baseUrl/rest/v1/klinisyenler'),
+            headers: {
+              ..._headers,
+              'Authorization':
+                  'Bearer ${accessToken.isNotEmpty ? accessToken : _anonKey}',
+              'Prefer': 'return=representation',
+            },
+            body: jsonEncode({
+              'kullaniciId': kullaniciId,
+              'unvan': (unvan ?? '').trim().isEmpty ? null : unvan!.trim(),
+              'uzmanlikAlani': (uzmanlikAlani ?? '').trim().isEmpty
+                  ? null
+                  : uzmanlikAlani!.trim(),
+              'telefonNo': telefon.trim().isEmpty ? null : telefon.trim(),
+              'kurumAdi':
+                  (kurumAdi ?? '').trim().isEmpty ? null : kurumAdi!.trim(),
+              'aktifMi': true,
+            }),
+          ).timeout(const Duration(seconds: 30));
+        }
 
         return UserModel.fromJson({
-          'id': authData['user']?['id']?.toString() ?? '',
+          'id': (kullaniciId ?? authData['user']?['id'] ?? '').toString(),
           'ad': ad,
           'soyad': soyad,
           'eposta': eposta,
@@ -149,6 +245,9 @@ class AuthService {
           'rolId': rolId,
           'rolAdi': rolAdi,
           'token': accessToken,
+          'unvan': unvan,
+          'uzmanlikAlani': uzmanlikAlani,
+          'kurumAdi': kurumAdi,
         });
       } else if (authResponse.statusCode == 422) {
         throw Exception('EMAIL_KAYITLI');

@@ -22,15 +22,32 @@ class RegisterClinicianScreen extends StatefulWidget {
 class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _specialtyController = TextEditingController();
+  final _institutionController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
 
+  String? _selectedTitle; // Unvan dropdown
+
+  static const List<String> _titleOptions = [
+    'Dr.',
+    'Uzm. Dr.',
+    'Prof. Dr.',
+    'Doç. Dr.',
+    'Fzt.',
+    'Uzm. Fzt.',
+  ];
+
   @override
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
+    _specialtyController.dispose();
+    _institutionController.dispose();
     _passwordController.dispose();
     _passwordConfirmController.dispose();
     super.dispose();
@@ -50,6 +67,9 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
   Future<void> _register() async {
     final fullName = _fullNameController.text.trim();
     final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final specialty = _specialtyController.text.trim();
+    final institution = _institutionController.text.trim();
     final password = _passwordController.text.trim();
     final passwordConfirm = _passwordConfirmController.text.trim();
 
@@ -57,7 +77,7 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
         email.isEmpty ||
         password.isEmpty ||
         passwordConfirm.isEmpty) {
-      _showValidationError('Lütfen tüm alanları doldurun');
+      _showValidationError('Lütfen zorunlu alanları doldurun');
       return;
     }
 
@@ -83,15 +103,18 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
     final nameParts = fullName.split(' ');
     final ad = nameParts.first;
     final soyad =
-    nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+        nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     final success = await auth.register(
       ad: ad,
       soyad: soyad,
       eposta: email,
-      telefon: '',
+      telefon: phone,
       sifre: password,
       rolAdi: 'Klinisyen',
+      unvan: _selectedTitle,
+      uzmanlikAlani: specialty.isEmpty ? null : specialty,
+      kurumAdi: institution.isEmpty ? null : institution,
     );
 
     if (!mounted) return;
@@ -108,7 +131,7 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -136,7 +159,8 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: kTextGrey, fontSize: 13, height: 1.5),
+              style: const TextStyle(
+                  color: kTextGrey, fontSize: 13, height: 1.5),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -175,14 +199,14 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
     } else {
       title = 'Bağlantı Hatası';
       message =
-      'Şu anda internete bağlı değilsiniz. Lütfen bağlantınızı kontrol edin.';
+          'Şu anda internete bağlı değilsiniz. Lütfen bağlantınızı kontrol edin.';
     }
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -210,7 +234,8 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: kTextGrey, fontSize: 13, height: 1.5),
+              style: const TextStyle(
+                  color: kTextGrey, fontSize: 13, height: 1.5),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -245,18 +270,20 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
 
   InputDecoration _inputDecoration({
     required String hint,
-    required IconData prefixIcon,
+    IconData? prefixIcon,
     Widget? suffixIcon,
   }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
-      prefixIcon: Icon(prefixIcon, color: kPrimary, size: 20),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Icon(prefixIcon, color: kPrimary, size: 20),
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: kInputFill,
       contentPadding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -268,6 +295,20 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: kPrimary, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: kTextDark,
+        ),
       ),
     );
   }
@@ -307,11 +348,10 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               const SizedBox(height: 8),
               Center(
                 child: Container(
@@ -321,14 +361,14 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
                     color: kPrimary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(Icons.person_add_outlined,
+                  child: const Icon(Icons.medical_services_outlined,
                       color: kPrimary, size: 30),
                 ),
               ),
               const SizedBox(height: 12),
               const Center(
                 child: Text(
-                  'Hesap oluşturun',
+                  'Klinisyen Kaydı',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -339,13 +379,12 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
               const SizedBox(height: 4),
               const Center(
                 child: Text(
-                  'Bilgilerinizi girerek kayıt olun',
+                  'Mesleki bilgilerinizi girerek kayıt olun',
                   style: TextStyle(fontSize: 13, color: kTextGrey),
                 ),
               ),
               const SizedBox(height: 28),
 
-              // Form Card
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -363,19 +402,29 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tam Adı
-                    const Text(
-                      'Tam Adınız',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
+                    // Unvan
+                    _label('Unvan'),
+                    DropdownButtonFormField<String>(
+                      value: _selectedTitle,
+                      decoration: _inputDecoration(
+                        hint: 'Unvan seçin (opsiyonel)',
+                        prefixIcon: Icons.workspace_premium_outlined,
                       ),
+                      items: _titleOptions
+                          .map((t) =>
+                              DropdownMenuItem(value: t, child: Text(t)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedTitle = v),
                     ),
-                    const SizedBox(height: 8),
+
+                    const SizedBox(height: 16),
+
+                    // Tam Ad
+                    _label('Tam Adınız'),
                     TextField(
                       controller: _fullNameController,
-                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      style:
+                          const TextStyle(color: kTextDark, fontSize: 14),
                       decoration: _inputDecoration(
                         hint: 'Ad Soyad',
                         prefixIcon: Icons.person_outline,
@@ -384,20 +433,41 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Email
-                    const Text(
-                      'E-posta Adresi',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
+                    // Uzmanlık Alanı
+                    _label('Uzmanlık Alanı'),
+                    TextField(
+                      controller: _specialtyController,
+                      style:
+                          const TextStyle(color: kTextDark, fontSize: 14),
+                      decoration: _inputDecoration(
+                        hint: 'Örn. Nöroloji, Fizyoterapi',
+                        prefixIcon: Icons.local_hospital_outlined,
                       ),
                     ),
-                    const SizedBox(height: 8),
+
+                    const SizedBox(height: 16),
+
+                    // Kurum
+                    _label('Çalıştığınız Kurum'),
+                    TextField(
+                      controller: _institutionController,
+                      style:
+                          const TextStyle(color: kTextDark, fontSize: 14),
+                      decoration: _inputDecoration(
+                        hint: 'Hastane / Klinik adı',
+                        prefixIcon: Icons.apartment_outlined,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Email
+                    _label('E-posta Adresi'),
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      style:
+                          const TextStyle(color: kTextDark, fontSize: 14),
                       decoration: _inputDecoration(
                         hint: 'ornek@email.com',
                         prefixIcon: Icons.email_outlined,
@@ -406,25 +476,35 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Şifre
-                    const Text(
-                      'Şifre',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
+                    // Telefon
+                    _label('Telefon'),
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      style:
+                          const TextStyle(color: kTextDark, fontSize: 14),
+                      decoration: _inputDecoration(
+                        hint: '5xx xxx xx xx',
+                        prefixIcon: Icons.phone_outlined,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'En az 8 karakter, büyük/küçük harf ve rakam içermeli',
-                      style: TextStyle(fontSize: 11, color: kTextGrey),
+
+                    const SizedBox(height: 16),
+
+                    // Şifre
+                    _label('Şifre'),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 6, top: 0),
+                      child: Text(
+                        'En az 8 karakter, büyük/küçük harf ve rakam içermeli',
+                        style: TextStyle(fontSize: 11, color: kTextGrey),
+                      ),
                     ),
-                    const SizedBox(height: 8),
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      style:
+                          const TextStyle(color: kTextDark, fontSize: 14),
                       decoration: _inputDecoration(
                         hint: '••••••••',
                         prefixIcon: Icons.lock_outline,
@@ -436,8 +516,8 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
                             color: kTextGrey,
                             size: 20,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
                         ),
                       ),
                     ),
@@ -445,19 +525,12 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
                     const SizedBox(height: 16),
 
                     // Şifre Tekrar
-                    const Text(
-                      'Şifre Tekrar',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    _label('Şifre Tekrar'),
                     TextField(
                       controller: _passwordConfirmController,
                       obscureText: _obscurePasswordConfirm,
-                      style: const TextStyle(color: kTextDark, fontSize: 14),
+                      style:
+                          const TextStyle(color: kTextDark, fontSize: 14),
                       decoration: _inputDecoration(
                         hint: '••••••••',
                         prefixIcon: Icons.lock_outline,
@@ -469,8 +542,9 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
                             color: kTextGrey,
                             size: 20,
                           ),
-                          onPressed: () => setState(
-                                  () => _obscurePasswordConfirm = !_obscurePasswordConfirm),
+                          onPressed: () => setState(() =>
+                              _obscurePasswordConfirm =
+                                  !_obscurePasswordConfirm),
                         ),
                       ),
                     ),
@@ -480,11 +554,11 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
 
               const SizedBox(height: 16),
 
-              // Terms
               RichText(
                 text: const TextSpan(
                   text: 'Devam ederek şunları kabul ediyorsunuz: ',
-                  style: TextStyle(color: kTextGrey, fontSize: 12, height: 1.5),
+                  style: TextStyle(
+                      color: kTextGrey, fontSize: 12, height: 1.5),
                   children: [
                     TextSpan(
                       text: 'Kullanım Şartları',
@@ -509,7 +583,6 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
 
               const SizedBox(height: 20),
 
-              // Register Button
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -523,27 +596,26 @@ class _RegisterClinicianScreenState extends State<RegisterClinicianScreen> {
                   ),
                   child: auth.isLoading
                       ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                  )
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
                       : const Text(
-                    'Kayıt Ol',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                          'Kayıt Ol',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // Login redirect
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),

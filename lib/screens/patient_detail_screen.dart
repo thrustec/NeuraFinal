@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/patient_model.dart';
 import '../models/evaluation_model.dart' hide Patient;
+import '../providers/evaluation_provider.dart';
 import '../services/patient_service.dart';
 import '../services/empatica_service.dart';
+import 'clinical_evaluation/evaluation_list_screen.dart';
 import 'empatica_screen.dart';
 import 'exercise_video_library_screen.dart';
 
@@ -137,6 +140,21 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     } catch (_) {
       return dogumTarihi;
     }
+  }
+
+  void _tumunuGor() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => EvaluationProvider(doctorId: 1),
+          child: EvaluationListScreen(
+            hastaId: _hasta.hastaId,
+            hastaAdi: _hasta.tamAd,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -457,9 +475,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                       _degerlendirmeKarti(_degerlendirmeler[i]),
                 ),
                 InkWell(
-                  onTap: () {
-                    // Tümünü gör işlemi eklenebilir
-                  },
+                  onTap: _tumunuGor,
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 14),

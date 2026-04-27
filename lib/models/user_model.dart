@@ -8,6 +8,11 @@ class UserModel {
   final String rolAdi;
   final String token;
 
+  // Klinisyen alanları (yalnızca klinisyenler için doludur)
+  final String? unvan;
+  final String? uzmanlikAlani;
+  final String? kurumAdi;
+
   UserModel({
     required this.id,
     required this.ad,
@@ -17,9 +22,21 @@ class UserModel {
     required this.rolId,
     required this.rolAdi,
     required this.token,
+    this.unvan,
+    this.uzmanlikAlani,
+    this.kurumAdi,
   });
 
   String get fullName => '$ad $soyad'.trim();
+
+  /// Klinisyen ise unvan + ad soyad ("Dr. Ayşe Yılmaz"), değilse fullName.
+  String get displayName {
+    final base = fullName;
+    final u = (unvan ?? '').trim();
+    if (u.isEmpty) return base;
+    return '$u $base';
+  }
+
   bool get isPatient => rolAdi.toLowerCase() == 'hasta';
   bool get isClinician => rolAdi.toLowerCase() == 'klinisyen';
 
@@ -33,6 +50,9 @@ class UserModel {
       rolId: json['rolId'] ?? 1,
       rolAdi: json['rolAdi'] ?? 'Hasta',
       token: json['token'] ?? '',
+      unvan: json['unvan'] as String?,
+      uzmanlikAlani: json['uzmanlikAlani'] as String?,
+      kurumAdi: json['kurumAdi'] as String?,
     );
   }
 
@@ -46,6 +66,9 @@ class UserModel {
       'rolId': rolId,
       'rolAdi': rolAdi,
       'token': token,
+      'unvan': unvan,
+      'uzmanlikAlani': uzmanlikAlani,
+      'kurumAdi': kurumAdi,
     };
   }
 }
