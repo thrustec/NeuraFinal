@@ -80,7 +80,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ad: ad,
       soyad: soyad,
       eposta: email,
-      telefon: '',
       sifre: password,
       rolAdi: 'Hasta',
     );

@@ -3,28 +3,22 @@ class UserModel {
   final String ad;
   final String soyad;
   final String eposta;
-  final String telefon;
   final int rolId;
   final String rolAdi;
   final String token;
 
-  // Klinisyen alanları (yalnızca klinisyenler için doludur)
+  // Klinisyen alanı (yalnızca klinisyenler için doludur)
   final String? unvan;
-  final String? uzmanlikAlani;
-  final String? kurumAdi;
 
   UserModel({
     required this.id,
     required this.ad,
     required this.soyad,
     required this.eposta,
-    required this.telefon,
     required this.rolId,
     required this.rolAdi,
     required this.token,
     this.unvan,
-    this.uzmanlikAlani,
-    this.kurumAdi,
   });
 
   String get fullName => '$ad $soyad'.trim();
@@ -46,13 +40,10 @@ class UserModel {
       ad: json['ad'] ?? '',
       soyad: json['soyad'] ?? '',
       eposta: json['eposta'] ?? '',
-      telefon: json['telefon'] ?? '',
       rolId: json['rolId'] ?? 1,
       rolAdi: json['rolAdi'] ?? 'Hasta',
       token: json['token'] ?? '',
       unvan: json['unvan'] as String?,
-      uzmanlikAlani: json['uzmanlikAlani'] as String?,
-      kurumAdi: json['kurumAdi'] as String?,
     );
   }
 
@@ -62,13 +53,10 @@ class UserModel {
       'ad': ad,
       'soyad': soyad,
       'eposta': eposta,
-      'telefon': telefon,
       'rolId': rolId,
       'rolAdi': rolAdi,
       'token': token,
       'unvan': unvan,
-      'uzmanlikAlani': uzmanlikAlani,
-      'kurumAdi': kurumAdi,
     };
   }
 }

@@ -93,13 +93,13 @@ class AuthService {
       final int kullaniciId = user['kullaniciId'] as int;
       final String rolAdi = _rolAdiFromId(rolId);
 
-      // 3. Klinisyen ise ek bilgi
-      String? unvan, uzmanlikAlani, kurumAdi, telefonNo;
+      // 3. Klinisyen ise ek bilgi (sadece unvan kaldı)
+      String? unvan;
       if (rolId == _rolIdKlinisyen) {
         final clinRes = await http
             .get(
           Uri.parse(
-              '$_baseUrl/rest/v1/klinisyenler?kullaniciId=eq.$kullaniciId&select=unvan,uzmanlikAlani,telefonNo,kurumAdi'),
+              '$_baseUrl/rest/v1/klinisyenler?kullaniciId=eq.$kullaniciId&select=unvan'),
           headers: _restGetHeaders(token),
         )
             .timeout(const Duration(seconds: 30));
@@ -111,9 +111,6 @@ class AuthService {
           if (list.isNotEmpty) {
             final c = list.first as Map<String, dynamic>;
             unvan = c['unvan'] as String?;
-            uzmanlikAlani = c['uzmanlikAlani'] as String?;
-            telefonNo = c['telefonNo'] as String?;
-            kurumAdi = c['kurumAdi'] as String?;
           }
         }
       }
@@ -123,13 +120,10 @@ class AuthService {
         'ad': user['ad'] ?? '',
         'soyad': user['soyad'] ?? '',
         'eposta': user['eposta'] ?? eposta,
-        'telefon': telefonNo ?? '',
         'rolId': rolId,
         'rolAdi': rolAdi,
         'token': token,
         'unvan': unvan,
-        'uzmanlikAlani': uzmanlikAlani,
-        'kurumAdi': kurumAdi,
       });
     } on SocketException {
       throw Exception('BAĞLANTI_HATASI');
@@ -147,12 +141,9 @@ class AuthService {
     required String ad,
     required String soyad,
     required String eposta,
-    required String telefon,
     required String sifre,
     required String rolAdi,
     String? unvan,
-    String? uzmanlikAlani,
-    String? kurumAdi,
   }) async {
     try {
       final int rolId = _rolIdFromAdi(rolAdi);
@@ -231,12 +222,6 @@ class AuthService {
           body: jsonEncode({
             'kullaniciId': kullaniciId,
             'unvan': (unvan ?? '').trim().isEmpty ? null : unvan!.trim(),
-            'uzmanlikAlani': (uzmanlikAlani ?? '').trim().isEmpty
-                ? null
-                : uzmanlikAlani!.trim(),
-            'telefonNo': telefon.trim().isEmpty ? null : telefon.trim(),
-            'kurumAdi':
-            (kurumAdi ?? '').trim().isEmpty ? null : kurumAdi!.trim(),
             'aktifMi': true,
           }),
         )
@@ -269,13 +254,10 @@ class AuthService {
         'ad': ad,
         'soyad': soyad,
         'eposta': eposta,
-        'telefon': telefon,
         'rolId': rolId,
         'rolAdi': rolAdi,
         'token': token,
         'unvan': unvan,
-        'uzmanlikAlani': uzmanlikAlani,
-        'kurumAdi': kurumAdi,
       });
     } on SocketException {
       throw Exception('BAĞLANTI_HATASI');

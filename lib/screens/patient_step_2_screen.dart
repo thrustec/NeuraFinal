@@ -16,6 +16,15 @@ class PatientStep2Screen extends StatefulWidget {
 }
 
 class _PatientStep2ScreenState extends State<PatientStep2Screen> {
+  // NeuraApp Renk Paleti
+  static const Color kBackground = Color(0xFFF8F9FC);
+  static const Color kPrimary = Color(0xFF2563EB); // HASTA SAYFASI
+  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kTextGrey = Color(0xFF64748B);
+  static const Color kTextHint = Color(0xFF94A3B8);
+  static const Color kInputFill = Color(0xFFF1F5F9);
+  static const Color kBorderColor = Color(0xFFE2E8F0);
+
   final TextEditingController nameController = TextEditingController();
   final TextEditingController surnameController = TextEditingController();
   final TextEditingController birthDateController = TextEditingController();
@@ -63,6 +72,18 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
       initialDate: initialDate,
       firstDate: DateTime(1940),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: kPrimary,
+              onPrimary: Colors.white,
+              onSurface: kTextDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -90,119 +111,65 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF2563EB);
-    const Color background = Color(0xFFF5F7FB);
-    const Color cardColor = Colors.white;
-    const Color borderColor = Color(0xFFE5E7EB);
-    const Color lightBlue = Color(0xFFEAF2FF);
-    const Color textDark = Color(0xFF1F2937);
-    const Color textMuted = Color(0xFF6B7280);
-
+    // NeuraApp Input Style
     InputDecoration inputDecoration(String hintText, {Widget? suffixIcon}) {
       return InputDecoration(
         hintText: hintText,
+        hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: const Color(0xFFF9FAFB),
+        fillColor: kInputFill,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
+          horizontal: 16,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: borderColor),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryBlue, width: 1.2),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: kPrimary, width: 1.5),
         ),
       );
     }
 
+    // Label Style
+    const labelStyle = TextStyle(
+      color: kTextGrey,
+      fontSize: 12,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5,
+    );
+
     return Scaffold(
-      backgroundColor: background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: textDark),
-          onPressed: () {},
-        ),
-        title: const Text(
-          'Hasta Kaydı',
-          style: TextStyle(
-            color: textDark,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none, color: textDark),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: primaryBlue,
-              child: Text(
-                'AK',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: primaryBlue,
-        unselectedItemColor: const Color(0xFF9CA3AF),
-        selectedLabelStyle: const TextStyle(fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            label: 'Patients',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.app_registration),
-            label: 'Register',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            label: 'Evaluate',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            label: 'Reports',
-          ),
-        ],
-      ),
+      backgroundColor: kBackground,
+      // AppBar ve BottomNavigationBar kurallar gereği silindi (Sayfa ana menüye gömüleceği için).
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: borderColor),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: kBorderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -210,47 +177,48 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
-                                color: lightBlue,
+                                color: kPrimary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
                                 Icons.badge_outlined,
-                                color: primaryBlue,
-                                size: 22,
+                                color: kPrimary,
+                                size: 24,
                               ),
                             ),
+                            const SizedBox(width: 16),
                             const Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Demografik Bilgiler',
+                                    'DEMOGRAFİK BİLGİLER',
                                     style: TextStyle(
-                                      color: textMuted,
+                                      color: kTextGrey,
                                       fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.3,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
                                   SizedBox(height: 4),
                                   Text(
                                     '2. Adım',
                                     style: TextStyle(
-                                      color: primaryBlue,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                      color: kPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
+                                  SizedBox(height: 6),
                                   Text(
                                     'Kişisel Bilgiler',
                                     style: TextStyle(
-                                      color: textDark,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
+                                      color: kTextDark,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ],
@@ -258,64 +226,39 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        const Divider(color: borderColor),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
+                        const Divider(color: kBorderColor, height: 1),
+                        const SizedBox(height: 24),
 
-                        const Text(
-                          'AD',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('AD', style: labelStyle),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: nameController,
+                          style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration('Ad giriniz'),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'SOYAD',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('SOYAD', style: labelStyle),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: surnameController,
+                          style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration('Soyad giriniz'),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'CİNSİYET',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('CİNSİYET', style: labelStyle),
+                        const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
-                          initialValue: selectedGender,
+                          value: selectedGender,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextGrey),
                           decoration: inputDecoration('Cinsiyet seçiniz'),
+                          dropdownColor: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
                           items: const [
-                            DropdownMenuItem(
-                              value: 'Kadın',
-                              child: Text('Kadın'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Erkek',
-                              child: Text('Erkek'),
-                            ),
+                            DropdownMenuItem(value: 'Kadın', child: Text('Kadın', style: TextStyle(color: kTextDark))),
+                            DropdownMenuItem(value: 'Erkek', child: Text('Erkek', style: TextStyle(color: kTextDark))),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -324,116 +267,68 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                             });
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'DOĞUM TARİHİ',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('DOĞUM TARİHİ', style: labelStyle),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: birthDateController,
                           readOnly: true,
                           onTap: _selectDate,
+                          style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration(
                             'GG/AA/YYYY',
-                            suffixIcon:
-                            const Icon(Icons.calendar_today_outlined),
+                            suffixIcon: const Icon(Icons.calendar_today_outlined, color: kPrimary, size: 20),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'TELEFON NUMARASI',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('TELEFON NUMARASI', style: labelStyle),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: phoneController,
                           keyboardType: TextInputType.phone,
-                          decoration: inputDecoration(
-                            'Telefon numarası giriniz',
-                          ),
+                          style: const TextStyle(color: kTextDark),
+                          decoration: inputDecoration('Telefon numarası giriniz'),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'YAŞADIĞI YER',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('YAŞADIĞI YER', style: labelStyle),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: cityController,
+                          style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration('Şehir / ilçe giriniz'),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'DOMİNANT TARAF',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('DOMİNANT TARAF', style: labelStyle),
+                        const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
-                          initialValue: selectedDominantSide,
-                          decoration: inputDecoration(
-                            'Dominant taraf seçiniz',
-                          ),
+                          value: selectedDominantSide,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextGrey),
+                          decoration: inputDecoration('Dominant taraf seçiniz'),
+                          dropdownColor: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
                           items: const [
-                            DropdownMenuItem(
-                              value: 'Sağ',
-                              child: Text('Sağ'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Sol',
-                              child: Text('Sol'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Her ikisi',
-                              child: Text('Her ikisi'),
-                            ),
+                            DropdownMenuItem(value: 'Sağ', child: Text('Sağ', style: TextStyle(color: kTextDark))),
+                            DropdownMenuItem(value: 'Sol', child: Text('Sol', style: TextStyle(color: kTextDark))),
+                            DropdownMenuItem(value: 'Her ikisi', child: Text('Her ikisi', style: TextStyle(color: kTextDark))),
                           ],
                           onChanged: (value) {
                             setState(() {
                               selectedDominantSide = value;
-                              widget.formData.dominantSideId =
-                                  mapDominantSideToId(value);
+                              widget.formData.dominantSideId = mapDominantSideToId(value);
                             });
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'EMPETICA ID',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const Text('EMPETICA ID', style: labelStyle),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: empeticaController,
+                          style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration('Empetica ID giriniz'),
                         ),
                       ],
@@ -443,13 +338,17 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
               ),
             ),
             Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border(
-                  top: BorderSide(color: borderColor),
-                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -461,13 +360,13 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                             Navigator.pop(context);
                           },
                           style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                            side: const BorderSide(color: borderColor),
+                            minimumSize: const Size.fromHeight(54),
+                            side: const BorderSide(color: kBorderColor),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: const Text('Geri'),
+                          child: const Text('Geri', style: TextStyle(color: kTextGrey, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -487,99 +386,84 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
 
                             if (error != null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(error)),
+                                SnackBar(
+                                  content: Text(error),
+                                  backgroundColor: Colors.redAccent,
+                                ),
                               );
                               return;
                             }
 
                             widget.formData.name = nameController.text.trim();
-                            widget.formData.surname =
-                                surnameController.text.trim();
+                            widget.formData.surname = surnameController.text.trim();
                             widget.formData.gender = selectedGender ?? '';
-                            widget.formData.genderId =
-                                mapGenderToId(selectedGender);
-
-                            widget.formData.birthDate =
-                                birthDateController.text.trim();
+                            widget.formData.genderId = mapGenderToId(selectedGender);
+                            widget.formData.birthDate = birthDateController.text.trim();
                             widget.formData.phone = phoneController.text.trim();
                             widget.formData.city = cityController.text.trim();
-
-                            widget.formData.dominantSide =
-                                selectedDominantSide ?? '';
-                            widget.formData.dominantSideId =
-                                mapDominantSideToId(selectedDominantSide);
-
-                            widget.formData.empeticaId =
-                                empeticaController.text.trim();
-                            widget.formData.empaticaId =
-                                int.tryParse(empeticaController.text.trim());
+                            widget.formData.dominantSide = selectedDominantSide ?? '';
+                            widget.formData.dominantSideId = mapDominantSideToId(selectedDominantSide);
+                            widget.formData.empeticaId = empeticaController.text.trim();
+                            widget.formData.empaticaId = int.tryParse(empeticaController.text.trim());
 
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    PatientStep3Screen(formData: widget.formData),
+                                builder: (context) => PatientStep3Screen(formData: widget.formData),
                               ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
+                            backgroundColor: kPrimary,
                             foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(54),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
+                            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           child: const Text('Devam'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(8, (index) {
-                      final bool isActive = index == 1;
-                      final bool isDone = index == 0;
+                  const SizedBox(height: 20),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(8, (index) {
+                        final bool isActive = index == 1;
+                        final bool isDone = index < 1;
 
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isActive
-                              ? primaryBlue
-                              : isDone
-                              ? const Color(0xFFDBEAFE)
-                              : const Color(0xFFF3F4F6),
-                          border: Border.all(
-                            color: isActive || isDone
-                                ? primaryBlue
-                                : const Color(0xFFD1D5DB),
-                          ),
-                        ),
-                        child: Center(
-                          child: isDone
-                              ? const Icon(
-                            Icons.check,
-                            size: 14,
-                            color: primaryBlue,
-                          )
-                              : Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isActive
-                                  ? Colors.white
-                                  : const Color(0xFF9CA3AF),
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isActive ? kPrimary : (isDone ? kPrimary.withOpacity(0.1) : Colors.white),
+                            border: Border.all(
+                              color: (isActive || isDone) ? kPrimary : kBorderColor,
+                              width: 1.5,
                             ),
                           ),
-                        ),
-                      );
-                    }),
+                          child: Center(
+                            child: isDone
+                                ? const Icon(Icons.check, size: 16, color: kPrimary)
+                                : Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isActive ? Colors.white : kTextHint,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                 ],
               ),

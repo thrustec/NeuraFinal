@@ -18,11 +18,20 @@ class PatientStep8Screen extends StatefulWidget {
 }
 
 class _PatientStep8ScreenState extends State<PatientStep8Screen> {
+  // NeuraApp Tasarım Sistemi Renkleri
+  static const Color kBackground = Color(0xFFF8F9FC);
+  static const Color kPrimary = Color(0xFF2563EB); // HASTA SAYFASI
+  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kTextGrey = Color(0xFF64748B);
+  static const Color kTextHint = Color(0xFF94A3B8);
+  static const Color kInputFill = Color(0xFFF1F5F9);
+  static const Color kBorderColor = Color(0xFFE2E8F0);
+
   final PatientService patientService = PatientService();
   bool isSaving = false;
 
   final TextEditingController clinicianNotesController =
-      TextEditingController();
+  TextEditingController();
 
   @override
   void initState() {
@@ -44,7 +53,6 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
 
       widget.formData.clinicianNotes = clinicianNotesController.text.trim();
 
-      // Oturum açmış klinisyenin kullaniciId'sini al
       final auth = context.read<AuthProvider>();
       final userIdStr = auth.user?.id ?? '';
       final klinisyenId = int.tryParse(userIdStr);
@@ -81,7 +89,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
         MaterialPageRoute(
           builder: (context) => const RegistrationSuccessScreen(),
         ),
-        (route) => false, // Kayıt sonrası geri dönülmesin, ana sayfaya yönlendirilsin
+            (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
@@ -103,118 +111,63 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF2563EB);
-    const Color background = Color(0xFFF5F7FB);
-    const Color cardColor = Colors.white;
-    const Color borderColor = Color(0xFFE5E7EB);
-    const Color lightBlue = Color(0xFFEAF2FF);
-    const Color textDark = Color(0xFF1F2937);
-    const Color textMuted = Color(0xFF6B7280);
-
+    // NeuraApp Input Dekorasyonu
     InputDecoration inputDecoration(String hintText) {
       return InputDecoration(
         hintText: hintText,
+        hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
         filled: true,
-        fillColor: const Color(0xFFF9FAFB),
+        fillColor: kInputFill,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
+          horizontal: 16,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: borderColor),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryBlue, width: 1.2),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: kPrimary, width: 1.5),
         ),
       );
     }
 
+    const labelStyle = TextStyle(
+      color: kTextGrey,
+      fontSize: 12,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5,
+    );
+
     return Scaffold(
-      backgroundColor: background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: textDark),
-          onPressed: () {},
-        ),
-        title: const Text(
-          'Hasta Kaydı',
-          style: TextStyle(
-            color: textDark,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none, color: textDark),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: primaryBlue,
-              child: Text(
-                'AK',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: primaryBlue,
-        unselectedItemColor: const Color(0xFF9CA3AF),
-        selectedLabelStyle: const TextStyle(fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            label: 'Patients',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.app_registration),
-            label: 'Register',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            label: 'Evaluate',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            label: 'Reports',
-          ),
-        ],
-      ),
+      backgroundColor: kBackground,
+      // AppBar ve BottomNavigationBar kurallar gereği silindi.
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: borderColor),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: kBorderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -222,49 +175,48 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
-                                color: lightBlue,
+                                color: kPrimary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
                                 Icons.edit_note_outlined,
-                                color: primaryBlue,
-                                size: 22,
+                                color: kPrimary,
+                                size: 24,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 16),
                             const Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Ek Bilgiler',
+                                    'EK BİLGİLER',
                                     style: TextStyle(
-                                      color: textMuted,
+                                      color: kTextGrey,
                                       fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.3,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
                                   SizedBox(height: 4),
                                   Text(
                                     '8. Adım',
                                     style: TextStyle(
-                                      color: primaryBlue,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                      color: kPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
+                                  SizedBox(height: 6),
                                   Text(
                                     'Klinisyen Notları',
                                     style: TextStyle(
-                                      color: textDark,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
+                                      color: kTextDark,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ],
@@ -272,52 +224,46 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        const Divider(color: borderColor),
-                        const SizedBox(height: 20),
-
+                        const SizedBox(height: 24),
+                        const Divider(color: kBorderColor, height: 1),
+                        const SizedBox(height: 24),
                         const Text(
                           'KLİNİSYEN NOTLARI',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
+                          style: labelStyle,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: clinicianNotesController,
                           maxLines: 8,
+                          style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration(
                             'Klinisyen gözlemlerini ve notlarını giriniz',
                           ),
                         ),
-
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: kInputFill.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: borderColor),
+                            border: Border.all(color: kBorderColor),
                           ),
                           child: const Row(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Icon(
                                 Icons.info_outline,
-                                size: 18,
-                                color: textMuted,
+                                size: 20,
+                                color: kTextGrey,
                               ),
-                              SizedBox(width: 8),
+                              SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   'Bu alan klinisyenin değerlendirme sürecindeki gözlemlerini kaydetmesi için kullanılabilir.',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: textMuted,
+                                    fontSize: 13,
+                                    color: kTextGrey,
+                                    height: 1.4,
                                   ),
                                 ),
                               ),
@@ -331,13 +277,17 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
               ),
             ),
             Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border(
-                  top: BorderSide(color: borderColor),
-                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -348,16 +298,22 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           onPressed: isSaving
                               ? null
                               : () {
-                                  Navigator.pop(context);
-                                },
+                            Navigator.pop(context);
+                          },
                           style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                            side: const BorderSide(color: borderColor),
+                            minimumSize: const Size.fromHeight(54),
+                            side: const BorderSide(color: kBorderColor),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: const Text('Geri'),
+                          child: const Text(
+                            'Geri',
+                            style: TextStyle(
+                              color: kTextGrey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -365,74 +321,79 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                         child: ElevatedButton(
                           onPressed: isSaving ? null : saveRegistration,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
+                            backgroundColor: kPrimary,
                             foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(54),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                           child: isSaving
                               ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                               : const Text('Kaydı Tamamla'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(8, (index) {
-                      final bool isActive = index == 7;
-                      final bool isDone = index < 7;
+                  const SizedBox(height: 20),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(8, (index) {
+                        final bool isActive = index == 7;
+                        final bool isDone = index < 7;
 
-                      return Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                        ),
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isActive
-                              ? primaryBlue
-                              : isDone
-                                  ? const Color(0xFFDBEAFE)
-                                  : const Color(0xFFF3F4F6),
-                          border: Border.all(
-                            color: isActive || isDone
-                                ? primaryBlue
-                                : const Color(0xFFD1D5DB),
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isActive
+                                ? kPrimary
+                                : (isDone
+                                ? kPrimary.withOpacity(0.1)
+                                : Colors.white),
+                            border: Border.all(
+                              color: (isActive || isDone)
+                                  ? kPrimary
+                                  : kBorderColor,
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        child: Center(
-                          child: isDone
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 14,
-                                  color: primaryBlue,
-                                )
-                              : Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: isActive
-                                        ? Colors.white
-                                        : const Color(0xFF9CA3AF),
-                                  ),
-                                ),
-                        ),
-                      );
-                    }),
+                          child: Center(
+                            child: isDone
+                                ? const Icon(
+                              Icons.check,
+                              size: 16,
+                              color: kPrimary,
+                            )
+                                : Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color:
+                                isActive ? Colors.white : kTextHint,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                 ],
               ),

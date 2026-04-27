@@ -39,29 +39,22 @@ class _MainScreenState extends State<MainScreen> {
 
     final List<Widget> pages = widget.isClinician
         ? [
-            const ClinicianHome(),
-            const PatientListScreen(),
-            const PatientStep1Screen(),
-            const ComparisonScreen(),
-            const Center(child: Text('Raporlar')),
-          ]
+      const ClinicianHome(),
+      const PatientListScreen(),
+      const PatientStep1Screen(),
+      const ComparisonScreen(),
+      const Center(child: Text('Raporlar')),
+    ]
         : [
-            const PatientHome(),
-            const ExerciseVideoLibraryScreen(),
-            const Center(child: Text('Gelişim')),
-          ];
+      const PatientHome(),
+      const ExerciseVideoLibraryScreen(),
+      const Center(child: Text('Gelişim')),
+    ];
 
-    // Drawer başlığında gösterilecek isim ve alt başlık
+    // Drawer başlığında gösterilecek isim
     final String drawerName = widget.isClinician
         ? (u?.displayName ?? 'Klinisyen')
         : (u?.fullName ?? 'Kullanıcı');
-
-    final String drawerSubtitle = widget.isClinician
-        ? [
-            (u?.uzmanlikAlani ?? '').trim(),
-            (u?.kurumAdi ?? '').trim(),
-          ].where((e) => e.isNotEmpty).join(' • ')
-        : '';
 
     return Scaffold(
       backgroundColor: kBackground,
@@ -159,7 +152,7 @@ class _MainScreenState extends State<MainScreen> {
                       radius: 32,
                       backgroundColor: Colors.white,
                       child:
-                          Icon(Icons.person, size: 36, color: kTextGrey),
+                      Icon(Icons.person, size: 36, color: kTextGrey),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -170,16 +163,6 @@ class _MainScreenState extends State<MainScreen> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold),
                   ),
-                  if (drawerSubtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      drawerSubtitle,
-                      style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500),
-                    ),
-                  ],
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -218,7 +201,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   ListTile(
                     leading:
-                        const Icon(Icons.settings_outlined, color: kTextGrey),
+                    const Icon(Icons.settings_outlined, color: kTextGrey),
                     title: const Text('Ayarlar',
                         style: TextStyle(
                             color: kTextDark,
@@ -257,7 +240,7 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                         activeColor: primaryColor,
                         contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 16),
+                        const EdgeInsets.symmetric(horizontal: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16)),
                       ),
@@ -266,7 +249,7 @@ class _MainScreenState extends State<MainScreen> {
 
                   ListTile(
                     leading:
-                        const Icon(Icons.help_outline, color: kTextGrey),
+                    const Icon(Icons.help_outline, color: kTextGrey),
                     title: const Text('Yardım ve Destek',
                         style: TextStyle(
                             color: kTextDark,
@@ -325,47 +308,47 @@ class _MainScreenState extends State<MainScreen> {
           selectedFontSize: 11,
           unselectedFontSize: 11,
           selectedLabelStyle:
-              const TextStyle(fontWeight: FontWeight.bold, height: 1.5),
+          const TextStyle(fontWeight: FontWeight.bold, height: 1.5),
           unselectedLabelStyle:
-              const TextStyle(fontWeight: FontWeight.w500, height: 1.5),
+          const TextStyle(fontWeight: FontWeight.w500, height: 1.5),
           elevation: 0,
           items: widget.isClinician
               ? const [
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.home_outlined),
-                      activeIcon: Icon(Icons.home_rounded),
-                      label: 'Ana Sayfa'),
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.people_alt_outlined),
-                      activeIcon: Icon(Icons.people_alt),
-                      label: 'Hastalar'),
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.person_add_outlined),
-                      activeIcon: Icon(Icons.person_add),
-                      label: 'Kayıt'),
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.assignment_outlined),
-                      activeIcon: Icon(Icons.assignment),
-                      label: 'Değerlendir'),
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.bar_chart_outlined),
-                      activeIcon: Icon(Icons.bar_chart),
-                      label: 'Raporlar'),
-                ]
+            BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
+                label: 'Ana Sayfa'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.people_alt_outlined),
+                activeIcon: Icon(Icons.people_alt),
+                label: 'Hastalar'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.person_add_outlined),
+                activeIcon: Icon(Icons.person_add),
+                label: 'Kayıt'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.assignment_outlined),
+                activeIcon: Icon(Icons.assignment),
+                label: 'Değerlendir'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.bar_chart_outlined),
+                activeIcon: Icon(Icons.bar_chart),
+                label: 'Raporlar'),
+          ]
               : const [
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.home_outlined),
-                      activeIcon: Icon(Icons.home_rounded),
-                      label: 'Ana Sayfa'),
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.fitness_center_outlined),
-                      activeIcon: Icon(Icons.fitness_center),
-                      label: 'Egzersiz'),
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.insights_outlined),
-                      activeIcon: Icon(Icons.insights),
-                      label: 'Gelişim'),
-                ],
+            BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
+                label: 'Ana Sayfa'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.fitness_center_outlined),
+                activeIcon: Icon(Icons.fitness_center),
+                label: 'Egzersiz'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.insights_outlined),
+                activeIcon: Icon(Icons.insights),
+                label: 'Gelişim'),
+          ],
         ),
       ),
     );
