@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../core/theme.dart';
 import 'clinician_agenda.dart';
 import 'patient_list_screen.dart';
 import 'exercise_video_library_screen.dart';
@@ -243,7 +242,7 @@ class ClinicianHome extends StatelessWidget {
           const SizedBox(width: 12),
           _QuickActionTile(
             icon: Icons.assignment_outlined,
-            label: 'Değerlendir',
+            label: 'Değerlendirm',
             color: Colors.indigo,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const ComparisonScreen())),

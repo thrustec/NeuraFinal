@@ -53,37 +53,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text.trim();
     final passwordConfirm = _passwordConfirmController.text.trim();
 
-    if (fullName.isEmpty ||
-        email.isEmpty ||
-        password.isEmpty ||
-        passwordConfirm.isEmpty) {
+    if (fullName.isEmpty || email.isEmpty || password.isEmpty || passwordConfirm.isEmpty) {
       _showValidationError('Lütfen tüm alanları doldurun');
       return;
     }
-
     if (!_isValidEmail(email)) {
-      _showValidationError(
-          'Geçerli bir e-posta adresi girin\nÖrnek: ornek@mail.com');
+      _showValidationError('Geçerli bir e-posta adresi girin\nÖrnek: ornek@mail.com');
       return;
     }
-
     if (!_isValidPassword(password)) {
       _showValidationError(
           'Şifre en az 8 karakter olmalı ve\nbüyük harf, küçük harf ile\nrakam veya özel karakter içermelidir');
       return;
     }
-
     if (password != passwordConfirm) {
       _showValidationError('Şifreler uyuşmuyor');
       return;
     }
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
-
     final nameParts = fullName.split(' ');
     final ad = nameParts.first;
-    final soyad =
-    nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    final soyad = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     final success = await auth.register(
       ad: ad,
@@ -107,8 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -120,25 +110,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: Colors.orange.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.warning_amber_rounded,
-                  color: Colors.orange, size: 28),
+              child: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Geçersiz Bilgi',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: kTextDark,
-              ),
-            ),
+            const Text('Geçersiz Bilgi',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kTextDark)),
             const SizedBox(height: 10),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: kTextGrey, fontSize: 13, height: 1.5),
-            ),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: kTextGrey, fontSize: 13, height: 1.5)),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -148,16 +128,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kTextDark,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text(
-                  'Tamam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text('Tamam',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -172,8 +146,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (errorType == 'EMAIL_KAYITLI') {
       title = 'E-posta Kayıtlı';
+      message = 'Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın.';
+    } else if (errorType.contains('KULLANICI_BULUNAMADI')) {
+      title = 'Kayıt Sorunu';
       message =
-      'Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın.';
+      'Hesabınız oluşturuldu fakat veritabanına kaydedilemedi. Lütfen destek ekibiyle iletişime geçin.';
     } else {
       title = 'Bağlantı Hatası';
       message =
@@ -183,8 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -196,25 +172,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: Colors.orange.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.warning_amber_rounded,
-                  color: Colors.orange, size: 28),
+              child: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
             ),
             const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: kTextDark,
-              ),
-            ),
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16, color: kTextDark)),
             const SizedBox(height: 10),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: kTextGrey, fontSize: 13, height: 1.5),
-            ),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: kTextGrey, fontSize: 13, height: 1.5)),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -222,22 +189,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  Provider.of<AuthProvider>(context, listen: false)
-                      .clearError();
+                  Provider.of<AuthProvider>(context, listen: false).clearError();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kTextDark,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text(
-                  'Tamam',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text('Tamam',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -258,20 +218,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: kInputFill,
-      contentPadding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
+          borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
+          borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: kPrimary, width: 1.5),
-      ),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: kPrimary, width: 1.5)),
     );
   }
 
@@ -292,29 +246,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
               color: kPrimary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.arrow_back_ios_new,
-                color: kPrimary, size: 16),
+            child: const Icon(Icons.arrow_back_ios_new, color: kPrimary, size: 16),
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Yeni Hesap',
-          style: TextStyle(
-            color: kTextDark,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        title: const Text('Yeni Hesap',
+            style: TextStyle(color: kTextDark, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               const SizedBox(height: 8),
               Center(
                 child: Container(
@@ -324,31 +269,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     color: kPrimary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(Icons.person_add_outlined,
-                      color: kPrimary, size: 30),
+                  child: const Icon(Icons.person_add_outlined, color: kPrimary, size: 30),
                 ),
               ),
               const SizedBox(height: 12),
               const Center(
-                child: Text(
-                  'Hesap oluşturun',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: kTextDark,
-                  ),
-                ),
+                child: Text('Hasta Kaydı',
+                    style: TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold, color: kTextDark)),
               ),
               const SizedBox(height: 4),
               const Center(
-                child: Text(
-                  'Bilgilerinizi girerek kayıt olun',
-                  style: TextStyle(fontSize: 13, color: kTextGrey),
-                ),
+                child: Text('Bilgilerinizi girerek kayıt olun',
+                    style: TextStyle(fontSize: 13, color: kTextGrey)),
               ),
               const SizedBox(height: 28),
-
-              // Form Card
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -357,72 +292,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4))
                   ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tam Adı
-                    const Text(
-                      'Tam Adınız',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
-                      ),
-                    ),
+                    const Text('Tam Adınız',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _fullNameController,
                       style: const TextStyle(color: kTextDark, fontSize: 14),
                       decoration: _inputDecoration(
-                        hint: 'Ad Soyad',
-                        prefixIcon: Icons.person_outline,
-                      ),
+                          hint: 'Ad Soyad', prefixIcon: Icons.person_outline),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Email
-                    const Text(
-                      'E-posta Adresi',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
-                      ),
-                    ),
+                    const Text('E-posta Adresi',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: kTextDark, fontSize: 14),
                       decoration: _inputDecoration(
-                        hint: 'ornek@email.com',
-                        prefixIcon: Icons.email_outlined,
-                      ),
+                          hint: 'ornek@email.com', prefixIcon: Icons.email_outlined),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Şifre
-                    const Text(
-                      'Şifre',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
-                      ),
-                    ),
+                    const Text('Şifre',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
                     const SizedBox(height: 4),
-                    const Text(
-                      'En az 8 karakter, büyük/küçük harf ve rakam içermeli',
-                      style: TextStyle(fontSize: 11, color: kTextGrey),
-                    ),
+                    const Text('En az 8 karakter, büyük/küçük harf ve rakam içermeli',
+                        style: TextStyle(fontSize: 11, color: kTextGrey)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _passwordController,
@@ -433,29 +339,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         prefixIcon: Icons.lock_outline,
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: kTextGrey,
-                            size: 20,
-                          ),
-                          onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword),
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: kTextGrey,
+                              size: 20),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Şifre Tekrar
-                    const Text(
-                      'Şifre Tekrar',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: kTextDark,
-                      ),
-                    ),
+                    const Text('Şifre Tekrar',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _passwordConfirmController,
@@ -466,84 +363,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         prefixIcon: Icons.lock_outline,
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePasswordConfirm
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: kTextGrey,
-                            size: 20,
-                          ),
+                              _obscurePasswordConfirm
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: kTextGrey,
+                              size: 20),
                           onPressed: () => setState(
-                                  () => _obscurePasswordConfirm =
-                              !_obscurePasswordConfirm),
+                                  () => _obscurePasswordConfirm = !_obscurePasswordConfirm),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // Terms
               RichText(
                 text: const TextSpan(
                   text: 'Devam ederek şunları kabul ediyorsunuz: ',
-                  style: TextStyle(
-                      color: kTextGrey, fontSize: 12, height: 1.5),
+                  style: TextStyle(color: kTextGrey, fontSize: 12, height: 1.5),
                   children: [
                     TextSpan(
-                      text: 'Kullanım Şartları',
-                      style: TextStyle(
-                        color: kPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                        text: 'Kullanım Şartları',
+                        style: TextStyle(
+                            color: kPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
                     TextSpan(text: ' ve '),
                     TextSpan(
-                      text: 'Gizlilik Politikası',
-                      style: TextStyle(
-                        color: kPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                        text: 'Gizlilik Politikası',
+                        style: TextStyle(
+                            color: kPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              CustomButton(
-                text: 'Kayıt Ol',
-                isLoading: auth.isLoading,
-                onPressed: _register,
-              ),
-
+              CustomButton(text: 'Kayıt Ol', isLoading: auth.isLoading, onPressed: _register),
               const SizedBox(height: 16),
-
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: RichText(
                     text: const TextSpan(
                       text: 'Zaten hesabın var mı? ',
-                      style: TextStyle(color: kTextGrey, fontSize: 13),
+                      style: TextStyle(color: kTextGrey, fontSize: 14),
                       children: [
                         TextSpan(
-                          text: 'Giriş Yap',
-                          style: TextStyle(
-                            color: kPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
+                            text: 'Giriş Yap',
+                            style: TextStyle(color: kPrimary, fontWeight: FontWeight.bold))
                       ],
                     ),
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
             ],
           ),

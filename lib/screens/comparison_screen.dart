@@ -303,46 +303,46 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
 
             if (_searchQuery.trim().isNotEmpty) ...[
               const SizedBox(height: 10),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 220),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+              Container(
+                constraints: const BoxConstraints(maxHeight: 220),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: _isSearching
+                    ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator(color: kPrimary)),
+                )
+                    : _filteredPatients.isNotEmpty
+                    ? ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _filteredPatients.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  itemBuilder: (context, index) {
+                    final p = _filteredPatients[index];
+                    return ListTile(
+                      title: Text(p.tamAd, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      subtitle: Text(p.tani, style: const TextStyle(fontSize: 12)),
+                      onTap: () => _selectPatient(p),
+                    );
+                  },
+                )
+                    : Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    _searchError ?? 'Sonuç bulunamadı.',
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 13),
                   ),
-                  child: _isSearching
-                      ? const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: CircularProgressIndicator(color: kPrimary)),
-                        )
-                      : _filteredPatients.isNotEmpty
-                          ? ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: _filteredPatients.length,
-                              separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                              itemBuilder: (context, index) {
-                                final p = _filteredPatients[index];
-                                return ListTile(
-                                title: Text(p.tamAd, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                subtitle: Text(p.tani, style: const TextStyle(fontSize: 12)),
-                                onTap: () => _selectPatient(p),
-                                );
-                              },
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Text(
-                                _searchError ?? 'Sonuç bulunamadı.',
-                                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                              ),
-                            ),
+                ),
               ),
             ],
           ],

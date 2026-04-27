@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import '../models/patient.dart';
 import '../models/comparison_result.dart';
-import '../core/app_theme.dart';
+
 
 // NeuraApp Design System — Klinisyen Renk Paleti
 const Color kBackground = Color(0xFFF8F9FC);
