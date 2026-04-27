@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/evaluation_provider.dart';
+import '../services/evaluation_service.dart';
 import '../core/theme.dart';
 import 'clinician_agenda.dart';
 import 'patient_list_screen.dart';
@@ -8,6 +10,7 @@ import 'exercise_video_library_screen.dart';
 import 'comparison_screen.dart';
 import 'patient_step_1_screen.dart';
 import 'telerehab_clinician_screen.dart';
+import 'clinical_evaluation/evaluation_list_screen.dart';
 
 class ClinicianHome extends StatelessWidget {
   const ClinicianHome({super.key});
@@ -179,7 +182,44 @@ class ClinicianHome extends StatelessWidget {
                     icon: Icons.assignment_outlined,
                     label: 'Değerlendirme',
                     color: Colors.indigo,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ComparisonScreen())),
+                    onTap: () async {
+                      final email = auth.user?.eposta ?? '';
+                      final clinicianId = await EvaluationService().getClinicianIdByEmail(email);
+
+                      if (!context.mounted) return;
+
+                      if (clinicianId == null || clinicianId == 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Klinisyen ID bulunamadı. Lütfen geçerli bir klinisyen hesabıyla giriş yapın.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChangeNotifierProvider(
+                            create: (_) => EvaluationProvider(doctorId: clinicianId),
+                            child: const EvaluationListScreen(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _MenuCard(
+                    icon: Icons.compare_arrows_outlined,
+                    label: 'Karşılaştırma',
+                    color: Colors.blueGrey,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ComparisonScreen(),
+                      ),
+                    ),
                   ),
                   _MenuCard(
                     icon: Icons.bar_chart_outlined,
