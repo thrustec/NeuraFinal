@@ -140,14 +140,6 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_selectedPatient == null) ...[
-                    if (_filteredPatients.isNotEmpty) ...[
-                      const Text(
-                        "HASTA LİSTESİ",
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextGrey, letterSpacing: 0.8),
-                      ),
-                      const SizedBox(height: 10),
-                      ..._filteredPatients.map((p) => _buildPatientCard(p)),
-                    ] else
                       const SizedBox(height: 10),
                   ] else ...[
                     const Text(
