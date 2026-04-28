@@ -135,7 +135,7 @@ class _MainScreenState extends State<MainScreen> {
                 color: primaryColor,
                 boxShadow: [
                   BoxShadow(
-                      color: primaryColor.withOpacity(0.3),
+                      color: primaryColor.withValues(alpha:0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 4))
                 ],
@@ -146,7 +146,7 @@ class _MainScreenState extends State<MainScreen> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha:0.2),
                         shape: BoxShape.circle),
                     child: const CircleAvatar(
                       radius: 32,
@@ -168,7 +168,7 @@ class _MainScreenState extends State<MainScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha:0.2),
                         borderRadius: BorderRadius.circular(12)),
                     child: Text(
                       widget.isClinician
@@ -269,7 +269,7 @@ class _MainScreenState extends State<MainScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha:0.1),
                       borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.logout,
                       color: Colors.red, size: 20),
@@ -293,7 +293,7 @@ class _MainScreenState extends State<MainScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -4))
           ],
@@ -329,7 +329,7 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(
                 icon: Icon(Icons.assignment_outlined),
                 activeIcon: Icon(Icons.assignment),
-                label: 'Değerlendir'),
+                label: 'Karşılaştırma'),
             BottomNavigationBarItem(
                 icon: Icon(Icons.bar_chart_outlined),
                 activeIcon: Icon(Icons.bar_chart),
