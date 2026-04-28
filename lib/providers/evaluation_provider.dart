@@ -4,7 +4,7 @@ import '../models/evaluation_model.dart';
 import '../services/evaluation_service.dart';
 
 class EvaluationProvider extends ChangeNotifier {
-  EvaluationProvider({required int doctorId}) : _currentDoctorId = doctorId;
+  EvaluationProvider({int? doctorId}) : _currentDoctorId = doctorId ?? 0;
 
   final EvaluationService _service = EvaluationService();
 
@@ -98,7 +98,9 @@ class EvaluationProvider extends ChangeNotifier {
 
       final items = filterHastaId != null
           ? await _service.getByPatient(filterHastaId!)
-          : await _service.getAll(klinisyenId: _currentDoctorId);
+          : await _service.getAll(
+              klinisyenId: _currentDoctorId > 0 ? _currentDoctorId : null,
+            );
 
       _store
         ..clear()
