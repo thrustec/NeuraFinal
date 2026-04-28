@@ -7,6 +7,7 @@ import 'exercise_video_library_screen.dart';
 import 'comparison_screen.dart';
 import 'patient_step_1_screen.dart';
 import 'telerehab_clinician_screen.dart';
+import 'clinical_evaluation/evaluation_list_screen.dart';
 import '../services/patient_service.dart';
 
 class ClinicianHome extends StatefulWidget {
@@ -280,6 +281,18 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           const SizedBox(width: 12),
           _QuickActionTile(
             icon: Icons.assignment_outlined,
+            label: 'Klinik Değerlendirme',
+            color: _primaryTeal,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EvaluationListScreen(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _QuickActionTile(
+            icon: Icons.compare_arrows_outlined,
             label: 'Karşılaştırma',
             color: Colors.indigo,
             onTap: () => Navigator.push(context,

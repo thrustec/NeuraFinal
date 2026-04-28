@@ -355,19 +355,19 @@ class EvaluationService {
         '${ApiConstants.kullanicilar}'
             '?select=kullaniciId,rolId,eposta'
             '&eposta=eq.$encodedEmail'
-            '&rolId=eq.1'
+            '&rolId=eq.2'
             '&limit=1',
       );
 
+      if (data is! List || data.isEmpty) {
+        return null;
+      }
 
-        final user = data.first as Map<String, dynamic>;
-        final idValue = user['kullaniciId'];
+      final user = data.first as Map<String, dynamic>;
+      final idValue = user['kullaniciId'];
 
-        if (idValue is int) return idValue;
-        return int.tryParse(idValue?.toString() ?? '');
-
-
-
+      if (idValue is int) return idValue;
+      return int.tryParse(idValue?.toString() ?? '');
     } catch (e) {
       debugPrint('EvaluationService.getClinicianIdByEmail error: $e');
       return null;
@@ -386,21 +386,24 @@ class EvaluationService {
 
   Future<List<Evaluation>> getAll({int? klinisyenId}) async {
     try {
-      var path =
-          '${ApiConstants.degerlendirmeler}'
-          '?select=$_clinicalEvaluationSelect'
-          '&order=degerlendirmeTarihi.desc';
-
-      if (klinisyenId != null) {
-        path += '&klinisyenId=eq.$klinisyenId';
+      if (klinisyenId == null || klinisyenId <= 0) {
+        debugPrint(
+          'EvaluationService.getAll blocked: valid klinisyenId is required. Value: $klinisyenId',
+        );
+        return [];
       }
+
+      final path = '${ApiConstants.degerlendirmeler}'
+          '?select=$_clinicalEvaluationSelect'
+          '&klinisyenId=eq.$klinisyenId'
+          '&order=degerlendirmeTarihi.desc';
 
       final data = await _client.get(path);
 
       return data
           .map<Evaluation>(
             (item) => Evaluation.fromJson(item as Map<String, dynamic>),
-      )
+          )
           .toList();
     } catch (e) {
       debugPrint('EvaluationService.getAll error: $e');

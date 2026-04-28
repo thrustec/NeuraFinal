@@ -2,6 +2,7 @@
 // DOSYA 1: lib/views/clinical_evaluation/evaluation_list_screen.dart
 // ============================================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -38,6 +39,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _showListLoading = false;
+  Timer? _listLoadingTimer;
 
   // Karşılaştırma seçim modu
   bool _compareMode = false;
@@ -45,6 +48,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
   @override
   void dispose() {
+    _listLoadingTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -52,13 +56,26 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = context.read<EvaluationProvider>();
+
+      setState(() => _showListLoading = true);
+      _listLoadingTimer?.cancel();
+      _listLoadingTimer = Timer(const Duration(seconds: 5), () {
+        if (!mounted) return;
+        setState(() => _showListLoading = false);
+      });
+
       if (widget.hastaId != null) {
-        provider.loadEvaluationsByPatient(widget.hastaId!);
+        await provider.loadEvaluationsByPatient(widget.hastaId!);
       } else {
         provider.clearFilter();
-        provider.loadEvaluations();
+        await provider.loadEvaluations();
+      }
+
+      _listLoadingTimer?.cancel();
+      if (mounted) {
+        setState(() => _showListLoading = false);
       }
     });
   }
@@ -998,13 +1015,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     );
   }
 
-  Widget _loadingList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: 4,
-      itemBuilder: (_, __) => const _EvaluationSkeletonCard(),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1020,16 +1030,18 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
             return hastaAdi.contains(query);
           }).toList();
 
-          if (provider.isListLoading && provider.evaluations.isEmpty) {
-            return _loadingList();
-          }
-
           if (provider.evaluations.isEmpty) {
             return Column(
               children: [
                 _topHeader(),
                 _searchBar(),
-                Expanded(child: _emptyState()),
+                Expanded(
+                  child: provider.isListLoading && _showListLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: _primary),
+                        )
+                      : _emptyState(),
+                ),
               ],
             );
           }
@@ -1042,43 +1054,42 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               Expanded(
                 child: filteredEvaluations.isEmpty
                     ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(
-                          Icons.search_off_rounded,
-                          color: _textLight,
-                          size: 42,
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Aramaya uygun değerlendirme bulunamadı.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _textMid,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                        child: Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.search_off_rounded,
+                                color: _textLight,
+                                size: 42,
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'Aramaya uygun değerlendirme bulunamadı.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _textMid,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                )
+                      )
                     : RefreshIndicator(
-                  color: _primary,
-                  onRefresh: provider.refresh,
-                  child: ListView.builder(
-                    padding:
-                    const EdgeInsets.fromLTRB(20, 20, 20, 96),
-                    itemCount: filteredEvaluations.length,
-                    itemBuilder: (_, i) {
-                      final ev = filteredEvaluations[i];
-                      return _card(provider, ev);
-                    },
-                  ),
-                ),
+                        color: _primary,
+                        onRefresh: provider.refresh,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
+                          itemCount: filteredEvaluations.length,
+                          itemBuilder: (_, i) {
+                            final ev = filteredEvaluations[i];
+                            return _card(provider, ev);
+                          },
+                        ),
+                      ),
               ),
             ],
           );
@@ -1087,39 +1098,22 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       floatingActionButton: _compareMode
           ? null
           : FloatingActionButton.extended(
-        onPressed: () => _openForm(),
-        backgroundColor: _primary,
-        elevation: 0,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Yeni Değerlendirme',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 15,
-          ),
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-      ),
-    );
-  }
-}
-
-class _EvaluationSkeletonCard extends StatelessWidget {
-  const _EvaluationSkeletonCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 178,
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
+              onPressed: () => _openForm(),
+              backgroundColor: _primary,
+              elevation: 0,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Yeni Değerlendirme',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
     );
   }
 }
