@@ -229,7 +229,7 @@ class ClinicianHome extends StatelessWidget {
           const SizedBox(width: 12),
           _QuickActionTile(
             icon: Icons.assignment_outlined,
-            label: 'Değerlendirm',
+            label: 'Karşılaştırma',
             color: Colors.indigo,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const ComparisonScreen())),
