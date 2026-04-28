@@ -1,7 +1,5 @@
 // Sıla Özer
 // lib/views/comparison_screen.dart
-// API bağlantısı: EvaluationService → Supabase REST
-// UI: Geri tuşu ve navigasyon akışı güncellendi
 
 import 'dart:async';
 import 'result_screen.dart';
@@ -101,7 +99,8 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
       _isLoadingEvaluations = true;
     });
     try {
-      final evaluations = await _evaluationService.getEvaluationsForPatient(patient.hastaId);
+      final evaluations =
+      await _evaluationService.getEvaluationsForPatient(patient.hastaId);
       if (!mounted) return;
       setState(() {
         _patientEvaluations = evaluations;
@@ -117,6 +116,32 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
         _evaluationError = 'Değerlendirmeler yüklenemedi. Lütfen tekrar deneyin.';
       });
     }
+  }
+
+  // ── GERİ TUŞU MANTIĞI ──────────────────────────────────────────────────
+  // 3 durum var:
+  //   1. Hasta seçili → hasta seçimini temizle (arama ekranına dön)
+  //   2. Hasta seçili değil + stack'te önceki sayfa var → pop yap
+  //   3. Hasta seçili değil + stack'in en altındayız (alt bar) → pop yapma, beyaz ekran çıkar
+  void _handleBack() {
+    if (_selectedPatient != null) {
+      // Durum 1: Hasta seçimini temizle
+      setState(() {
+        _selectedPatient = null;
+        _selectedStartDate = null;
+        _selectedEndDate = null;
+        _filteredPatients = [];
+        _patientEvaluations = [];
+        _evaluationError = null;
+        _searchQuery = "";
+        _searchController.clear();
+      });
+    } else if (Navigator.canPop(context)) {
+      // Durum 2: Önceki sayfa varsa geri git (hızlı erişim kısayolu vb.)
+      Navigator.pop(context);
+    }
+    // Durum 3: Alt bardan açıldıysa ve hasta seçili değilse → hiçbir şey yapma
+    // canPop false döner, pop çağrılmaz, beyaz ekran olmaz
   }
 
   @override
@@ -140,11 +165,15 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_selectedPatient == null) ...[
-                      const SizedBox(height: 10),
+                    const SizedBox(height: 10),
                   ] else ...[
                     const Text(
                       "SEÇİLİ HASTA",
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextGrey, letterSpacing: 0.8),
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: kTextGrey,
+                          letterSpacing: 0.8),
                     ),
                     const SizedBox(height: 10),
                     _buildPatientCard(_selectedPatient!),
@@ -153,38 +182,57 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                   const SizedBox(height: 24),
                   const Text(
                     "KARŞILAŞTIRILACAK DEĞERLENDİRMELER",
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextDark, letterSpacing: 0.8),
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: kTextDark,
+                        letterSpacing: 0.8),
                   ),
                   const SizedBox(height: 12),
 
                   if (_selectedPatient != null && _isLoadingEvaluations) ...[
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator(color: kPrimary)),
+                      child: Center(
+                          child: CircularProgressIndicator(color: kPrimary)),
                     ),
-                  ] else if (_selectedPatient != null && _evaluationError != null) ...[
+                  ] else if (_selectedPatient != null &&
+                      _evaluationError != null) ...[
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(_evaluationError!, style: const TextStyle(color: Colors.redAccent)),
+                      child: Text(_evaluationError!,
+                          style:
+                          const TextStyle(color: Colors.redAccent)),
                     ),
-                  ] else if (_selectedPatient != null && _patientEvaluations.isNotEmpty) ...[
+                  ] else if (_selectedPatient != null &&
+                      _patientEvaluations.isNotEmpty) ...[
                     _buildDropdown(
                       label: "BAŞLANGIÇ DEĞERLENDİRMESİ",
                       value: _selectedStartDate,
-                      onChanged: (val) => setState(() => _selectedStartDate = val),
+                      onChanged: (val) =>
+                          setState(() => _selectedStartDate = val),
                     ),
                     const SizedBox(height: 16),
                     _buildDropdown(
                       label: "BİTİŞ DEĞERLENDİRMESİ",
                       value: _selectedEndDate,
-                      onChanged: (val) => setState(() => _selectedEndDate = val),
+                      onChanged: (val) =>
+                          setState(() => _selectedEndDate = val),
                     ),
                   ] else ...[
-                    _buildPassiveBox("BAŞLANGIÇ DEĞERLENDİRMESİ",
-                        emptyText: _selectedPatient != null ? "Değerlendirme bulunamadı." : "Önce bir hasta seçin..."),
+                    _buildPassiveBox(
+                      "BAŞLANGIÇ DEĞERLENDİRMESİ",
+                      emptyText: _selectedPatient != null
+                          ? "Değerlendirme bulunamadı."
+                          : "Önce bir hasta seçin...",
+                    ),
                     const SizedBox(height: 16),
-                    _buildPassiveBox("BİTİŞ DEĞERLENDİRMESİ",
-                        emptyText: _selectedPatient != null ? "Değerlendirme bulunamadı." : "Önce bir hasta seçin..."),
+                    _buildPassiveBox(
+                      "BİTİŞ DEĞERLENDİRMESİ",
+                      emptyText: _selectedPatient != null
+                          ? "Değerlendirme bulunamadı."
+                          : "Önce bir hasta seçin...",
+                    ),
                   ],
 
                   const SizedBox(height: 24),
@@ -200,6 +248,13 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
   }
 
   Widget _buildHeader() {
+    // Geri okunu göster/gizle:
+    //   - Hasta seçiliyse → her zaman göster (hasta seçimini temizler)
+    //   - Hasta seçili değil + pop yapılabiliyorsa → göster (hızlı erişim vb.)
+    //   - Hasta seçili değil + pop yapılamıyorsa → gizle (alt bar, gidecek yer yok)
+    final bool showBack =
+        _selectedPatient != null || Navigator.canPop(context);
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -212,43 +267,52 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
         color: Colors.white,
         border: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
         children: [
           Row(
             children: [
-              // --- DİNAMİK GERİ TUŞU ---
-              GestureDetector(
-                onTap: () {
-                  if (_selectedPatient != null) {
-                    setState(() {
-                      _selectedPatient = null;
-                      _selectedStartDate = null;
-                      _selectedEndDate = null;
-                      _filteredPatients = [];
-                      _patientEvaluations = [];
-                    });
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-                child: Container(
+              // Geri butonu — duruma göre gösterilir
+              if (showBack)
+                GestureDetector(
+                  onTap: _handleBack,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: kPrimary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new,
+                        color: kPrimary, size: 18),
+                  ),
+                )
+              else
+              // Alt bardan açıldığında geri butonu yerine ikon göster
+                Container(
                   width: 36,
                   height: 36,
+                  margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
                     color: kPrimary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.arrow_back_ios_new, color: kPrimary, size: 18),
+                  child: const Icon(Icons.compare_arrows,
+                      color: kPrimary, size: 20),
                 ),
-              ),
-              const SizedBox(width: 12),
               const Expanded(
                 child: Text(
                   "Değerlendirme Karşılaştırma Raporu",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextDark),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: kTextDark),
                 ),
               ),
               if (_selectedPatient != null)
@@ -256,6 +320,7 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
             ],
           ),
 
+          // Arama kutusu — yalnızca hasta seçilmemişken görünür
           if (_selectedPatient == null) ...[
             const SizedBox(height: 16),
             Row(
@@ -265,17 +330,28 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     onSubmitted: (_) => _handleSearch(),
-                    style: const TextStyle(fontSize: 14, color: kTextDark),
+                    style:
+                    const TextStyle(fontSize: 14, color: kTextDark),
                     decoration: InputDecoration(
                       hintText: "Kimlik, ad veya tanı girin...",
-                      hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
-                      prefixIcon: const Icon(Icons.search, color: kTextHint, size: 20),
+                      hintStyle:
+                      const TextStyle(color: kTextHint, fontSize: 14),
+                      prefixIcon: const Icon(Icons.search,
+                          color: kTextHint, size: 20),
                       filled: true,
                       fillColor: kInputFill,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kPrimary, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: kPrimary, width: 1.5)),
                     ),
                   ),
                 ),
@@ -286,13 +362,16 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                     backgroundColor: kPrimary,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(72, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Bul", style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text("Bul",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
 
+            // Arama sonuç listesi
             if (_searchQuery.trim().isNotEmpty) ...[
               const SizedBox(height: 10),
               Container(
@@ -300,7 +379,8 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border:
+                  Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.05),
@@ -312,18 +392,28 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                 child: _isSearching
                     ? const Padding(
                   padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator(color: kPrimary)),
+                  child: Center(
+                      child: CircularProgressIndicator(
+                          color: kPrimary)),
                 )
                     : _filteredPatients.isNotEmpty
                     ? ListView.separated(
                   shrinkWrap: true,
                   itemCount: _filteredPatients.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  separatorBuilder: (_, __) => const Divider(
+                      height: 1,
+                      color: Color(0xFFE2E8F0)),
                   itemBuilder: (context, index) {
                     final p = _filteredPatients[index];
                     return ListTile(
-                      title: Text(p.tamAd, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                      subtitle: Text(p.tani, style: const TextStyle(fontSize: 12)),
+                      title: Text(p.tamAd,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight:
+                              FontWeight.w600)),
+                      subtitle: Text(p.tani,
+                          style: const TextStyle(
+                              fontSize: 12)),
                       onTap: () => _selectPatient(p),
                     );
                   },
@@ -332,7 +422,9 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     _searchError ?? 'Sonuç bulunamadı.',
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                    style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 13),
                   ),
                 ),
               ),
@@ -344,74 +436,127 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
   }
 
   Widget _buildPatientCard(Patient patient) {
-    final bool isSelected = _selectedPatient?.hastaId == patient.hastaId;
+    final bool isSelected =
+        _selectedPatient?.hastaId == patient.hastaId;
     return GestureDetector(
       onTap: () => _selectPatient(patient),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? kPrimary.withValues(alpha: 0.05) : Colors.white,
+          color: isSelected
+              ? kPrimary.withValues(alpha: 0.05)
+              : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? kPrimary : const Color(0xFFE2E8F0), width: isSelected ? 1.5 : 1),
+          border: Border.all(
+              color: isSelected ? kPrimary : const Color(0xFFE2E8F0),
+              width: isSelected ? 1.5 : 1),
         ),
         child: Row(
           children: [
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(color: kPrimary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.person_outline, size: 26, color: kPrimary),
+              decoration: BoxDecoration(
+                  color: kPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.person_outline,
+                  size: 26, color: kPrimary),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(patient.tamAd.isNotEmpty ? patient.tamAd : 'Hasta #${patient.hastaId}',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kTextDark)),
-                  Text(patient.tani, style: const TextStyle(color: kTextGrey, fontSize: 13)),
+                  Text(
+                    patient.tamAd.isNotEmpty
+                        ? patient.tamAd
+                        : 'Hasta #${patient.hastaId}',
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: kTextDark),
+                  ),
+                  Text(patient.tani,
+                      style: const TextStyle(
+                          color: kTextGrey, fontSize: 13)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF16A34A), shape: BoxShape.circle)),
+                      Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                              color: Color(0xFF16A34A),
+                              shape: BoxShape.circle)),
                       const SizedBox(width: 5),
-                      Text(patient.durum, style: const TextStyle(color: Color(0xFF16A34A), fontSize: 12, fontWeight: FontWeight.w500)),
+                      Text(patient.durum,
+                          style: const TextStyle(
+                              color: Color(0xFF16A34A),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: isSelected ? kPrimary : kTextHint),
+            Icon(Icons.chevron_right,
+                color: isSelected ? kPrimary : kTextHint),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDropdown({required String label, required EvaluationDate? value, required Function(EvaluationDate?) onChanged}) {
+  Widget _buildDropdown({
+    required String label,
+    required EvaluationDate? value,
+    required Function(EvaluationDate?) onChanged,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextGrey, letterSpacing: 0.8)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: kTextGrey,
+                letterSpacing: 0.8)),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             color: kInputFill,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: value != null ? kPrimary : const Color(0xFFE2E8F0), width: value != null ? 1.5 : 1),
+            border: Border.all(
+                color: value != null
+                    ? kPrimary
+                    : const Color(0xFFE2E8F0),
+                width: value != null ? 1.5 : 1),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButtonFormField<EvaluationDate>(
               initialValue: value,
-              hint: const Text("Seçiniz...", style: TextStyle(color: kTextHint, fontSize: 14)),
+              hint: const Text("Seçiniz...",
+                  style:
+                  TextStyle(color: kTextHint, fontSize: 14)),
               isExpanded: true,
-              decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4)),
-              icon: const Icon(Icons.keyboard_arrow_down, color: kPrimary),
-              items: _patientEvaluations.map((eval) => DropdownMenuItem<EvaluationDate>(
+              decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4)),
+              icon: const Icon(Icons.keyboard_arrow_down,
+                  color: kPrimary),
+              items: _patientEvaluations
+                  .map((eval) => DropdownMenuItem<EvaluationDate>(
                 value: eval,
-                child: Text("${eval.tarih} — ${eval.baslik}", overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: kTextDark)),
-              )).toList(),
+                child: Text(
+                  "${eval.tarih} — ${eval.baslik}",
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 14, color: kTextDark),
+                ),
+              ))
+                  .toList(),
               onChanged: (val) => onChanged(val),
             ),
           ),
@@ -420,49 +565,107 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
     );
   }
 
-  Widget _buildPassiveBox(String label, {String emptyText = "Önce bir hasta seçin..."}) {
+  Widget _buildPassiveBox(String label,
+      {String emptyText = "Önce bir hasta seçin..."}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextGrey, letterSpacing: 0.8)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: kTextGrey,
+                letterSpacing: 0.8)),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          decoration: BoxDecoration(color: kInputFill, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
-          child: Text(emptyText, style: const TextStyle(color: kTextHint, fontSize: 14)),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+              color: kInputFill,
+              borderRadius: BorderRadius.circular(14),
+              border:
+              Border.all(color: const Color(0xFFE2E8F0))),
+          child: Text(emptyText,
+              style:
+              const TextStyle(color: kTextHint, fontSize: 14)),
         ),
       ],
     );
   }
 
   Widget _buildBottomAction() {
-    final bool allSelected = _selectedPatient != null && _selectedStartDate != null && _selectedEndDate != null;
-    final bool ayniSecim = _selectedStartDate != null && _selectedEndDate != null && _selectedStartDate!.degerlendirmeId == _selectedEndDate!.degerlendirmeId;
+    final bool allSelected = _selectedPatient != null &&
+        _selectedStartDate != null &&
+        _selectedEndDate != null;
+    final bool ayniSecim = _selectedStartDate != null &&
+        _selectedEndDate != null &&
+        _selectedStartDate!.degerlendirmeId ==
+            _selectedEndDate!.degerlendirmeId;
 
     if (allSelected && !ayniSecim) {
       return SizedBox(
         width: double.infinity,
         height: 52,
         child: ElevatedButton.icon(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ResultsScreen(patient: _selectedPatient!, startDate: _selectedStartDate!, endDate: _selectedEndDate!))),
-          style: ElevatedButton.styleFrom(backgroundColor: kPrimary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResultsScreen(
+                patient: _selectedPatient!,
+                startDate: _selectedStartDate!,
+                endDate: _selectedEndDate!,
+              ),
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: kPrimary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14))),
           icon: const Icon(Icons.bar_chart_rounded, size: 20),
-          label: const Text("Analizi Görüntüle", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          label: const Text("Analizi Görüntüle",
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 15)),
         ),
       );
     } else if (ayniSecim) {
-      return _buildInfoBox("Karşılaştırma için iki farklı değerlendirme tarihi seçmelisiniz.", const Color(0xFFD97706), const Color(0xFFFEF3C7), Icons.warning_amber_rounded);
+      return _buildInfoBox(
+        "Karşılaştırma için iki farklı değerlendirme tarihi seçmelisiniz.",
+        const Color(0xFFD97706),
+        const Color(0xFFFEF3C7),
+        Icons.warning_amber_rounded,
+      );
     } else {
-      return _buildInfoBox("Analize başlamak için bir hasta ve iki farklı tarih seçmelisiniz.", kPrimary, kPrimary.withValues(alpha: 0.07), Icons.info_outline_rounded);
+      return _buildInfoBox(
+        "Analize başlamak için bir hasta ve iki farklı tarih seçmelisiniz.",
+        kPrimary,
+        kPrimary.withValues(alpha: 0.07),
+        Icons.info_outline_rounded,
+      );
     }
   }
 
-  Widget _buildInfoBox(String text, Color color, Color bgColor, IconData icon) {
+  Widget _buildInfoBox(
+      String text, Color color, Color bgColor, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withValues(alpha:0.2))),
-      child: Row(children: [Icon(icon, color: color, size: 20), const SizedBox(width: 12), Expanded(child: Text(text, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w500)))]),
+      decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.2))),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(text,
+                  style: TextStyle(
+                      color: color,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500))),
+        ],
+      ),
     );
   }
 }
