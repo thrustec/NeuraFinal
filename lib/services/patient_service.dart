@@ -34,14 +34,14 @@ class PatientService {
   /// Tüm hastaları getirir (lookup tablolarıyla birlikte)
   static Future<List<Patient>> getHastalar({String? aramaMetni}) async {
     try {
-      final detailedPatients = await _fetchPatientsDetailed();
-      return _filterPatients(detailedPatients, aramaMetni);
-    } catch (e) {
-      // Bazı ortamlarda lookup/degerlendirmeler embedded select ilişkileri hata verebiliyor.
-      // Hasta seçim ekranının boş kalmaması için daha basit select ile tekrar deniyoruz.
-      debugPrint('PatientService.getHastalar detailed fetch failed: $e');
+      // Hasta seçimi için önce hızlı ve hafif sorguyu kullanıyoruz.
+      // Detaylı join sorgusu bazı durumlarda timeout oluşturduğu için fallback olarak kalmalı.
       final basicPatients = await _fetchPatientsBasic();
       return _filterPatients(basicPatients, aramaMetni);
+    } catch (e) {
+      debugPrint('PatientService.getHastalar basic fetch failed: $e');
+      final detailedPatients = await _fetchPatientsDetailed();
+      return _filterPatients(detailedPatients, aramaMetni);
     }
   }
 

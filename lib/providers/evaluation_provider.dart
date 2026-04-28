@@ -12,10 +12,10 @@ class EvaluationProvider extends ChangeNotifier {
   int get currentDoctorId => _currentDoctorId;
 
   void setDoctorId(int doctorId) {
-    if (_currentDoctorId == doctorId) return;
+    if (doctorId <= 0 || _currentDoctorId == doctorId) return;
     _currentDoctorId = doctorId;
-    clearSelection();
-    clearFilter();
+    selected = null;
+    filterHastaId = null;
     notifyListeners();
   }
 
@@ -96,11 +96,18 @@ class EvaluationProvider extends ChangeNotifier {
       listError = null;
       notifyListeners();
 
+      if (filterHastaId == null && _currentDoctorId <= 0) {
+        _store.clear();
+        listStatus = LoadStatus.success;
+        listError = 'Klinisyen kullanıcı ID bulunamadı.';
+        debugPrint('EvaluationProvider.loadEvaluations blocked: doctorId=$_currentDoctorId');
+        notifyListeners();
+        return;
+      }
+
       final items = filterHastaId != null
           ? await _service.getByPatient(filterHastaId!)
-          : await _service.getAll(
-              klinisyenId: _currentDoctorId > 0 ? _currentDoctorId : null,
-            );
+          : await _service.getAll(klinisyenId: _currentDoctorId);
 
       _store
         ..clear()
