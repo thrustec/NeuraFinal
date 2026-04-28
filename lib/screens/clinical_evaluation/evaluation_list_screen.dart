@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/patient.dart' as patient_model;
+import '../../providers/auth_provider.dart';
 import '../../providers/evaluation_provider.dart';
 import '../result_screen.dart';
 import 'evaluation_form_screen.dart';
@@ -57,27 +58,58 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final provider = context.read<EvaluationProvider>();
-
-      setState(() => _showListLoading = true);
-      _listLoadingTimer?.cancel();
-      _listLoadingTimer = Timer(const Duration(seconds: 5), () {
-        if (!mounted) return;
-        setState(() => _showListLoading = false);
-      });
-
-      if (widget.hastaId != null) {
-        await provider.loadEvaluationsByPatient(widget.hastaId!);
-      } else {
-        provider.clearFilter();
-        await provider.loadEvaluations();
-      }
-
-      _listLoadingTimer?.cancel();
-      if (mounted) {
-        setState(() => _showListLoading = false);
-      }
+      await _loadInitialEvaluations();
     });
+  }
+
+  Future<void> _loadInitialEvaluations() async {
+    if (!mounted) return;
+
+    final provider = context.read<EvaluationProvider>();
+    final auth = context.read<AuthProvider>();
+
+    int doctorId = provider.currentDoctorId;
+
+    if (doctorId <= 0) {
+      doctorId = int.tryParse(auth.user?.id ?? '') ?? 0;
+    }
+
+    if (doctorId <= 0 && (auth.user?.eposta ?? '').trim().isNotEmpty) {
+      doctorId = await EvaluationService().getClinicianIdByEmail(
+            auth.user!.eposta,
+          ) ??
+          0;
+    }
+
+    if (doctorId > 0) {
+      provider.setDoctorId(doctorId);
+      debugPrint(
+        'EvaluationListScreen initial doctorId resolved: $doctorId, roleId: ${auth.user?.rolId}, rolAdi: ${auth.user?.rolAdi}',
+      );
+    } else {
+      debugPrint(
+        'EvaluationListScreen initial doctorId could not be resolved. provider=${provider.currentDoctorId}, auth.user.id=${auth.user?.id}, email=${auth.user?.eposta}',
+      );
+    }
+
+    setState(() => _showListLoading = true);
+    _listLoadingTimer?.cancel();
+    _listLoadingTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      setState(() => _showListLoading = false);
+    });
+
+    if (widget.hastaId != null) {
+      await provider.loadEvaluationsByPatient(widget.hastaId!);
+    } else {
+      provider.clearFilter();
+      await provider.loadEvaluations();
+    }
+
+    _listLoadingTimer?.cancel();
+    if (mounted) {
+      setState(() => _showListLoading = false);
+    }
   }
 
   void _toggleCompareMode() {
@@ -319,11 +351,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       ),
     );
 
-    if (widget.hastaId != null) {
-      await provider.loadEvaluationsByPatient(widget.hastaId!);
-    } else {
-      await provider.loadEvaluations();
-    }
+    await _loadInitialEvaluations();
   }
 
   Future<void> _deleteEvaluation(int id) async {
@@ -360,11 +388,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     if (!ok) return;
 
     await provider.delete(id);
-    if (widget.hastaId != null) {
-      await provider.loadEvaluationsByPatient(widget.hastaId!);
-    } else {
-      await provider.loadEvaluations();
-    }
+    await _loadInitialEvaluations();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
