@@ -77,73 +77,72 @@ class _PatientListScreenState extends State<PatientListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 38, height: 38,
-                  decoration: BoxDecoration(
-                    color: kPrimary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.people_alt_outlined,
-                      color: kPrimary, size: 20),
-                ),
-                const SizedBox(width: 10),
-                const Text('Hasta Listesi',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B))),
-              ]),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _aramaCtrl,
-                onChanged: _aramaYap,
-                decoration: InputDecoration(
-                  hintText: 'İsim veya hasta ID ile ara...',
-                  hintStyle: const TextStyle(
-                      color: Color(0xFF94A3B8), fontSize: 14),
-                  prefixIcon: const Icon(Icons.search,
-                      color: Color(0xFF94A3B8), size: 20),
-                  suffixIcon: _aramaCtrl.text.isNotEmpty
-                      ? IconButton(
-                      icon: const Icon(Icons.close,
-                          color: Color(0xFF94A3B8), size: 18),
-                      onPressed: () {
-                        _aramaCtrl.clear();
-                        _aramaYap('');
-                      })
-                      : null,
-                  filled: true,
-                  fillColor: const Color(0xFFF1F5F9),
-                  contentPadding:
-                  const EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: Color(0xFFE2E8F0), width: 1)),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: kPrimary, width: 1.5)),
-                ),
-              ),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF1E293B), size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
-        const SizedBox(height: 1),
-        Expanded(child: _govde()),
-      ],
+        title: const Text('Hasta Listesi',
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B))),
+        centerTitle: false,
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _aramaCtrl,
+                  onChanged: _aramaYap,
+                  decoration: InputDecoration(
+                    hintText: 'İsim veya hasta ID ile ara...',
+                    hintStyle: const TextStyle(
+                        color: Color(0xFF94A3B8), fontSize: 14),
+                    prefixIcon: const Icon(Icons.search,
+                        color: Color(0xFF94A3B8), size: 20),
+                    suffixIcon: _aramaCtrl.text.isNotEmpty
+                        ? IconButton(
+                        icon: const Icon(Icons.close,
+                            color: Color(0xFF94A3B8), size: 18),
+                        onPressed: () {
+                          _aramaCtrl.clear();
+                          _aramaYap('');
+                        })
+                        : null,
+                    filled: true,
+                    fillColor: const Color(0xFFF1F5F9),
+                    contentPadding:
+                    const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0), width: 1)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                            color: kPrimary, width: 1.5)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 1),
+          Expanded(child: _govde()),
+        ],
+      ),
     );
   }
 
