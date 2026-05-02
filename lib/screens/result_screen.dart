@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import '../models/patient.dart';
 import '../models/comparison_result.dart';
+import '../models/comparison_report.dart';
+import '../services/report_service.dart';
 
 
 // NeuraApp Design System — Klinisyen Renk Paleti
@@ -46,6 +48,7 @@ class ResultsScreen extends StatelessWidget {
 
     final int iyilesmeCount =
         dynamicResults.where((r) => r.iyilesme).length;
+
 
     return Scaffold(
       backgroundColor: kBackground,
@@ -428,6 +431,25 @@ class ResultsScreen extends StatelessWidget {
       ],
     );
   }
+  void _createReport(BuildContext context) {
+    final report = ComparisonReport(
+      id: DateTime.now().millisecondsSinceEpoch,
+      hastaId: patient.hastaId,
+      hastaAdi: patient.tamAd,
+      baslangicTarihi: startDate.tarih,
+      bitisTarihi: endDate.tarih,
+      olusturmaTarihi: DateTime.now(),
+      raporBasligi: "${patient.tamAd} Karşılaştırma Raporu",
+    );
+
+    ReportService.addReport(report);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Rapor oluşturuldu ve Raporlar sayfasına eklendi."),
+      ),
+    );
+  }
 
   Widget _buildActionButtons(BuildContext context) {
     return Container(
@@ -440,7 +462,7 @@ class ResultsScreen extends StatelessWidget {
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () => _createReport(context),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kTextGrey,
                 minimumSize: const Size.fromHeight(50),
