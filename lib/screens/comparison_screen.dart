@@ -251,7 +251,7 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
     // Geri okunu göster/gizle:
     //   - Hasta seçiliyse → her zaman göster (hasta seçimini temizler)
     //   - Hasta seçili değil + pop yapılabiliyorsa → göster (hızlı erişim vb.)
-    //   - Hasta seçili değil + pop yapılamıyorsa → gizle (alt bar, gidecek yer yok.)
+    //   - Hasta seçili değil + pop yapılamıyorsa → gizle (alt bar, gidecek yer yok)
     final bool showBack =
         _selectedPatient != null || Navigator.canPop(context);
 
