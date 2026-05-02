@@ -14,6 +14,7 @@ import 'klinisyen_profil_screen.dart';
 import 'hasta_profil_screen.dart';
 import 'ayarlar_screen.dart';
 import 'yardim_destek_screen.dart';
+import 'reports_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final bool isClinician;
@@ -46,7 +47,7 @@ class _MainScreenState extends State<MainScreen> {
       const PatientListScreen(),
       const PatientStep1Screen(),
       const ComparisonScreen(),
-      const Center(child: Text('Raporlar')),
+      const ReportsScreen(),
     ]
         : [
       const PatientHome(),
@@ -343,9 +344,9 @@ class _MainScreenState extends State<MainScreen> {
                 activeIcon: Icon(Icons.person_add),
                 label: 'Kayıt'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_outlined),
-                activeIcon: Icon(Icons.assignment),
-                label: 'Değerlendir'),
+                icon: Icon(Icons.compare_arrows_outlined),
+                activeIcon: Icon(Icons.compare_arrows),
+                label: 'Karşılaştır'),
             BottomNavigationBarItem(
                 icon: Icon(Icons.bar_chart_outlined),
                 activeIcon: Icon(Icons.bar_chart),
