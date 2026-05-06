@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../models/evaluation_model.dart';
 import '../../providers/evaluation_provider.dart';
 import '../../models/patient_model.dart' as patient_model;
 import '../../services/patient_service.dart';
+import '../../services/evaluation_service.dart';
+import '../../providers/auth_provider.dart';
+import '../patient_step_1_screen.dart';
 
 class EvaluationFormScreen extends StatefulWidget {
   final bool isEdit;
@@ -646,6 +648,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   Future<void> _openPatientSelector() async {
     _patientQueryCtrl.clear();
 
+    if (_dbPatients.isEmpty) {
+      await _loadDbPatients();
+    }
+
     final selectedPatient =
     await showModalBottomSheet<patient_model.Patient>(
       context: context,
@@ -728,6 +734,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () async {
+                            Navigator.pop(sheetContext);
                             await _openCreatePatientSheet();
                           },
                           icon: const Icon(Icons.person_add_alt_1_rounded),
@@ -863,10 +870,15 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Future<patient_model.Patient?> _openCreatePatientSheet() async {
-    _showSnack(
-      'Yeni hasta ekleme henüz Supabase ile bağlanmadı. Lütfen mevcut bir hasta seçin.',
-      isError: true,
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PatientStep1Screen(),
+      ),
     );
+
+    if (!mounted) return null;
+    await _loadDbPatients();
     return null;
   }
 
@@ -1059,10 +1071,54 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return sections.join('\n\n');
   }
 
+  Future<int> _resolveCurrentDoctorId() async {
+    final provider = context.read<EvaluationProvider>();
+    final auth = context.read<AuthProvider>();
+
+    final providerDoctorId = provider.currentDoctorId;
+    if (providerDoctorId > 0) return providerDoctorId;
+
+    final authDoctorId = int.tryParse(auth.user?.id ?? '') ?? 0;
+    if (authDoctorId > 0) {
+      provider.setDoctorId(authDoctorId);
+      debugPrint(
+        'EvaluationFormScreen doctorId set from auth before save: $authDoctorId, roleId: ${auth.user?.rolId}, rolAdi: ${auth.user?.rolAdi}',
+      );
+      return authDoctorId;
+    }
+
+    final email = auth.user?.eposta.trim() ?? '';
+    if (email.isNotEmpty) {
+      final serviceDoctorId = await EvaluationService().getClinicianIdByEmail(email) ?? 0;
+      if (serviceDoctorId > 0) {
+        provider.setDoctorId(serviceDoctorId);
+        debugPrint(
+          'EvaluationFormScreen doctorId resolved by email before save: $serviceDoctorId, email: $email',
+        );
+        return serviceDoctorId;
+      }
+    }
+
+    debugPrint(
+      'EvaluationFormScreen doctorId could not be resolved. provider=$providerDoctorId, auth.user.id=${auth.user?.id}, email=$email',
+    );
+    return 0;
+  }
+
   Future<void> _saveEvaluation() async {
+
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<EvaluationProvider>();
+
+    final currentDoctorId = await _resolveCurrentDoctorId();
+    if (currentDoctorId <= 0) {
+      _showSnack(
+        'Klinisyen kullanıcı ID bulunamadı. Lütfen tekrar giriş yapın.',
+        isError: true,
+      );
+      return;
+    }
 
     if (_selectedDbPatient == null &&
         _hastaSearchCtrl.text.trim().isNotEmpty) {
@@ -1134,7 +1190,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
     final evaluation = Evaluation(
       degerlendirmeId: widget.isEdit ? (provider.selected?.id ?? 0) : 0,
-      doctorId: provider.currentDoctorId,
+      doctorId: currentDoctorId,
       hastaId: effectiveHastaId,
       degerlendirmeTarihi: widget.isEdit && provider.selected != null
           ? provider.selected!.degerlendirmeTarihi

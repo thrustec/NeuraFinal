@@ -4,7 +4,7 @@ import '../models/evaluation_model.dart';
 import '../services/evaluation_service.dart';
 
 class EvaluationProvider extends ChangeNotifier {
-  EvaluationProvider({required int doctorId}) : _currentDoctorId = doctorId;
+  EvaluationProvider({int? doctorId}) : _currentDoctorId = doctorId ?? 0;
 
   final EvaluationService _service = EvaluationService();
 
@@ -12,10 +12,10 @@ class EvaluationProvider extends ChangeNotifier {
   int get currentDoctorId => _currentDoctorId;
 
   void setDoctorId(int doctorId) {
-    if (_currentDoctorId == doctorId) return;
+    if (doctorId <= 0 || _currentDoctorId == doctorId) return;
     _currentDoctorId = doctorId;
-    clearSelection();
-    clearFilter();
+    selected = null;
+    filterHastaId = null;
     notifyListeners();
   }
 
@@ -95,6 +95,15 @@ class EvaluationProvider extends ChangeNotifier {
       listStatus = LoadStatus.loading;
       listError = null;
       notifyListeners();
+
+      if (filterHastaId == null && _currentDoctorId <= 0) {
+        _store.clear();
+        listStatus = LoadStatus.success;
+        listError = 'Klinisyen kullanıcı ID bulunamadı.';
+        debugPrint('EvaluationProvider.loadEvaluations blocked: doctorId=$_currentDoctorId');
+        notifyListeners();
+        return;
+      }
 
       final items = filterHastaId != null
           ? await _service.getByPatient(filterHastaId!)
