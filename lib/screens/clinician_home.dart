@@ -7,42 +7,11 @@ import 'exercise_video_library_screen.dart';
 import 'comparison_screen.dart';
 import 'patient_step_1_screen.dart';
 import 'telerehab_clinician_screen.dart';
-import 'clinical_evaluation/evaluation_list_screen.dart';
-import '../services/patient_service.dart';
 
-class ClinicianHome extends StatefulWidget {
+class ClinicianHome extends StatelessWidget {
   const ClinicianHome({super.key});
 
-  @override
-  State<ClinicianHome> createState() => _ClinicianHomeState();
-}
-
-class _ClinicianHomeState extends State<ClinicianHome> {
   static const Color _primaryTeal = Color(0xFF0F766E);
-  String _activePatientCount = '...';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPatientCount();
-  }
-
-  Future<void> _loadPatientCount() async {
-    try {
-      final patients = await PatientService.getHastalar();
-      if (mounted) {
-        setState(() {
-          _activePatientCount = patients.length.toString();
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _activePatientCount = '0';
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,33 +57,12 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           Row(
             children: [
               Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Aktif Hastalar',
-                  _activePatientCount,
-                  Icons.people_outline,
-                  Colors.blue,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PatientListScreen(),
-                    ),
-                  ),
-                ),
-              ),
+                  child: _buildStatCard(context, 'Aktif Hastalar', '24',
+                      Icons.people_outline, Colors.blue)),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Bekleyen Rapor',
-                  '3',
-                  Icons.assessment_outlined,
-                  Colors.orange,
-                  onTap: () {
-                    // İleride raporlar sayfası için kullanılabilir
-                  },
-                ),
-              ),
+                  child: _buildStatCard(context, 'Bekleyen Rapor', '3',
+                      Icons.assessment_outlined, Colors.orange)),
             ],
           ),
         ],
@@ -281,18 +229,6 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           const SizedBox(width: 12),
           _QuickActionTile(
             icon: Icons.assignment_outlined,
-            label: 'Klinik Değerlendirme',
-            color: _primaryTeal,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const EvaluationListScreen(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.compare_arrows_outlined,
             label: 'Karşılaştırma',
             color: Colors.indigo,
             onTap: () => Navigator.push(context,
@@ -304,10 +240,10 @@ class _ClinicianHomeState extends State<ClinicianHome> {
   }
 
   Widget _buildStatCard(BuildContext context, String title, String count,
-      IconData icon, Color color,
-      {VoidCallback? onTap}) {
+      IconData icon, Color color) {
     return InkWell(
-      onTap: onTap,
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const PatientListScreen())),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
