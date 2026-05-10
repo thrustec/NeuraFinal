@@ -7,7 +7,7 @@ class ComparisonReport {
   final DateTime olusturmaTarihi;
   final String raporBasligi;
   final String durum;
-  final String? filePath; // PDF dosya yolu
+  final String? filePath;
 
   ComparisonReport({
     required this.id,

@@ -1,8 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-
 import '../services/report_service.dart';
 import '../models/comparison_report.dart';
 
@@ -18,9 +16,9 @@ class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
   Future<void> _downloadReport(
-      BuildContext context,
-      ComparisonReport report,
-      ) async {
+    BuildContext context,
+    ComparisonReport report,
+  ) async {
     if (report.filePath == null || report.filePath!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -33,6 +31,7 @@ class ReportsScreen extends StatelessWidget {
     final sourceFile = File(report.filePath!);
 
     if (!await sourceFile.exists()) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("PDF dosyası cihazda bulunamadı."),
@@ -51,8 +50,7 @@ class ReportsScreen extends StatelessWidget {
         .replaceAll(RegExp(r'[^\w\s-]'), '')
         .replaceAll(' ', '_');
 
-    final targetPath =
-        '${targetDirectory.path}/${safeTitle}_${report.id}.pdf';
+    final targetPath = '${targetDirectory.path}/${safeTitle}_${report.id}.pdf';
 
     final targetFile = await sourceFile.copy(targetPath);
 
@@ -67,13 +65,15 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<ComparisonReport> reports = ReportService.getReports();
+    final List<ComparisonReport> reports =
+    ReportService.getReports();
 
     return Scaffold(
-      backgroundColor: kBackground,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           _buildHeader(),
+
           Expanded(
             child: reports.isEmpty
                 ? const Center(
@@ -99,13 +99,16 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
+  // HEADER
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom: BorderSide(color: Color(0xFFE2E8F0)),
+          bottom:
+          BorderSide(color: Color(0xFFE2E8F0)),
         ),
       ),
       child: Row(
@@ -115,8 +118,9 @@ class ReportsScreen extends StatelessWidget {
             height: 36,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: kPrimary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: kPrimary.withValues(alpha:0.1),
+              borderRadius:
+              BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.bar_chart,
@@ -139,16 +143,19 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
+  // RAPOR KARTI
   Widget _buildReportCard(
-      BuildContext context,
-      ComparisonReport report,
-      ) {
+    BuildContext context,
+    ComparisonReport report,
+  ) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius:
+        BorderRadius.circular(14),
         border: Border.all(
           color: const Color(0xFFE2E8F0),
         ),
@@ -159,8 +166,9 @@ class ReportsScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.red.withValues(alpha:0.1),
+              borderRadius:
+              BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.picture_as_pdf,
@@ -168,20 +176,26 @@ class ReportsScreen extends StatelessWidget {
               size: 20,
             ),
           ),
+
           const SizedBox(width: 12),
+
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
               children: [
                 Text(
                   report.raporBasligi,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                    FontWeight.bold,
                     fontSize: 14,
                     color: kTextDark,
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
                   "${report.baslangicTarihi} - ${report.bitisTarihi}",
                   style: const TextStyle(
@@ -189,24 +203,43 @@ class ReportsScreen extends StatelessWidget {
                     color: kTextGrey,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  report.durum,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: kPrimary,
-                  ),
-                ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => _downloadReport(context, report),
-            icon: const Icon(
-              Icons.download_rounded,
-              color: kPrimary,
-            ),
+
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                  kPrimary.withValues(alpha:0.1),
+                  borderRadius:
+                  BorderRadius.circular(8),
+                ),
+                child: Text(
+                  report.durum,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight:
+                    FontWeight.w600,
+                    color: kPrimary,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => _downloadReport(context, report),
+                icon: const Icon(
+                  Icons.download_rounded,
+                  color: kPrimary,
+                ),
+              ),
+            ],
           ),
         ],
       ),

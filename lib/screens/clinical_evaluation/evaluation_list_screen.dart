@@ -220,6 +220,21 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   Future<void> _navigateToResults() async {
     if (_selectedEvaluations.length != 2) return;
 
+    // Aynı hastaya ait mi? Farklı hastaların değerlendirmeleri karşılaştırılamaz.
+    final firstHastaId = _selectedEvaluations[0].hastaId;
+    final secondHastaId = _selectedEvaluations[1].hastaId;
+    if (firstHastaId != secondHastaId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Yalnızca aynı hastaya ait iki değerlendirme karşılaştırılabilir.',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     // Yükleniyor göstergesi
     showDialog(
       context: context,
@@ -387,13 +402,23 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
     if (!ok) return;
 
-    await provider.delete(id);
-    await _loadInitialEvaluations();
+    final deleted = await provider.delete(id);
+    if (deleted) {
+      await _loadInitialEvaluations();
+    }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Değerlendirme silindi')),
-    );
+    if (deleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Değerlendirme silindi')),
+      );
+    } else {
+      final errorMessage =
+          provider.listError ?? 'Değerlendirme silinemedi.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
   }
 
   String _formatDate(DateTime? dt) {
@@ -472,7 +497,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
         padding: const EdgeInsets.only(left: 12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () {},
+          onTap: () => Navigator.of(context).maybePop(),
           child: Container(
             width: 36,
             height: 36,
@@ -480,13 +505,18 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               color: _primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.menu_rounded, color: _primary, size: 22),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: _primary,
+              size: 18,
+            ),
           ),
         ),
       ),
-      title: const Text(
+      title: Text(
         'Klinik Değerlendirmeler',
-        style: TextStyle(
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
           color: _textDark,
           fontSize: 18,
           fontWeight: FontWeight.w800,
@@ -495,7 +525,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       actions: [
         // Karşılaştırma modu toggle butonu
         Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 4),
           child: TextButton.icon(
             onPressed: _toggleCompareMode,
             icon: Icon(
@@ -513,94 +543,38 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
             ),
           ),
         ),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: _textDark,
-                size: 27,
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF4A4A),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
         Padding(
-          padding: const EdgeInsets.only(right: 16, left: 6),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _primary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Text(
-                'AK',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+          padding: const EdgeInsets.only(right: 12),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: _textDark,
+                  size: 26,
                 ),
               ),
-            ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF4A4A),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(1),
         child: Divider(height: 1, thickness: 1, color: _border),
-      ),
-    );
-  }
-
-  Widget _topHeader() {
-    final baslik = widget.hastaAdi != null
-        ? '${widget.hastaAdi} — Değerlendirmeler'
-        : 'Hasta Değerlendirmelerim';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      decoration: const BoxDecoration(
-        color: _surface,
-        border: Border(bottom: BorderSide(color: _border)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: _primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.assignment_outlined, color: _primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              baslik,
-              style: const TextStyle(
-                color: _textDark,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -727,39 +701,33 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     );
   }
 
-  String _extractPackedSection(String source, String title) {
-    final text = source.trim();
-    if (text.isEmpty) return '';
-
-    final header = '$title:\n';
-    final start = text.lastIndexOf(header);
-    if (start == -1) return '';
-
-    final contentStart = start + header.length;
-    final nextHeaders = [
-      '\n\nSemptomlar:\n',
-      '\n\nHastalık:\n',
-      '\n\nKlinisyen Notları:\n',
-      '\n\nFonksiyonel:\n',
-      '\n\nKlinik tip:',
-    ];
-
-    int? end;
-    for (final marker in nextHeaders) {
-      final idx = text.indexOf(marker, contentStart);
-      if (idx != -1 && (end == null || idx < end)) {
-        end = idx;
-      }
-    }
-
-    final result = end == null
-        ? text.substring(contentStart)
-        : text.substring(contentStart, end);
-
-    return result.trim();
-  }
-
+  // Symptom count for the list card.
+  //
+  // Source of truth: notlar (Supabase row) → "Semptomlar:" section.
+  // We do NOT read ev.symptoms (a model-derived helper) because the count
+  // shown in the UI must always reflect exactly what is persisted in the
+  // canonical packed-text format, with no chance of disease/clinical-note
+  // content bleeding in.
+  //
+  // Strict rules:
+  //  • Only lines that begin EXACTLY with one of the six known symptom
+  //    labels ("Motor:", "Duyusal:", "Emosyonel:", "Kognitif:", "Pulmoner:",
+  //    "Diğer:") contribute.
+  //  • The "Semptomlar:" section is bounded by the next packed-section
+  //    header ("\n\nHastalık:\n" etc.) — anything past that boundary is
+  //    ignored.
+  //  • Free-text "Yeni bulgu:" extras are dropped.
+  //  • Sentinel placeholders (yok / none / - / seçilmedi / boş) are dropped.
+  //  • The result is deduped case-insensitively.
   int _savedSymptomCount(dynamic ev) {
+    const labels = [
+      'Motor',
+      'Duyusal',
+      'Emosyonel',
+      'Kognitif',
+      'Pulmoner',
+      'Diğer',
+    ];
     const emptyValues = {
       'yok',
       'none',
@@ -769,77 +737,64 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       'boş',
       'bos',
     };
-
-    int countListSymptoms(dynamic symptomsValue) {
-      if (symptomsValue is! List) return 0;
-      final uniqueSymptoms = <String>{};
-      for (final raw in symptomsValue) {
-        final symptom = raw?.toString().trim() ?? '';
-        if (symptom.isEmpty) continue;
-        final normalized = symptom.toLowerCase();
-        if (emptyValues.contains(normalized)) continue;
-        if (normalized.startsWith('yeni bulgu:')) continue;
-        uniqueSymptoms.add(normalized);
-      }
-      return uniqueSymptoms.length;
-    }
-
-    final listCount = countListSymptoms(ev.symptoms);
-    if (listCount > 0) return listCount;
-
-    final notlar = (ev.notlar ?? '').toString().trim();
-    if (notlar.isEmpty) return 0;
-
-    final semptomlar = _extractPackedSection(notlar, 'Semptomlar');
-    if (semptomlar.isEmpty) return 0;
-
-    const labels = [
-      'Motor',
-      'Duyusal',
-      'Emosyonel',
-      'Kognitif',
-      'Pulmoner',
-      'Diğer',
+    const sectionHeader = 'Semptomlar:\n';
+    const endMarkers = [
+      '\n\nHastalık:\n',
+      '\n\nKlinisyen Notları:\n',
+      '\n\nFonksiyonel:\n',
+      '\n\nKlinik tip:',
     ];
 
-    final uniqueSymptoms = <String>{};
+    final notlar = (ev.notlar ?? '').toString();
+    if (notlar.trim().isEmpty) return 0;
 
-    for (final rawLine in semptomlar.split('\n')) {
+    final headerIdx = notlar.indexOf(sectionHeader);
+    if (headerIdx == -1) return 0;
+
+    final contentStart = headerIdx + sectionHeader.length;
+    int? endIdx;
+    for (final marker in endMarkers) {
+      final idx = notlar.indexOf(marker, contentStart);
+      if (idx != -1 && (endIdx == null || idx < endIdx)) {
+        endIdx = idx;
+      }
+    }
+    final section = endIdx == null
+        ? notlar.substring(contentStart)
+        : notlar.substring(contentStart, endIdx);
+
+    final unique = <String>{};
+    for (final rawLine in section.split('\n')) {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
 
-      String? matchedLabel;
+      String? matched;
       for (final label in labels) {
-        if (line.toLowerCase().startsWith('${label.toLowerCase()}:')) {
-          matchedLabel = label;
+        if (line.startsWith('$label:')) {
+          matched = label;
           break;
         }
       }
+      if (matched == null) continue;
 
-      if (matchedLabel == null) continue;
-
-      final value = line.substring(matchedLabel.length + 1).trim();
+      final value = line.substring(matched.length + 1).trim();
       if (value.isEmpty) continue;
 
       final lower = value.toLowerCase();
-      final extraIndex = lower.indexOf('yeni bulgu:');
-      final selectedPart = extraIndex == -1
-          ? value
-          : value.substring(0, extraIndex).trim();
+      final extraIdx = lower.indexOf('yeni bulgu:');
+      final selected = extraIdx == -1 ? value : value.substring(0, extraIdx);
 
-      if (selectedPart.isEmpty) continue;
-
-      for (final item in selectedPart.split(',')) {
-        final symptom = item.trim();
-        if (symptom.isEmpty) continue;
-        final normalized = symptom.toLowerCase();
-        if (emptyValues.contains(normalized)) continue;
-        if (normalized.startsWith('yeni bulgu:')) continue;
-        uniqueSymptoms.add(normalized);
+      for (final item in selected.split(',')) {
+        final trimmed = item.trim();
+        if (trimmed.isEmpty) continue;
+        final norm = trimmed.toLowerCase();
+        if (emptyValues.contains(norm)) continue;
+        if (norm.startsWith('yeni bulgu:')) continue;
+        unique.add(norm);
       }
     }
 
-    return uniqueSymptoms.length;
+    return unique.length;
   }
 
   Widget _card(EvaluationProvider provider, dynamic ev) {
@@ -1047,7 +1002,17 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       appBar: _appBar(),
       body: Consumer<EvaluationProvider>(
         builder: (context, provider, _) {
+          // Karşılaştırma modunda ilk değerlendirme seçildiyse, listeyi
+          // yalnızca o hastanın diğer değerlendirmeleriyle daralt.
+          final int? lockedHastaId =
+              _compareMode && _selectedEvaluations.isNotEmpty
+                  ? _selectedEvaluations[0].hastaId as int?
+                  : null;
+
           final filteredEvaluations = provider.evaluations.where((ev) {
+            if (lockedHastaId != null && ev.hastaId != lockedHastaId) {
+              return false;
+            }
             final query = _searchQuery.trim().toLowerCase();
             if (query.isEmpty) return true;
             final hastaAdi = _safeHastaAdi(ev.hastaAdSoyad).toLowerCase();
@@ -1057,7 +1022,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
           if (provider.evaluations.isEmpty) {
             return Column(
               children: [
-                _topHeader(),
                 _searchBar(),
                 Expanded(
                   child: provider.isListLoading && _showListLoading
@@ -1072,7 +1036,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
           return Column(
             children: [
-              _topHeader(),
               if (_compareMode) _compareSelectionBanner(),
               _searchBar(),
               Expanded(

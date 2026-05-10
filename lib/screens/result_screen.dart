@@ -4,9 +4,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:share_plus/share_plus.dart';
-
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/patient.dart';
 import '../models/comparison_result.dart';
 import '../models/comparison_report.dart';
@@ -436,28 +435,6 @@ class ResultsScreen extends StatelessWidget {
       ],
     );
   }
-
-  //eski versiyon (pdfsiz)
-  void _createReport(BuildContext context) {
-    final report = ComparisonReport(
-      id: DateTime.now().millisecondsSinceEpoch,
-      hastaId: patient.hastaId,
-      hastaAdi: patient.tamAd,
-      baslangicTarihi: startDate.tarih,
-      bitisTarihi: endDate.tarih,
-      olusturmaTarihi: DateTime.now(),
-      raporBasligi: "${patient.tamAd} Karşılaştırma Raporu",
-    );
-
-    ReportService.addReport(report);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Rapor oluşturuldu ve Raporlar sayfasına eklendi."),
-      ),
-    );
-  }
-
   Future<void> _createPdfReport(BuildContext context) async {
     try {
       final pdf = pw.Document();
@@ -490,14 +467,11 @@ class ResultsScreen extends StatelessWidget {
               ),
             ),
             pw.SizedBox(height: 16),
-
             pw.Text('Hasta: ${patient.tamAd}'),
             pw.Text('Hasta ID: ${patient.hastaId}'),
             pw.Text('Baslangic Tarihi: ${startDate.tarih}'),
             pw.Text('Bitis Tarihi: ${endDate.tarih}'),
-
             pw.SizedBox(height: 20),
-
             pw.TableHelper.fromTextArray(
               headers: [
                 'Test',
@@ -523,10 +497,8 @@ class ResultsScreen extends StatelessWidget {
       );
 
       final directory = await getApplicationDocumentsDirectory();
-
       final fileName =
           'comparison_report_${patient.hastaId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-
       final file = File('${directory.path}/$fileName');
 
       await file.writeAsBytes(await pdf.save());
@@ -538,7 +510,7 @@ class ResultsScreen extends StatelessWidget {
         baslangicTarihi: startDate.tarih,
         bitisTarihi: endDate.tarih,
         olusturmaTarihi: DateTime.now(),
-        raporBasligi: '${patient.tamAd} Karşılaştırma Raporu',
+        raporBasligi: "${patient.tamAd} Karşılaştırma Raporu",
         filePath: file.path,
       );
 
@@ -561,6 +533,7 @@ class ResultsScreen extends StatelessWidget {
       );
     }
   }
+
   Future<void> _shareLatestPdfReport(BuildContext context) async {
     final reports = ReportService.getReports();
 
@@ -587,6 +560,7 @@ class ResultsScreen extends StatelessWidget {
     final file = File(latestReport.filePath!);
 
     if (!await file.exists()) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("PDF dosyası cihazda bulunamadı."),

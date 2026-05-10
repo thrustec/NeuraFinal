@@ -48,7 +48,10 @@ class Evaluation {
     if (text.isEmpty) return '';
 
     final header = '$title:\n';
-    final start = text.lastIndexOf(header);
+    // Use the FIRST occurrence so any later "Semptomlar:" string accidentally
+    // typed inside another section's body cannot redirect the start of the
+    // Semptomlar block.
+    final start = text.indexOf(header);
     if (start == -1) return '';
 
     final contentStart = start + header.length;
