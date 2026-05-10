@@ -97,7 +97,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const PatientListScreen(),
+                      builder: (_) => const PatientListScreen(showBack: true),
                     ),
                   ),
                 ),

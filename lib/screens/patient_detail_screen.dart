@@ -321,16 +321,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _hizliButon(
-            ikon: Icons.assignment_outlined,
-            etiket: 'Değerlendirme\nBaşlat',
-            renk: kPrimary,
-            arkaplan: kPrimary.withOpacity(0.05),
-            onTap: () {},
-          ),
-        ),
+
         const SizedBox(width: 10),
         Expanded(
           child: _hizliButon(
