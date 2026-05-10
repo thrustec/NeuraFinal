@@ -101,7 +101,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Profil Güncelleme ──────────────────────────────────────
+  // ── Profil Güncelleme ────────────────────────────────────
   Future<bool> updateUser({
     String? ad,
     String? soyad,

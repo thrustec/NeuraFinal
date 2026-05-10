@@ -3,9 +3,9 @@ import 'package:http/http.dart' as http;
 import '../models/patient_model.dart';
 import 'package:flutter/foundation.dart';
 
-// ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // Supabase PostgREST — doğrudan bağlantı
-// ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 const String SUPABASE_URL =
     'https://griteunvazwekosffmjo.supabase.co/rest/v1';
 const String SUPABASE_ANON_KEY =
