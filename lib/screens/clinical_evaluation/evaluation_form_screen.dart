@@ -227,11 +227,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           provider.selected?.hastaId ?? provider.filterHastaId ?? _hastaId;
 
       if (targetHastaId != null) {
-        final dbPatient = _findDbPatientById(targetHastaId);
-        if (dbPatient != null) {
-          _applySelectedDbPatient(dbPatient);
-          if (mounted) setState(() {});
+        final listPatient = _findDbPatientById(targetHastaId);
+        patient_model.Patient? dbPatient = listPatient;
+        try {
+          dbPatient = await PatientService.getHastaById(targetHastaId);
+        } catch (e) {
+          debugPrint('Patient detail could not be loaded during preload: $e');
         }
+        if (dbPatient == null) return;
+        _applySelectedDbPatient(dbPatient);
+        if (mounted) setState(() {});
       }
     } catch (e) {
       if (!mounted) return;
@@ -295,9 +300,53 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if ((patient.adres ?? '').trim().isNotEmpty) {
       _locationCtrl.text = patient.adres!;
     }
+    if ((patient.baslangicTarihi ?? '').trim().isNotEmpty) {
+      _complaintDateCtrl.text = _formatPatientDate(patient.baslangicTarihi!);
+    }
+    if ((patient.bakiciKisi ?? '').trim().isNotEmpty) {
+      _caregiverCtrl.text = patient.bakiciKisi!;
+    }
+    if (patient.sigaraDurumId != null) {
+      _sigaraDurumId = patient.sigaraDurumId;
+    }
+    final dominantSide = _normalizeDominantSide(
+      patient.baskinElAdi ?? patient.baskinId?.toString(),
+    );
+    if (dominantSide != null) {
+      _dominantSide = dominantSide;
+    }
     if ((patient.notlar ?? '').trim().isNotEmpty) {
       _medicalHistoryCtrl.text = patient.notlar!;
     }
+  }
+
+  String _formatPatientDate(String value) {
+    final date = DateTime.tryParse(value);
+    if (date == null) return value;
+    return '${date.day.toString().padLeft(2, '0')}.'
+        '${date.month.toString().padLeft(2, '0')}.'
+        '${date.year}';
+  }
+
+  String? _normalizeDominantSide(String? value) {
+    final normalized = (value ?? '').trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    if (normalized == '1' ||
+        normalized == 'right' ||
+        normalized == 'sağ' ||
+        normalized == 'sag') {
+      return 'Right';
+    }
+    if (normalized == '2' || normalized == 'left' || normalized == 'sol') {
+      return 'Left';
+    }
+    if (normalized == '3' ||
+        normalized == 'both' ||
+        normalized == 'her ikisi' ||
+        normalized == 'her i̇kisi') {
+      return 'Both';
+    }
+    return null;
   }
 
   String _extractSection(String source, String title) {
@@ -743,8 +792,15 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     setState(() {});
   }
 
-  void _fillPatientProfile(patient_model.Patient patient) {
-    _applySelectedDbPatient(patient);
+  Future<void> _fillPatientProfile(patient_model.Patient patient) async {
+    patient_model.Patient resolvedPatient = patient;
+    try {
+      resolvedPatient = await PatientService.getHastaById(patient.hastaId);
+    } catch (e) {
+      debugPrint('Patient detail could not be loaded, using list row: $e');
+    }
+    if (!mounted) return;
+    _applySelectedDbPatient(resolvedPatient);
     setState(() {});
   }
 
@@ -976,7 +1032,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     );
 
     if (!mounted || selectedPatient == null) return;
-    _fillPatientProfile(selectedPatient);
+    await _fillPatientProfile(selectedPatient);
   }
 
   Future<patient_model.Patient?> _openCreatePatientSheet() async {
@@ -1744,7 +1800,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Widget _buildDemographics() {
-    final provider = context.watch<EvaluationProvider>();
+    context.watch<EvaluationProvider>();
     final selectedPatient = _findSelectedPatient();
 
     return Column(

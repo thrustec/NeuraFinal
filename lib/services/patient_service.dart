@@ -53,7 +53,10 @@ class PatientService {
       'medeniDurumlar(medeniDurumAdi), '
       'egitimDurumlari(egitimDurumAdi), '
       'meslekler(meslekAdi), '
-      'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
+      'sigaraDurumu(sigaraDurumAdi), '
+      'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),'
+      'klinisyenNotlari,baslangicTarihi,bakiciKisi,sigaraDurumId,'
+      'hikaye,degerlendirmeTarihi)',
     );
 
     final url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
@@ -119,7 +122,10 @@ class PatientService {
         'medeniDurumlar(medeniDurumAdi), '
         'egitimDurumlari(egitimDurumAdi), '
         'meslekler(meslekAdi), '
-        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
+        'sigaraDurumu(sigaraDurumAdi), '
+        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),'
+        'klinisyenNotlari,baslangicTarihi,bakiciKisi,sigaraDurumId,'
+        'hikaye,degerlendirmeTarihi)',
       );
       final url = '$SUPABASE_URL/hastalar?select=$select&hastaId=eq.$hastaId';
 
@@ -200,13 +206,43 @@ class PatientService {
     final mes = raw['meslekler'];
     if (mes is Map) flat['meslekAdi'] = mes['meslekAdi'];
 
+    final sigara = raw['sigaraDurumu'];
+    if (sigara is Map) {
+      flat['sigaraDurumAdi'] = sigara['sigaraDurumAdi'];
+    }
+    flat['sigaraDurumAdi'] ??= _sigaraDurumAdi(flat['sigaraDurumId']);
+    flat['baskinElAdi'] ??= _baskinElAdi(flat['baskinId']);
+
     // degerlendirmeler → en son kaydın hastalıkAdı ve klinisyenNotlari
     final degList = raw['degerlendirmeler'];
     if (degList is List && degList.isNotEmpty) {
-      final son = degList.first as Map<String, dynamic>;
-      final h = son['hastaliklar'];
-      if (h is Map) flat['hastalikAdi'] = h['hastalikAdi'];
-      flat['klinisyenNotlari'] = son['klinisyenNotlari'];
+      final sorted = degList.whereType<Map<String, dynamic>>().toList()
+        ..sort((a, b) {
+          final aDate = DateTime.tryParse(
+                (a['degerlendirmeTarihi'] ?? '').toString(),
+              ) ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final bDate = DateTime.tryParse(
+                (b['degerlendirmeTarihi'] ?? '').toString(),
+              ) ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          return bDate.compareTo(aDate);
+        });
+      for (final evaluation in sorted) {
+        final h = evaluation['hastaliklar'];
+        final disease = h is Map ? h['hastalikAdi']?.toString().trim() : '';
+        if ((flat['hastalikAdi']?.toString().trim() ?? '').isEmpty &&
+            disease != null &&
+            disease.isNotEmpty) {
+          flat['hastalikAdi'] = disease;
+        }
+        _setFirstNonEmpty(flat, 'klinisyenNotlari', evaluation['klinisyenNotlari']);
+        _setFirstNonEmpty(flat, 'baslangicTarihi', evaluation['baslangicTarihi']);
+        _setFirstNonEmpty(flat, 'bakiciKisi', evaluation['bakiciKisi']);
+        _setFirstNonEmpty(flat, 'notlar', evaluation['hikaye']);
+        flat['sigaraDurumId'] ??= evaluation['sigaraDurumId'];
+        flat['sigaraDurumAdi'] ??= _sigaraDurumAdi(evaluation['sigaraDurumId']);
+      }
     }
 
     // İç içe nesneleri temizle
@@ -215,8 +251,45 @@ class PatientService {
     flat.remove('medeniDurumlar');
     flat.remove('egitimDurumlari');
     flat.remove('meslekler');
+    flat.remove('sigaraDurumu');
     flat.remove('degerlendirmeler');
 
     return flat;
+  }
+
+  static String? _sigaraDurumAdi(dynamic idValue) {
+    final id = idValue is int ? idValue : int.tryParse(idValue?.toString() ?? '');
+    switch (id) {
+      case 1:
+        return 'İçiyor';
+      case 2:
+        return 'İçmiyor';
+      case 3:
+        return 'Bırakmış';
+    }
+    return null;
+  }
+
+  static void _setFirstNonEmpty(
+    Map<String, dynamic> target,
+    String key,
+    dynamic value,
+  ) {
+    if ((target[key]?.toString().trim() ?? '').isNotEmpty) return;
+    final text = value?.toString().trim() ?? '';
+    if (text.isNotEmpty) target[key] = value;
+  }
+
+  static String? _baskinElAdi(dynamic idValue) {
+    final id = idValue is int ? idValue : int.tryParse(idValue?.toString() ?? '');
+    switch (id) {
+      case 1:
+        return 'Sağ';
+      case 2:
+        return 'Sol';
+      case 3:
+        return 'Her ikisi';
+    }
+    return null;
   }
 }

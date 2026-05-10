@@ -390,8 +390,8 @@ class SigaraDurum {
   });
 
   static const defaults = <SigaraDurum>[
-    SigaraDurum(id: 1, ad: 'Hiç kullanmadı'),
-    SigaraDurum(id: 2, ad: 'Bıraktı'),
-    SigaraDurum(id: 3, ad: 'Aktif kullanıyor'),
+    SigaraDurum(id: 1, ad: 'İçiyor'),
+    SigaraDurum(id: 2, ad: 'İçmiyor'),
+    SigaraDurum(id: 3, ad: 'Bırakmış'),
   ];
 }
