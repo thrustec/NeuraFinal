@@ -220,6 +220,21 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   Future<void> _navigateToResults() async {
     if (_selectedEvaluations.length != 2) return;
 
+    // Aynı hastaya ait mi? Farklı hastaların değerlendirmeleri karşılaştırılamaz.
+    final firstHastaId = _selectedEvaluations[0].hastaId;
+    final secondHastaId = _selectedEvaluations[1].hastaId;
+    if (firstHastaId != secondHastaId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Yalnızca aynı hastaya ait iki değerlendirme karşılaştırılabilir.',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     // Yükleniyor göstergesi
     showDialog(
       context: context,
@@ -387,13 +402,23 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
     if (!ok) return;
 
-    await provider.delete(id);
-    await _loadInitialEvaluations();
+    final deleted = await provider.delete(id);
+    if (deleted) {
+      await _loadInitialEvaluations();
+    }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Değerlendirme silindi')),
-    );
+    if (deleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Değerlendirme silindi')),
+      );
+    } else {
+      final errorMessage =
+          provider.listError ?? 'Değerlendirme silinemedi.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
   }
 
   String _formatDate(DateTime? dt) {
