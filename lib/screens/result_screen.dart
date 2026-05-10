@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
 import '../models/patient.dart';
 import '../models/comparison_result.dart';
 import '../models/comparison_report.dart';
