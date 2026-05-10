@@ -1,67 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../providers/auth_provider.dart';
 import '../services/meeting_service.dart';
+import '../services/supabase_service.dart';
 
-// NeuraApp Design System — Hasta Renk Paleti
 const Color kBackground = Color(0xFFF8F9FC);
 const Color kPrimary = Color(0xFF2563EB);
 const Color kTextDark = Color(0xFF1E293B);
 const Color kTextGrey = Color(0xFF64748B);
 const Color kTextHint = Color(0xFF94A3B8);
-const Color kInputFill = Color(0xFFF1F5F9);
+const Color kDanger = Color(0xFFDC2626);
+const Color kSuccess = Color(0xFF16A34A);
+const Color kWarning = Color(0xFFF59E0B);
 
 class TelerehabPatientScreen extends StatefulWidget {
   const TelerehabPatientScreen({super.key});
 
   @override
-  State<TelerehabPatientScreen> createState() =>
-      _TelerehabPatientScreenState();
+  State<TelerehabPatientScreen> createState() => _TelerehabPatientScreenState();
 }
 
 class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
   final MeetingService meetingService = MeetingService();
 
   bool isLoading = true;
-  bool isSendingRequest = false;
 
-  final int currentPatientId = 1;
-  int selectedClinicianId = 1;
-
-  final TextEditingController requestController =
-  TextEditingController(text: 'Yeni telerehabilitasyon talebi');
+  int? currentPatientId;
 
   List<Map<String, dynamic>> meetings = [];
-  List<Map<String, dynamic>> clinicians = [];
+  List<Map<String, dynamic>> requests = [];
+
+  String selectedFilter = 'Mevcut';
 
   @override
   void initState() {
     super.initState();
-    loadPageData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadPageData();
+    });
+  }
+
+  Future<int?> resolveCurrentPatientId() async {
+    final auth = context.read<AuthProvider>();
+    final kullaniciId = int.tryParse(auth.user?.id ?? '');
+
+    if (kullaniciId == null) return null;
+
+    final patient = await SupabaseService.client
+        .schema('neura')
+        .from('hastalar')
+        .select('hastaId')
+        .eq('kullaniciId', kullaniciId)
+        .maybeSingle();
+
+    if (patient == null) return null;
+
+    return patient['hastaId'] as int;
   }
 
   Future<void> loadPageData() async {
+    setState(() => isLoading = true);
+
     try {
+      currentPatientId = await resolveCurrentPatientId();
+
+      if (currentPatientId == null) {
+        if (!mounted) return;
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Hasta kaydı bulunamadı.')),
+        );
+        return;
+      }
+
       final fetchedMeetings =
-      await meetingService.getMeetingsByPatient(currentPatientId);
-      final fetchedClinicians = await meetingService.getClinicians();
+      await meetingService.getMeetingsByPatient(currentPatientId!);
+
+      final fetchedRequests =
+      await meetingService.getRequestsByPatient(currentPatientId!);
 
       if (!mounted) return;
 
       setState(() {
         meetings = fetchedMeetings;
-        clinicians = fetchedClinicians;
-
-        if (clinicians.isNotEmpty) {
-          selectedClinicianId = clinicians.first['kullaniciId'] as int;
-        }
-
+        requests = fetchedRequests;
         isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
 
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Veriler yüklenemedi: $e')),
@@ -69,178 +99,171 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
     }
   }
 
-  Future<void> sendMeetingRequest() async {
-    try {
-      setState(() {
-        isSendingRequest = true;
-      });
+  List<Map<String, dynamic>> filteredMeetings() {
+    final now = DateTime.now();
 
-      await meetingService.createMeetingRequest(
-        toplantiId: null,
-        hastaId: currentPatientId,
-        klinisyenId: selectedClinicianId,
-        durum: 'Beklemede',
-        talep: requestController.text.trim(),
-      );
+    if (selectedFilter == 'Beklemede') {
+      return requests.where((r) => r['durum'] == 'Beklemede').toList();
+    }
 
-      if (!mounted) return;
+    if (selectedFilter == 'Reddedildi') {
+      return requests.where((r) => r['durum'] == 'Reddedildi').toList();
+    }
 
+    if (selectedFilter == 'Geçmiş') {
+      return meetings.where((m) {
+        final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+        if (end == null) return false;
+
+        return end.isBefore(now) && m['durum'] != 'İptal Edildi';
+      }).toList();
+    }
+
+    if (selectedFilter == 'Bugünkü') {
+      return meetings.where((m) {
+        final start = DateTime.tryParse(m['baslangicZamani']?.toString() ?? '');
+        final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+
+        if (start == null || end == null) return false;
+
+        return start.year == now.year &&
+            start.month == now.month &&
+            start.day == now.day &&
+            end.isAfter(now) &&
+            m['durum'] != 'İptal Edildi';
+      }).toList();
+    }
+
+    return meetings.where((m) {
+      final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+      if (end == null) return false;
+
+      return end.isAfter(now) && m['durum'] != 'İptal Edildi';
+    }).toList();
+  }
+
+  bool canJoinMeeting(Map<String, dynamic> meeting) {
+    final start = DateTime.tryParse(
+      meeting['baslangicZamani']?.toString() ?? '',
+    );
+    final end = DateTime.tryParse(
+      meeting['bitisZamani']?.toString() ?? '',
+    );
+
+    if (start == null || end == null) return false;
+
+    final now = DateTime.now();
+
+    return now.isAfter(start) &&
+        now.isBefore(end) &&
+        meeting['baslatildimi'] == true;
+  }
+
+  Future<void> joinMeeting(Map<String, dynamic> meeting) async {
+    final zoomLink = meeting['zoomlink']?.toString().trim() ?? '';
+
+    if (zoomLink.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Toplantı talebi gönderildi.')),
+        const SnackBar(content: Text('Zoom linki bulunamadı.')),
       );
-    } catch (e) {
-      if (!mounted) return;
+      return;
+    }
 
+    final opened = await launchUrl(
+      Uri.parse(zoomLink),
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: $e')),
+        const SnackBar(content: Text('Toplantı açılamadı.')),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isSendingRequest = false;
-        });
-      }
     }
   }
 
-  @override
-  void dispose() {
-    requestController.dispose();
-    super.dispose();
+  String formatDate(String raw) {
+    final d = DateTime.tryParse(raw);
+    if (d == null) return '-';
+
+    return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
   }
 
-  // ── UI Yardımcıları ──────────────────────────────────────
+  String formatTime(String raw) {
+    final d = DateTime.tryParse(raw);
+    if (d == null) return '-';
 
-  InputDecoration _inputDecoration(String hint, {Widget? suffixIcon}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: kInputFill,
-      contentPadding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: kPrimary, width: 1.5),
+    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget filterChip(String label) {
+    final selected = selectedFilter == label;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) {
+          setState(() {
+            selectedFilter = label;
+          });
+        },
+        selectedColor: kPrimary,
+        backgroundColor: const Color(0xFFE2E8F0),
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : kTextDark,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 
-  Widget _sectionCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
+  Widget requestCard(Map<String, dynamic> request) {
+    final durum = request['durum']?.toString() ?? 'Beklemede';
+    final talep = request['talep']?.toString() ?? '-';
+
+    final isRejected = durum == 'Reddedildi';
+    final color = isRejected ? kDanger : kWarning;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: kPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: kPrimary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: kTextDark,
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: color.withOpacity(0.1),
+                child: Icon(
+                  isRejected ? Icons.close : Icons.hourglass_bottom,
+                  color: color,
+                  size: 18,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _meetingItem(Map<String, dynamic> meeting) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: kBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: kPrimary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
+              const SizedBox(width: 10),
+              const Expanded(
                 child: Text(
-                  meeting['baslik'] ?? 'Başlıksız',
-                  style: const TextStyle(
+                  'Telerehab Talebi',
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 15,
                     color: kTextDark,
-                    fontSize: 14,
                   ),
                 ),
               ),
+              badge(durum, color),
             ],
           ),
-          const SizedBox(height: 8),
-          _infoRow(Icons.play_circle_outline,
-              'Başlangıç: ${meeting['baslangicZamani']}'),
-          _infoRow(Icons.stop_circle_outlined,
-              'Bitiş: ${meeting['bitisZamani']}'),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 13, color: kTextHint),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(color: kTextGrey, fontSize: 12),
+          const SizedBox(height: 12),
+          Text(
+            talep,
+            style: const TextStyle(
+              color: kTextGrey,
+              fontSize: 13,
+              height: 1.35,
             ),
           ),
         ],
@@ -248,157 +271,222 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
     );
   }
 
+  Widget meetingCard(Map<String, dynamic> meeting) {
+    final baslik = meeting['baslik']?.toString() ?? 'Telerehabilitasyon';
+    final start = meeting['baslangicZamani']?.toString();
+    final end = meeting['bitisZamani']?.toString();
+    final durum = meeting['durum']?.toString() ?? '';
+
+    final joinable = canJoinMeeting(meeting);
+
+    final isPast = end != null &&
+        DateTime.tryParse(end)?.isBefore(DateTime.now()) == true;
+
+    Color badgeColor;
+    String badgeText;
+
+    if (durum == 'İptal Edildi') {
+      badgeColor = kDanger;
+      badgeText = 'İptal';
+    } else if (isPast) {
+      badgeColor = kTextHint;
+      badgeText = 'Geçmiş';
+    } else if (joinable) {
+      badgeColor = kSuccess;
+      badgeText = 'Katılabilir';
+    } else {
+      badgeColor = kWarning;
+      badgeText = 'Bekleniyor';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: badgeColor.withOpacity(0.1),
+                child: Icon(
+                  Icons.video_call,
+                  color: badgeColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  baslik,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: kTextDark,
+                  ),
+                ),
+              ),
+              badge(badgeText, badgeColor),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.calendar_today_outlined,
+                  size: 14, color: kTextHint),
+              const SizedBox(width: 6),
+              Text(
+                start == null ? '-' : formatDate(start),
+                style: const TextStyle(color: kTextGrey),
+              ),
+              const SizedBox(width: 16),
+              const Icon(Icons.access_time_outlined,
+                  size: 14, color: kTextHint),
+              const SizedBox(width: 6),
+              Text(
+                start == null ? '-' : formatTime(start),
+                style: const TextStyle(color: kTextGrey),
+              ),
+              if (end != null) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '- ${formatTime(end)}',
+                  style: const TextStyle(color: kTextGrey),
+                ),
+              ],
+            ],
+          ),
+          if (!isPast && durum != 'İptal Edildi') ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                onPressed: joinable ? () => joinMeeting(meeting) : null,
+                icon: const Icon(Icons.play_arrow, color: Colors.white),
+                label: const Text(
+                  'Görüşmeye Katıl',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimary,
+                  disabledBackgroundColor: const Color(0xFFCBD5E1),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget badge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE2E8F0)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filtered = filteredMeetings();
+    final showingRequests =
+        selectedFilter == 'Beklemede' || selectedFilter == 'Reddedildi';
+
     return Scaffold(
       backgroundColor: kBackground,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.white,
-        leading: IconButton(
-          icon: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: kPrimary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.arrow_back_ios_new,
-                color: kPrimary, size: 16),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Telerehabilitasyon',
           style: TextStyle(
             color: kTextDark,
-            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
-        centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: const Color(0xFFE2E8F0), height: 1),
-        ),
       ),
-      body: SafeArea(
-        child: isLoading
-            ? const Center(
-            child: CircularProgressIndicator(color: kPrimary))
-            : SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      body: isLoading
+          ? const Center(
+        child: CircularProgressIndicator(color: kPrimary),
+      )
+          : RefreshIndicator(
+        onRefresh: loadPageData,
+        color: kPrimary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Toplantılarım ──
-              _sectionCard(
-                title: 'Toplantılarım',
-                icon: Icons.calendar_month_outlined,
-                children: meetings.isEmpty
-                    ? [
-                  const Text(
-                    'Henüz toplantınız yok.',
-                    style: TextStyle(
-                        color: kTextHint, fontSize: 14),
-                  ),
-                ]
-                    : meetings.map(_meetingItem).toList(),
+              const Text(
+                'Toplantılarım',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: kTextDark,
+                ),
               ),
-
-              // ── Yeni Talep Oluştur ──
-              _sectionCard(
-                title: 'Yeni Talep Oluştur',
-                icon: Icons.send_outlined,
-                children: [
-                  const Text(
-                    'KLİNİSYEN',
-                    style: TextStyle(
-                      color: kTextGrey,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<int>(
-                    value: selectedClinicianId,
-                    decoration: _inputDecoration('Klinisyen seçin'),
-                    icon: const Icon(Icons.keyboard_arrow_down,
-                        color: kPrimary),
-                    items: clinicians
-                        .map((item) => DropdownMenuItem<int>(
-                      value: item['kullaniciId'] as int,
-                      child: Text(
-                        '${item['ad']} ${item['soyad'] ?? ''}',
-                        style: const TextStyle(
-                            color: kTextDark, fontSize: 14),
-                      ),
-                    ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedClinicianId = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'TALEP MESAJI',
-                    style: TextStyle(
-                      color: kTextGrey,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: requestController,
-                    maxLines: 3,
-                    style: const TextStyle(
-                        color: kTextDark, fontSize: 14),
-                    decoration:
-                    _inputDecoration('Talep mesajınızı yazın'),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: isSendingRequest
-                          ? null
-                          : sendMeetingRequest,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                            BorderRadius.circular(14)),
-                      ),
-                      icon: isSendingRequest
-                          ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                          : const Icon(Icons.send_outlined,
-                          size: 18),
-                      label: const Text(
-                        'Toplantı Talebi Gönder',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 42,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    filterChip('Mevcut'),
+                    filterChip('Bugünkü'),
+                    filterChip('Reddedildi'),
+                    filterChip('Beklemede'),
+                    filterChip('Geçmiş'),
+                  ],
+                ),
               ),
+              const SizedBox(height: 16),
+              if (filtered.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(30),
+                  decoration: cardDecoration(),
+                  child: const Center(
+                    child: Text(
+                      'Kayıt bulunamadı.',
+                      style: TextStyle(color: kTextHint),
+                    ),
+                  ),
+                )
+              else if (showingRequests)
+                ...filtered.map(requestCard)
+              else
+                ...filtered.map(meetingCard),
             ],
           ),
         ),
