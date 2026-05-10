@@ -8,6 +8,7 @@ import '../services/empatica_service.dart';
 import 'clinical_evaluation/evaluation_list_screen.dart';
 import 'empatica_screen.dart';
 import 'exercise_video_library_screen.dart';
+import 'clinical_evaluation/evaluation_form_screen.dart';
 
 class PatientDetailScreen extends StatefulWidget {
   final Patient hasta;
@@ -319,6 +320,29 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                     EmpaticaScreen(hasta: _hasta),
               ),
             ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _hizliButon(
+            ikon: Icons.assignment_outlined,
+            etiket: 'Değerlendirme\nBaşlat',
+            renk: kPrimary,
+            arkaplan: kPrimary.withOpacity(0.05),
+            onTap: () {
+              final provider = context.read<EvaluationProvider>();
+              provider.clearSelection();
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider.value(
+                    value: provider,
+                    child: const EvaluationFormScreen(isEdit: false),
+                  ),
+                ),
+              );
+            },
           ),
         ),
 
