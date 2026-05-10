@@ -576,19 +576,26 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
         ),
         Padding(
           padding: const EdgeInsets.only(right: 16, left: 6),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _primary,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+              onTap: _openProfileSheet,
+              child: Ink(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -615,6 +622,136 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
         .toList();
     if (parts.isEmpty) return '?';
     return parts.join();
+  }
+
+  // Tap-target for the top-right profile badge.
+  // The app does not yet have a dedicated Profile screen — the existing
+  // profile pattern is the user header in MainScreen's drawer (name + role).
+  // We surface that same data here as a bottom sheet so the badge becomes a
+  // real tap target without inventing a new screen/route.
+  void _openProfileSheet() {
+    final user = context.read<AuthProvider>().user;
+    final fullName = (user?.fullName ?? '').trim().isNotEmpty
+        ? user!.fullName.trim()
+        : 'Kullanıcı';
+    final email = (user?.eposta ?? '').trim();
+    final role = (user?.rolAdi ?? '').trim();
+    final initials = _userInitials(user?.ad, user?.soyad);
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9DFEA),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: _primary,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fullName,
+                            style: const TextStyle(
+                              color: _textDark,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (role.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              role,
+                              style: const TextStyle(
+                                color: _primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                          if (email.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              email,
+                              style: const TextStyle(
+                                color: _textMid,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _textMid,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: _border),
+                      ),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    child: const Text('Kapat'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // Karşılaştırma modu aktifken üstte gösterilen seçim bilgi bandı
@@ -739,12 +876,33 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     );
   }
 
-  // Sadece "Semptomlar" bölümünden gelen seçimleri sayar.
-  // Hastalık bölümünden gelen seçimler bu sayıyı etkilemez:
-  // Evaluation.fromJson, ev.symptoms alanını yalnızca notların
-  // "Semptomlar:" bölümünden ayrıştırır; bu yüzden tek doğru kaynak
-  // ev.symptoms'tur. Notlar üzerinden ikincil ayrıştırma yapmıyoruz.
+  // Symptom count for the list card.
+  //
+  // Source of truth: notlar (Supabase row) → "Semptomlar:" section.
+  // We do NOT read ev.symptoms (a model-derived helper) because the count
+  // shown in the UI must always reflect exactly what is persisted in the
+  // canonical packed-text format, with no chance of disease/clinical-note
+  // content bleeding in.
+  //
+  // Strict rules:
+  //  • Only lines that begin EXACTLY with one of the six known symptom
+  //    labels ("Motor:", "Duyusal:", "Emosyonel:", "Kognitif:", "Pulmoner:",
+  //    "Diğer:") contribute.
+  //  • The "Semptomlar:" section is bounded by the next packed-section
+  //    header ("\n\nHastalık:\n" etc.) — anything past that boundary is
+  //    ignored.
+  //  • Free-text "Yeni bulgu:" extras are dropped.
+  //  • Sentinel placeholders (yok / none / - / seçilmedi / boş) are dropped.
+  //  • The result is deduped case-insensitively.
   int _savedSymptomCount(dynamic ev) {
+    const labels = [
+      'Motor',
+      'Duyusal',
+      'Emosyonel',
+      'Kognitif',
+      'Pulmoner',
+      'Diğer',
+    ];
     const emptyValues = {
       'yok',
       'none',
@@ -754,20 +912,64 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       'boş',
       'bos',
     };
+    const sectionHeader = 'Semptomlar:\n';
+    const endMarkers = [
+      '\n\nHastalık:\n',
+      '\n\nKlinisyen Notları:\n',
+      '\n\nFonksiyonel:\n',
+      '\n\nKlinik tip:',
+    ];
 
-    final symptomsValue = ev.symptoms;
-    if (symptomsValue is! List) return 0;
+    final notlar = (ev.notlar ?? '').toString();
+    if (notlar.trim().isEmpty) return 0;
 
-    final uniqueSymptoms = <String>{};
-    for (final raw in symptomsValue) {
-      final symptom = raw?.toString().trim() ?? '';
-      if (symptom.isEmpty) continue;
-      final normalized = symptom.toLowerCase();
-      if (emptyValues.contains(normalized)) continue;
-      if (normalized.startsWith('yeni bulgu:')) continue;
-      uniqueSymptoms.add(normalized);
+    final headerIdx = notlar.indexOf(sectionHeader);
+    if (headerIdx == -1) return 0;
+
+    final contentStart = headerIdx + sectionHeader.length;
+    int? endIdx;
+    for (final marker in endMarkers) {
+      final idx = notlar.indexOf(marker, contentStart);
+      if (idx != -1 && (endIdx == null || idx < endIdx)) {
+        endIdx = idx;
+      }
     }
-    return uniqueSymptoms.length;
+    final section = endIdx == null
+        ? notlar.substring(contentStart)
+        : notlar.substring(contentStart, endIdx);
+
+    final unique = <String>{};
+    for (final rawLine in section.split('\n')) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
+
+      String? matched;
+      for (final label in labels) {
+        if (line.startsWith('$label:')) {
+          matched = label;
+          break;
+        }
+      }
+      if (matched == null) continue;
+
+      final value = line.substring(matched.length + 1).trim();
+      if (value.isEmpty) continue;
+
+      final lower = value.toLowerCase();
+      final extraIdx = lower.indexOf('yeni bulgu:');
+      final selected = extraIdx == -1 ? value : value.substring(0, extraIdx);
+
+      for (final item in selected.split(',')) {
+        final trimmed = item.trim();
+        if (trimmed.isEmpty) continue;
+        final norm = trimmed.toLowerCase();
+        if (emptyValues.contains(norm)) continue;
+        if (norm.startsWith('yeni bulgu:')) continue;
+        unique.add(norm);
+      }
+    }
+
+    return unique.length;
   }
 
   Widget _card(EvaluationProvider provider, dynamic ev) {
