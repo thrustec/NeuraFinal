@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/auth_provider.dart';
 import '../services/agenda_service.dart';
+import '../services/evaluation_service.dart';
 import '../bbb_call_screen.dart';
 
 class ClinicianAgenda extends StatefulWidget {
@@ -16,6 +18,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
   static const Color kBackground = Color(0xFFF8F9FC);
 
   final AgendaService _agendaService = AgendaService();
+  final EvaluationService _evaluationService = EvaluationService();
   final TextEditingController _searchController = TextEditingController();
 
   String? _selectedPatientId;
@@ -29,6 +32,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
   List<Map<String, dynamic>> _appointments = [];
 
   bool _isLoading = true;
+  bool _isSearchingPatients = false;
   int _currentClinicianUserId = 1;
 
   @override
@@ -77,6 +81,67 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       });
     } catch (e) {
       debugPrint('Patients error: $e');
+    }
+  }
+
+  Future<void> _searchPatientsWithEvaluationService(String value) async {
+    final query = value.trim();
+
+    if (query.isEmpty) {
+      setState(() {
+        _filteredPatients = _patients;
+        _selectedPatientId = null;
+        _selectedPatientName = null;
+        _isSearchingPatients = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearchingPatients = true;
+    });
+
+    try {
+      final results = await _evaluationService.searchPatients(query);
+
+      if (!mounted) return;
+
+      setState(() {
+        _filteredPatients = results.map((p) {
+          return {
+            'id': p.hastaId.toString(),
+            'name': p.tamAd,
+            'diagnosis': p.tani,
+          };
+        }).toList();
+
+        _isSearchingPatients = false;
+
+        if (_selectedPatientId != null) {
+          final exists = _filteredPatients.any(
+                (p) => p['id'].toString() == _selectedPatientId,
+          );
+
+          if (!exists) {
+            _selectedPatientId = null;
+            _selectedPatientName = null;
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Agenda patient search error: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSearchingPatients = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hasta araması yapılamadı.'),
+        ),
+      );
     }
   }
 
@@ -283,65 +348,64 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
           const SizedBox(height: 8),
           TextField(
             controller: _searchController,
-            onChanged: (value) {
-              setState(() {
-                _filteredPatients = _patients
-                    .where(
-                      (p) =>
-                  (p['name'] as String)
-                      .toLowerCase()
-                      .contains(value.toLowerCase()) ||
-                      (p['id'] as String).contains(value),
-                )
-                    .toList();
-
-                if (_selectedPatientId != null) {
-                  final exists = _filteredPatients.any(
-                        (p) => p['id'] == _selectedPatientId,
-                  );
-
-                  if (!exists) {
-                    _selectedPatientId = null;
-                    _selectedPatientName = null;
-                  }
-                }
-              });
-            },
-            decoration: _inputDecoration('Hasta adı giriniz'),
+            onChanged: _searchPatientsWithEvaluationService,
+            decoration: _inputDecoration('Hasta adı, ID veya tanı giriniz'),
           ),
           const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedPatientId,
-                hint: const Text(
-                  'Bir hasta seçin',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+          if (_isSearchingPatients)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: _green,
+                  strokeWidth: 2,
                 ),
-                isExpanded: true,
-                items: _filteredPatients.map((p) {
-                  return DropdownMenuItem<String>(
-                    value: p['id'].toString(),
-                    child: Text(p['name'] as String),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedPatientId = val;
-                    _selectedPatientName = _filteredPatients.firstWhere(
-                          (p) => p['id'] == val,
-                    )['name'] as String?;
-                  });
-                },
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedPatientId,
+                  hint: const Text(
+                    'Bir hasta seçin',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+                  ),
+                  isExpanded: true,
+                  items: _filteredPatients.map((p) {
+                    final name = (p['name'] ?? 'Hasta').toString();
+                    final diagnosis = (p['diagnosis'] ?? '').toString();
+
+                    return DropdownMenuItem<String>(
+                      value: p['id'].toString(),
+                      child: Text(
+                        diagnosis.isEmpty
+                            ? name
+                            : '$name - $diagnosis',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedPatientId = val;
+
+                      final selected = _filteredPatients.firstWhere(
+                            (p) => p['id'].toString() == val,
+                      );
+
+                      _selectedPatientName = selected['name'] as String?;
+                    });
+                  },
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -520,7 +584,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: _green.withOpacity(0.1),
+                backgroundColor: _green.withValues(alpha: 0.1),
                 child: const Icon(Icons.person, size: 16, color: _green),
               ),
               const SizedBox(width: 10),
@@ -535,7 +599,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(20),
@@ -589,7 +654,6 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(height: 1, color: Color(0xFFE2E8F0)),
           ),
-
           SizedBox(
             width: double.infinity,
             height: 44,
@@ -623,9 +687,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
               ),
             ),
           ),
-
           const SizedBox(height: 12),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -722,7 +784,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       border: Border.all(color: const Color(0xFFE2E8F0)),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.02),
+          color: Colors.black.withValues(alpha: 0.02),
           blurRadius: 10,
         ),
       ],
