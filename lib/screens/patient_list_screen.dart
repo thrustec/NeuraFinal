@@ -4,7 +4,10 @@ import '../services/patient_service.dart';
 import 'patient_detail_screen.dart';
 
 class PatientListScreen extends StatefulWidget {
-  const PatientListScreen({super.key});
+  /// Verilirse yalnızca bu klinisyene atanmış hastalar gösterilir.
+  final int? klinisyenId;
+
+  const PatientListScreen({super.key, this.klinisyenId});
 
   @override
   State<PatientListScreen> createState() => _PatientListScreenState();
@@ -37,7 +40,9 @@ class _PatientListScreenState extends State<PatientListScreen> {
       _hata = null;
     });
     try {
-      final hastalar = await PatientService.getHastalar();
+      final hastalar = await PatientService.getHastalar(
+        klinisyenId: widget.klinisyenId,
+      );
       setState(() {
         _hastalar = hastalar;
         _filtrelenmis = hastalar;
@@ -59,8 +64,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
         final q = sorgu.toLowerCase();
         _filtrelenmis = _hastalar
             .where((h) =>
-        h.tamAd.toLowerCase().contains(q) ||
-            h.hastaId.toString().contains(q))
+                h.tamAd.toLowerCase().contains(q) ||
+                h.hastaId.toString().contains(q))
             .toList();
       }
     });
@@ -77,73 +82,67 @@ class _PatientListScreenState extends State<PatientListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 38, height: 38,
-                  decoration: BoxDecoration(
-                    color: kPrimary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.people_alt_outlined,
-                      color: kPrimary, size: 20),
-                ),
-                const SizedBox(width: 10),
-                const Text('Hasta Listesi',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B))),
-              ]),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _aramaCtrl,
-                onChanged: _aramaYap,
-                decoration: InputDecoration(
-                  hintText: 'İsim veya hasta ID ile ara...',
-                  hintStyle: const TextStyle(
-                      color: Color(0xFF94A3B8), fontSize: 14),
-                  prefixIcon: const Icon(Icons.search,
-                      color: Color(0xFF94A3B8), size: 20),
-                  suffixIcon: _aramaCtrl.text.isNotEmpty
-                      ? IconButton(
-                      icon: const Icon(Icons.close,
-                          color: Color(0xFF94A3B8), size: 18),
-                      onPressed: () {
-                        _aramaCtrl.clear();
-                        _aramaYap('');
-                      })
-                      : null,
-                  filled: true,
-                  fillColor: const Color(0xFFF1F5F9),
-                  contentPadding:
-                  const EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: Color(0xFFE2E8F0), width: 1)),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: kPrimary, width: 1.5)),
-                ),
-              ),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios,
+              color: Color(0xFF1E293B), size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
-        const SizedBox(height: 1),
-        Expanded(child: _govde()),
-      ],
+        title: const Text('Hasta Listesi',
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B))),
+        centerTitle: false,
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: TextField(
+              controller: _aramaCtrl,
+              onChanged: _aramaYap,
+              decoration: InputDecoration(
+                hintText: 'İsim veya hasta ID ile ara...',
+                hintStyle:
+                    const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                prefixIcon: const Icon(Icons.search,
+                    color: Color(0xFF94A3B8), size: 20),
+                suffixIcon: _aramaCtrl.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close,
+                            color: Color(0xFF94A3B8), size: 18),
+                        onPressed: () {
+                          _aramaCtrl.clear();
+                          _aramaYap('');
+                        })
+                    : null,
+                filled: true,
+                fillColor: const Color(0xFFF1F5F9),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                        color: Color(0xFFE2E8F0), width: 1)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        const BorderSide(color: kPrimary, width: 1.5)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 1),
+          Expanded(child: _govde()),
+        ],
+      ),
     );
   }
 
@@ -160,8 +159,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline,
-                  size: 56, color: Colors.red),
+              const Icon(Icons.error_outline, size: 56, color: Colors.red),
               const SizedBox(height: 12),
               const Text('Bağlantı Hatası',
                   style: TextStyle(
@@ -169,8 +167,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
               const SizedBox(height: 8),
               Text(_hata!,
                   textAlign: TextAlign.center,
-                  style:
-                  const TextStyle(color: Color(0xFF64748B))),
+                  style: const TextStyle(color: Color(0xFF64748B))),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -179,8 +176,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimary,
                     foregroundColor: Colors.white,
-                    padding:
-                    const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                   ),
@@ -198,8 +194,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_search,
-                size: 56, color: Colors.grey[300]),
+            Icon(Icons.person_search, size: 56, color: Colors.grey[300]),
             const SizedBox(height: 12),
             Text(
               _aramaCtrl.text.isEmpty
@@ -228,10 +223,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
                     letterSpacing: 0.8)),
           ),
           ..._filtrelenmis.map((hasta) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _HastaKarti(
-                hasta: hasta, onTap: () => _detayaGit(hasta)),
-          )),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _HastaKarti(
+                    hasta: hasta, onTap: () => _detayaGit(hasta)),
+              )),
         ],
       ),
     );
@@ -276,9 +271,7 @@ class _HastaKarti extends StatelessWidget {
               radius: 24,
               backgroundColor: const Color(0xFFF0FDFA),
               child: Text(
-                hasta.ad.isNotEmpty
-                    ? hasta.ad[0].toUpperCase()
-                    : '?',
+                hasta.ad.isNotEmpty ? hasta.ad[0].toUpperCase() : '?',
                 style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -297,8 +290,7 @@ class _HastaKarti extends StatelessWidget {
                           color: Color(0xFF1E293B))),
                   const SizedBox(height: 4),
                   Row(children: [
-                    _Etiket(
-                        label: hasta.hastalikAdi ?? 'Tanı Yok'),
+                    _Etiket(label: hasta.hastalikAdi ?? 'Tanı Yok'),
                     const SizedBox(width: 6),
                     _Etiket(
                       label: '${_yas(hasta.dogumTarihi)} yaş',
@@ -313,8 +305,7 @@ class _HastaKarti extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(hasta.adres ?? 'Adres yok',
                         style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF94A3B8))),
+                            fontSize: 12, color: Color(0xFF94A3B8))),
                   ]),
                 ],
               ),
@@ -352,16 +343,12 @@ class _Etiket extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-          color: arkaplan,
-          borderRadius: BorderRadius.circular(20)),
+          color: arkaplan, borderRadius: BorderRadius.circular(20)),
       child: Text(label,
           style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: renk)),
+              fontSize: 11, fontWeight: FontWeight.w500, color: renk)),
     );
   }
 }

@@ -43,6 +43,136 @@ class Evaluation {
     this.symptoms = const [],
   });
 
+  static String _extractPackedSection(String source, String title) {
+    final text = source.trim();
+    if (text.isEmpty) return '';
+
+    final header = '$title:\n';
+    // Use the FIRST occurrence so any later "Semptomlar:" string accidentally
+    // typed inside another section's body cannot redirect the start of the
+    // Semptomlar block.
+    final start = text.indexOf(header);
+    if (start == -1) return '';
+
+    final contentStart = start + header.length;
+    final nextHeaders = [
+      '\n\nSemptomlar:\n',
+      '\n\nHastalık:\n',
+      '\n\nKlinisyen Notları:\n',
+      '\n\nFonksiyonel:\n',
+      '\n\nKlinik tip:',
+    ];
+
+    int? end;
+    for (final marker in nextHeaders) {
+      final idx = text.indexOf(marker, contentStart);
+      if (idx != -1 && (end == null || idx < end)) {
+        end = idx;
+      }
+    }
+
+    final result = end == null
+        ? text.substring(contentStart)
+        : text.substring(contentStart, end);
+    return result.trim();
+  }
+
+  static List<String> _parseSymptomsFromNotlar(String? rawNotlar) {
+    final notlar = (rawNotlar ?? '').trim();
+    if (notlar.isEmpty) return const [];
+
+    final semptomlar = _extractPackedSection(notlar, 'Semptomlar');
+    if (semptomlar.isEmpty) return const [];
+
+    const labels = [
+      'Motor',
+      'Duyusal',
+      'Emosyonel',
+      'Kognitif',
+      'Pulmoner',
+      'Diğer',
+    ];
+
+    const emptyValues = {
+      'yok',
+      'none',
+      '-',
+      'seçilmedi',
+      'secilmedi',
+      'boş',
+      'bos',
+    };
+
+    final uniqueSymptoms = <String>{};
+
+    for (final rawLine in semptomlar.split('\n')) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
+
+      String? matchedLabel;
+      for (final label in labels) {
+        if (line.toLowerCase().startsWith('${label.toLowerCase()}:')) {
+          matchedLabel = label;
+          break;
+        }
+      }
+      if (matchedLabel == null) continue;
+
+      final value = line.substring(matchedLabel.length + 1).trim();
+      if (value.isEmpty) continue;
+
+      final lower = value.toLowerCase();
+      final extraIndex = lower.indexOf('yeni bulgu:');
+      final selectedPart = extraIndex == -1
+          ? value
+          : value.substring(0, extraIndex).trim();
+
+      if (selectedPart.isEmpty) continue;
+
+      for (final item in selectedPart.split(',')) {
+        final symptom = item.trim();
+        if (symptom.isEmpty) continue;
+
+        final normalized = symptom.toLowerCase();
+        if (emptyValues.contains(normalized)) continue;
+        if (normalized.startsWith('yeni bulgu:')) continue;
+
+        uniqueSymptoms.add(symptom);
+      }
+    }
+
+    return uniqueSymptoms.toList(growable: false);
+  }
+
+  static List<String> _parseSymptomsFromJson(dynamic symptomsValue) {
+    if (symptomsValue is! List) return const [];
+
+    const emptyValues = {
+      'yok',
+      'none',
+      '-',
+      'seçilmedi',
+      'secilmedi',
+      'boş',
+      'bos',
+    };
+
+    final uniqueSymptoms = <String>{};
+
+    for (final raw in symptomsValue) {
+      final symptom = raw?.toString().trim() ?? '';
+      if (symptom.isEmpty) continue;
+
+      final normalized = symptom.toLowerCase();
+      if (emptyValues.contains(normalized)) continue;
+      if (normalized.startsWith('yeni bulgu:')) continue;
+
+      uniqueSymptoms.add(symptom);
+    }
+
+    return uniqueSymptoms.toList(growable: false);
+  }
+
   factory Evaluation.fromJson(Map<String, dynamic> json) {
     final nestedAd = (json['hastalar']?['kullanicilar']?['ad'] ?? '')
         .toString()
@@ -88,6 +218,13 @@ class Evaluation {
         .map((e) => e?.toString().trim() ?? '')
         .firstWhere((e) => e.isNotEmpty, orElse: () => '');
 
+    final rawNotlar = json['notlar']?.toString();
+    final parsedSymptomsFromNotlar = _parseSymptomsFromNotlar(rawNotlar);
+    final parsedSymptomsFromJson = _parseSymptomsFromJson(json['symptoms']);
+    final resolvedSymptoms = parsedSymptomsFromNotlar.isNotEmpty
+        ? parsedSymptomsFromNotlar
+        : parsedSymptomsFromJson;
+
     return Evaluation(
       id: json['degerlendirmeId'] ?? json['id'],
       degerlendirmeId: (json['degerlendirmeId'] ?? json['id'] ?? 0) as int,
@@ -101,7 +238,7 @@ class Evaluation {
       hastaAdSoyad: hastaAdSoyad.isEmpty ? null : hastaAdSoyad,
       sigaraDurumId: json['sigaraDurumId'] as int?,
       hastalikAdi: hastalikAdi.isEmpty ? null : hastalikAdi,
-      notlar: json['notlar']?.toString(),
+      notlar: rawNotlar,
       klinisyenNotlari: json['klinisyenNotlari']?.toString(),
       kullanilanIlaclar: json['kullanilanIlaclar']?.toString(),
       hikaye: json['hikaye']?.toString(),
@@ -111,9 +248,7 @@ class Evaluation {
       diseaseNote: json['diseaseNote']?.toString(),
       functionalsNote: json['functionalsNote']?.toString(),
       caregiver: (json['bakiciKisi'] ?? json['caregiver'])?.toString(),
-      symptoms: json['symptoms'] is List
-          ? (json['symptoms'] as List).map((e) => e.toString()).toList()
-          : const [],
+      symptoms: resolvedSymptoms,
     );
   }
 
@@ -128,6 +263,8 @@ class Evaluation {
       'kullanilanIlaclar': kullanilanIlaclar,
       'bakiciKisi': caregiver,
       'klinisyenNotlari': klinisyenNotlari,
+      // symptoms ayrı DB kolonu değilse ekleme. Semptomlar notlar içinde güncel olarak saklanır.
+      // 'symptoms': symptoms,
     };
   }
 
@@ -142,6 +279,8 @@ class Evaluation {
       'kullanilanIlaclar': kullanilanIlaclar,
       'bakiciKisi': caregiver,
       'klinisyenNotlari': klinisyenNotlari,
+      // Update sırasında eski semptomlarla merge yapılmamalı; notlar alanı güncel paket olarak replace edilir.
+      // 'symptoms': symptoms,
     };
   }
 
@@ -251,8 +390,8 @@ class SigaraDurum {
   });
 
   static const defaults = <SigaraDurum>[
-    SigaraDurum(id: 1, ad: 'Hiç kullanmadı'),
-    SigaraDurum(id: 2, ad: 'Bıraktı'),
-    SigaraDurum(id: 3, ad: 'Aktif kullanıyor'),
+    SigaraDurum(id: 1, ad: 'İçiyor'),
+    SigaraDurum(id: 2, ad: 'İçmiyor'),
+    SigaraDurum(id: 3, ad: 'Bırakmış'),
   ];
 }

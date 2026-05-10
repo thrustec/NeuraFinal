@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/patient_model.dart';
+import 'package:flutter/foundation.dart';
 
 // ─────────────────────────────────────────────────────────────
 // Supabase PostgREST — doğrudan bağlantı
@@ -30,73 +31,112 @@ Map<String, String> _headers({bool write = false}) {
 
 class PatientService {
 
-  /// Tüm hastaları getirir (lookup tablolarıyla birlikte)
-  static Future<List<Patient>> getHastalar({String? aramaMetni}) async {
+  /// Tüm hastaları getirir.
+  /// [klinisyenId] verilirse yalnızca o klinisyene atanmış hastalar döner.
+  static Future<List<Patient>> getHastalar({
+    String? aramaMetni,
+    int? klinisyenId,
+  }) async {
     try {
-      // PostgREST select: hastalar + kullanicilar(ad,soyad,eposta) + lookup tabloları
-      // + en son değerlendirmedeki hastalık adı
-      final select = Uri.encodeComponent(
-        '*,'
-            'kullanicilar(ad,soyad,eposta),'
-            'cinsiyetler(cinsiyetAdi),'
-            'medeniDurumlar(medeniDurumAdi),'
-            'egitimDurumlari(egitimDurumAdi),'
-            'meslekler(meslekAdi),'
-            'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
-      );
-
-      final url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: _headers(),
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> liste = json.decode(response.body);
-        final hastalar = liste.map((j) {
-          final map = j as Map<String, dynamic>;
-          return Patient.fromJson(_flattenHasta(map));
-        }).toList();
-
-        // İstemci tarafı arama (PostgREST ilike de kullanılabilir ama
-        // mevcut ekran zaten kendi filtresini yapıyor)
-        if (aramaMetni != null && aramaMetni.isNotEmpty) {
-          final q = aramaMetni.toLowerCase();
-          return hastalar
-              .where((h) =>
-          h.tamAd.toLowerCase().contains(q) ||
-              h.hastaId.toString().contains(q))
-              .toList();
-        }
-        return hastalar;
-      }
-      throw Exception(
-          'Hastalar yüklenemedi. Kod: ${response.statusCode}');
+      final basicPatients = await _fetchPatientsBasic(klinisyenId: klinisyenId);
+      return _filterPatients(basicPatients, aramaMetni);
     } catch (e) {
-      throw Exception('Bağlantı hatası: $e');
+      debugPrint('PatientService.getHastalar basic fetch failed: $e');
+      final detailedPatients = await _fetchPatientsDetailed(klinisyenId: klinisyenId);
+      return _filterPatients(detailedPatients, aramaMetni);
     }
+  }
+
+  static Future<List<Patient>> _fetchPatientsDetailed({int? klinisyenId}) async {
+    final select = Uri.encodeComponent(
+      '*, '
+      'kullanicilar(ad,soyad,eposta), '
+      'cinsiyetler(cinsiyetAdi), '
+      'medeniDurumlar(medeniDurumAdi), '
+      'egitimDurumlari(egitimDurumAdi), '
+      'meslekler(meslekAdi), '
+      'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
+    );
+
+    String url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    if (klinisyenId != null) {
+      url += '&klinisyenId=eq.$klinisyenId';
+    }
+
+    final response = await http
+        .get(Uri.parse(url), headers: _headers())
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> liste = json.decode(response.body);
+      return liste.map((j) {
+        final map = j as Map<String, dynamic>;
+        return Patient.fromJson(_flattenHasta(map));
+      }).toList();
+    }
+
+    throw Exception(
+      'Hastalar detaylı yüklenemedi. Kod: ${response.statusCode}',
+    );
+  }
+
+  static Future<List<Patient>> _fetchPatientsBasic({int? klinisyenId}) async {
+    final select = Uri.encodeComponent(
+      'hastaId,kullaniciId,notlar,dogumTarihi,telefonNo,boy,kilo,'
+      'kullanicilar(ad,soyad,eposta)',
+    );
+
+    String url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    if (klinisyenId != null) {
+      url += '&klinisyenId=eq.$klinisyenId';
+    }
+
+    final response = await http
+        .get(Uri.parse(url), headers: _headers())
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> liste = json.decode(response.body);
+      return liste.map((j) {
+        final map = j as Map<String, dynamic>;
+        return Patient.fromJson(_flattenHasta(map));
+      }).toList();
+    }
+
+    throw Exception(
+      'Hastalar temel yüklenemedi. Kod: ${response.statusCode}',
+    );
+  }
+
+  static List<Patient> _filterPatients(List<Patient> patients, String? aramaMetni) {
+    final q = aramaMetni?.trim().toLowerCase() ?? '';
+    if (q.isEmpty) return patients;
+
+    return patients.where((h) {
+      final email = (h.eposta ?? '').toLowerCase();
+      return h.tamAd.toLowerCase().contains(q) ||
+          email.contains(q) ||
+          h.hastaId.toString().contains(q);
+    }).toList();
   }
 
   /// Tek hasta detayı
   static Future<Patient> getHastaById(int hastaId) async {
     try {
       final select = Uri.encodeComponent(
-        '*,'
-            'kullanicilar(ad,soyad,eposta),'
-            'cinsiyetler(cinsiyetAdi),'
-            'medeniDurumlar(medeniDurumAdi),'
-            'egitimDurumlari(egitimDurumAdi),'
-            'meslekler(meslekAdi),'
-            'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
+        '*, '
+        'kullanicilar(ad,soyad,eposta), '
+        'cinsiyetler(cinsiyetAdi), '
+        'medeniDurumlar(medeniDurumAdi), '
+        'egitimDurumlari(egitimDurumAdi), '
+        'meslekler(meslekAdi), '
+        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
       );
-      final url =
-          '$SUPABASE_URL/hastalar?select=$select&hastaId=eq.$hastaId';
+      final url = '$SUPABASE_URL/hastalar?select=$select&hastaId=eq.$hastaId';
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: _headers(),
-      );
+      final response = await http
+          .get(Uri.parse(url), headers: _headers())
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final List<dynamic> liste = json.decode(response.body);
@@ -104,6 +144,11 @@ class PatientService {
         return Patient.fromJson(
             _flattenHasta(liste.first as Map<String, dynamic>));
       }
+
+      final basicList = await _fetchPatientsBasic();
+      final matches = basicList.where((p) => p.hastaId == hastaId).toList();
+      if (matches.isNotEmpty) return matches.first;
+
       throw Exception('Hasta bulunamadı.');
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
@@ -114,22 +159,17 @@ class PatientService {
   static Future<bool> hastaGuncelle(
       int hastaId, Map<String, dynamic> data) async {
     try {
-      // klinisyenNotlari degerlendirmeler tablosunda,
-      // boy/kilo hastalar tablosunda — ikisini ayırıyoruz
       final hastaData = <String, dynamic>{};
       if (data.containsKey('boy')) hastaData['boy'] = data['boy'];
       if (data.containsKey('kilo')) hastaData['kilo'] = data['kilo'];
 
-      // Hastalar tablosunu güncelle
       if (hastaData.isNotEmpty) {
         final response = await http.patch(
-          Uri.parse(
-              '$SUPABASE_URL/hastalar?hastaId=eq.$hastaId'),
+          Uri.parse('$SUPABASE_URL/hastalar?hastaId=eq.$hastaId'),
           headers: _headers(write: true),
           body: json.encode(hastaData),
         );
-        if (response.statusCode != 200 &&
-            response.statusCode != 204) {
+        if (response.statusCode != 200 && response.statusCode != 204) {
           throw Exception('Hasta güncellenemedi.');
         }
       }

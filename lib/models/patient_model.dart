@@ -16,6 +16,12 @@ class Patient { // verilerin yapısı değişmemesi için final kullandım
   final double? kilo;
   final String? hastalikAdi;       // degerlendirmeler.hastalikId → hastaliklar.hastalikAdi
   final String? klinisyenNotlari;  // degerlendirmeler.klinisyenNotlari
+  final int? sigaraDurumId;
+  final String? sigaraDurumAdi;
+  final int? baskinId;
+  final String? baskinElAdi;
+  final String? baslangicTarihi;
+  final String? bakiciKisi;
 
   Patient({
     required this.hastaId,
@@ -35,30 +41,139 @@ class Patient { // verilerin yapısı değişmemesi için final kullandım
     this.kilo,
     this.hastalikAdi,
     this.klinisyenNotlari,
+    this.sigaraDurumId,
+    this.sigaraDurumAdi,
+    this.baskinId,
+    this.baskinElAdi,
+    this.baslangicTarihi,
+    this.bakiciKisi,
   });
 
   String get tamAd => '$ad $soyad';
 
   factory Patient.fromJson(Map<String, dynamic> json) {
     return Patient(
-      hastaId:          json['hastaId'] ?? 0,
-      kullaniciId:      json['kullaniciId'] ?? 0,
-      ad:               json['ad'] ?? '',
-      soyad:            json['soyad'] ?? '',
-      eposta:           json['eposta'],
-      cinsiyetAdi:      json['cinsiyetAdi'] ?? json['cinsiyet']?['cinsiyetAdi'],
-      medeniDurumAdi:   json['medeniDurumAdi'] ?? json['medeniDurum']?['medeniDurumAdi'],
-      egitimDurumAdi:   json['egitimDurumAdi'] ?? json['egitimDurumu']?['egitimDurumAdi'],
-      meslekAdi:        json['meslekAdi'] ?? json['meslek']?['meslekAdi'],
-      dogumTarihi:      json['dogumTarihi'],
-      telefonNo:        json['telefonNo'],
-      adres:            json['adres'],
-      notlar:           json['notlar'],
+      hastaId:          _asInt(json['hastaId']) ?? 0,
+      kullaniciId:      _asInt(json['kullaniciId']) ?? 0,
+      ad:               _firstString(json, const ['ad', 'adi', 'hastaAdi']),
+      soyad:            _firstString(json, const ['soyad', 'soyadi', 'hastaSoyadi']),
+      eposta:           _firstNullableString(json, const ['eposta', 'email']),
+      cinsiyetAdi:      _firstNullableString(json, const [
+        'cinsiyetAdi',
+        'cinsiyet_adi',
+        'cinsiyet',
+      ]),
+      medeniDurumAdi:   _firstNullableString(json, const [
+        'medeniDurumAdi',
+        'medeni_durum_adi',
+        'medeniDurum',
+        'maritalStatus',
+      ]),
+      egitimDurumAdi:   _firstNullableString(json, const [
+        'egitimDurumAdi',
+        'egitim_durum_adi',
+        'egitimDurumu',
+        'egitim',
+        'education',
+      ]),
+      meslekAdi:        _firstNullableString(json, const [
+        'meslekAdi',
+        'meslek_adi',
+        'meslek',
+        'occupation',
+      ]),
+      dogumTarihi:      _firstNullableString(json, const ['dogumTarihi', 'birthDate']),
+      telefonNo:        _firstNullableString(json, const ['telefonNo', 'phone']),
+      adres:            _firstNullableString(json, const [
+        'adres',
+        'yasadigiYer',
+        'yaşadığıYer',
+        'yasadigiSehir',
+        'yaşadığıŞehir',
+        'ikametYeri',
+        'location',
+      ]),
+      notlar:           _firstNullableString(json, const ['notlar', 'notes']),
       boy:              (json['boy'] as num?)?.toDouble(),
       kilo:             (json['kilo'] as num?)?.toDouble(),
-      hastalikAdi:      json['hastalikAdi'] ?? json['hastalik']?['hastalikAdi'],
-      klinisyenNotlari: json['klinisyenNotlari'],
+      hastalikAdi:      _firstNullableString(json, const [
+        'hastalikAdi',
+        'hastalik_adi',
+        'tani',
+        'tanı',
+        'diagnosis',
+      ]),
+      klinisyenNotlari: _firstNullableString(json, const ['klinisyenNotlari']),
+      sigaraDurumId:    _asInt(json['sigaraDurumId'] ?? json['smokingId']),
+      sigaraDurumAdi:   _firstNullableString(json, const [
+        'sigaraDurumAdi',
+        'sigara_durum_adi',
+        'sigaraKullanimi',
+        'sigaraKullanımı',
+        'smokingStatus',
+      ]),
+      baskinId:         _asInt(json['baskinId'] ?? json['dominantSideId']),
+      baskinElAdi:      _firstNullableString(json, const [
+        'baskinElAdi',
+        'elAdi',
+        'dominantSide',
+        'dominantTaraf',
+        'dominant_taraf',
+      ]),
+      baslangicTarihi:  _firstNullableString(json, const [
+        'baslangicTarihi',
+        'ilkSikayetTarihi',
+        'ilkŞikayetTarihi',
+        'complaintDate',
+      ]),
+      bakiciKisi:       _firstNullableString(json, const [
+        'bakiciKisi',
+        'bakımVeren',
+        'bakimVeren',
+        'caregiver',
+      ]),
     );
+  }
+
+  static int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  static String _firstString(Map<String, dynamic> json, List<String> keys) {
+    return _firstNullableString(json, keys) ?? '';
+  }
+
+  static String? _firstNullableString(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is Map) {
+        for (final nestedKey in const [
+          'ad',
+          'adi',
+          'adı',
+          'soyad',
+          'medeniDurumAdi',
+          'egitimDurumAdi',
+          'meslekAdi',
+          'hastalikAdi',
+          'sigaraDurumAdi',
+          'elAdi',
+          'value',
+          'name',
+        ]) {
+          final nestedText = value[nestedKey]?.toString().trim() ?? '';
+          if (nestedText.isNotEmpty) return nestedText;
+        }
+      }
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+    return null;
   }
 
   Patient copyWith({ // veriler final olduğu için hastanın bazı bilgilerini güncellemek için copyWith
@@ -89,6 +204,12 @@ class Patient { // verilerin yapısı değişmemesi için final kullandım
       kilo:             kilo             ?? this.kilo,
       hastalikAdi:      hastalikAdi,
       klinisyenNotlari: klinisyenNotlari ?? this.klinisyenNotlari,
+      sigaraDurumId:    sigaraDurumId,
+      sigaraDurumAdi:   sigaraDurumAdi,
+      baskinId:         baskinId,
+      baskinElAdi:      baskinElAdi,
+      baslangicTarihi:  baslangicTarihi,
+      bakiciKisi:       bakiciKisi,
     );
   }
 }

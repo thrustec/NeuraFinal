@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../models/evaluation_model.dart';
 import '../../providers/evaluation_provider.dart';
 import '../../models/patient_model.dart' as patient_model;
 import '../../services/patient_service.dart';
+import '../../services/evaluation_service.dart';
+import '../../providers/auth_provider.dart';
+import '../patient_step_1_screen.dart';
 
 class EvaluationFormScreen extends StatefulWidget {
   final bool isEdit;
@@ -19,14 +21,15 @@ class EvaluationFormScreen extends StatefulWidget {
 }
 
 class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
-  static const _bg = Color(0xFFF5F7FB);
+  static const _bg = Color(0xFFF8F9FC);
   static const _surface = Colors.white;
-  static const _primary = Color(0xFF2563F6);
-  static const _primarySoft = Color(0xFFEFF4FF);
-  static const _border = Color(0xFFDDE3EE);
-  static const _textDark = Color(0xFF253043);
-  static const _textMid = Color(0xFF6E778B);
-  static const _textLight = Color(0xFF98A1B3);
+  static const _primary = Color(0xFF0F766E);
+  static const _primarySoft = Color(0xFFE7F5F3);
+  static const _border = Color(0xFFE2E8F0);
+  static const _inputFill = Color(0xFFF1F5F9);
+  static const _textDark = Color(0xFF1E293B);
+  static const _textMid = Color(0xFF64748B);
+  static const _textLight = Color(0xFF94A3B8);
   static const _successBg = Color(0xFFE9F7EE);
   static const _successText = Color(0xFF0A8C3B);
 
@@ -67,6 +70,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   final _diseaseNoteCtrl = TextEditingController();
   final _functionalsNoteCtrl = TextEditingController();
   final _clinicTypeCtrl = TextEditingController();
+
+  final _alzExtraCtrl = TextEditingController();
+  final _pdExtraCtrl = TextEditingController();
+  final _alsExtraCtrl = TextEditingController();
+  final _msExtraCtrl = TextEditingController();
+  final _ataxiaExtraCtrl = TextEditingController();
 
   final _miniMentalScoreCtrl = TextEditingController();
   final _updrsEngineScoreCtrl = TextEditingController();
@@ -171,6 +180,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _functionalsNoteCtrl.dispose();
     _clinicTypeCtrl.dispose();
 
+    _alzExtraCtrl.dispose();
+    _pdExtraCtrl.dispose();
+    _alsExtraCtrl.dispose();
+    _msExtraCtrl.dispose();
+    _ataxiaExtraCtrl.dispose();
+
     _miniMentalScoreCtrl.dispose();
     _updrsEngineScoreCtrl.dispose();
     _alsfrsScoreCtrl.dispose();
@@ -200,7 +215,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   Future<void> _loadDbPatients() async {
     try {
       final hastalar = await PatientService.getHastalar();
-      print('DB hasta sayısı: ${hastalar.length}');
+      debugPrint('DB hasta sayısı: ${hastalar.length}');
       if (!mounted) return;
 
       setState(() {
@@ -212,11 +227,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           provider.selected?.hastaId ?? provider.filterHastaId ?? _hastaId;
 
       if (targetHastaId != null) {
-        final dbPatient = _findDbPatientById(targetHastaId);
-        if (dbPatient != null) {
-          _applySelectedDbPatient(dbPatient);
-          if (mounted) setState(() {});
+        final listPatient = _findDbPatientById(targetHastaId);
+        patient_model.Patient? dbPatient = listPatient;
+        try {
+          dbPatient = await PatientService.getHastaById(targetHastaId);
+        } catch (e) {
+          debugPrint('Patient detail could not be loaded during preload: $e');
         }
+        if (dbPatient == null) return;
+        _applySelectedDbPatient(dbPatient);
+        if (mounted) setState(() {});
       }
     } catch (e) {
       if (!mounted) return;
@@ -280,9 +300,53 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if ((patient.adres ?? '').trim().isNotEmpty) {
       _locationCtrl.text = patient.adres!;
     }
+    if ((patient.baslangicTarihi ?? '').trim().isNotEmpty) {
+      _complaintDateCtrl.text = _formatPatientDate(patient.baslangicTarihi!);
+    }
+    if ((patient.bakiciKisi ?? '').trim().isNotEmpty) {
+      _caregiverCtrl.text = patient.bakiciKisi!;
+    }
+    if (patient.sigaraDurumId != null) {
+      _sigaraDurumId = patient.sigaraDurumId;
+    }
+    final dominantSide = _normalizeDominantSide(
+      patient.baskinElAdi ?? patient.baskinId?.toString(),
+    );
+    if (dominantSide != null) {
+      _dominantSide = dominantSide;
+    }
     if ((patient.notlar ?? '').trim().isNotEmpty) {
       _medicalHistoryCtrl.text = patient.notlar!;
     }
+  }
+
+  String _formatPatientDate(String value) {
+    final date = DateTime.tryParse(value);
+    if (date == null) return value;
+    return '${date.day.toString().padLeft(2, '0')}.'
+        '${date.month.toString().padLeft(2, '0')}.'
+        '${date.year}';
+  }
+
+  String? _normalizeDominantSide(String? value) {
+    final normalized = (value ?? '').trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    if (normalized == '1' ||
+        normalized == 'right' ||
+        normalized == 'sağ' ||
+        normalized == 'sag') {
+      return 'Right';
+    }
+    if (normalized == '2' || normalized == 'left' || normalized == 'sol') {
+      return 'Left';
+    }
+    if (normalized == '3' ||
+        normalized == 'both' ||
+        normalized == 'her ikisi' ||
+        normalized == 'her i̇kisi') {
+      return 'Both';
+    }
+    return null;
   }
 
   String _extractSection(String source, String title) {
@@ -290,6 +354,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if (text.isEmpty) return '';
 
     final header = '$title:\n';
+    // Use the FIRST occurrence so any later string that accidentally
+    // spells the same header (e.g. inside an accumulated clinician note)
+    // cannot redirect the start of the real section.
     final start = text.indexOf(header);
     if (start == -1) return '';
 
@@ -319,15 +386,54 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return result.trim();
   }
 
+  // Extract only the body of the "Klinisyen Notları" sub-section inside the
+  // disease block. The disease block uses headers WITHOUT a trailing colon
+  // (e.g. "Parkinson\n...", "Klinisyen Notları\n...") so we cannot reuse
+  // _extractSection (which expects "Title:\n"). The body is bounded by any
+  // other disease sub-section header on a new paragraph.
+  String _extractDiseaseClinicianNote(String diseaseSection) {
+    final text = diseaseSection.trim();
+    if (text.isEmpty) return '';
+    const header = 'Klinisyen Notları\n';
+    final start = text.indexOf(header);
+    if (start == -1) return '';
+    final contentStart = start + header.length;
+    const otherHeaders = [
+      '\n\nHafif Kognitif Bozukluk / Alzheimer Hastalığı\n',
+      '\n\nParkinson\n',
+      '\n\nALS\n',
+      '\n\nMS\n',
+      '\n\nAtaksi\n',
+      '\n\nKlinisyen Notları\n',
+    ];
+    int? end;
+    for (final marker in otherHeaders) {
+      final idx = text.indexOf(marker, contentStart);
+      if (idx != -1 && (end == null || idx < end)) {
+        end = idx;
+      }
+    }
+    final body = end == null
+        ? text.substring(contentStart)
+        : text.substring(contentStart, end);
+    return body.trim();
+  }
+
   String _extractInlineValue(String source, String label) {
     if (source.trim().isEmpty) return '';
     final pattern = RegExp(
-      '${RegExp.escape(label)}\\s*:\\s*(.+)',
+      '^${RegExp.escape(label)}\\s*:[ \\t]*(.*)\$',
       caseSensitive: false,
     );
-    final match = pattern.firstMatch(source);
-    if (match == null) return '';
-    return (match.group(1) ?? '').trim();
+
+    for (final rawLine in source.split('\n')) {
+      final match = pattern.firstMatch(rawLine.trimRight());
+      if (match != null) {
+        return (match.group(1) ?? '').trim();
+      }
+    }
+
+    return '';
   }
 
   void _fillFunctionalControllersFromText(String text) {
@@ -367,6 +473,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _diseaseNoteCtrl.clear();
     _functionalsNoteCtrl.clear();
     _clinicTypeCtrl.clear();
+
+    _alzExtraCtrl.clear();
+    _pdExtraCtrl.clear();
+    _alsExtraCtrl.clear();
+    _msExtraCtrl.clear();
+    _ataxiaExtraCtrl.clear();
 
     _miniMentalScoreCtrl.clear();
     _updrsEngineScoreCtrl.clear();
@@ -452,7 +564,11 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   void _restoreDiseaseSelectionsFromText(String text) {
     if (text.trim().isEmpty) return;
 
-    void fillSection(String header, Set<String> target) {
+    void fillSection(
+      String header,
+      Set<String> target,
+      TextEditingController extraCtrl,
+    ) {
       final start = text.indexOf('$header\n');
       if (start == -1) return;
 
@@ -480,20 +596,46 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           ? text.substring(contentStart)
           : text.substring(contentStart, end);
 
-      final values = body
+      final lower = body.toLowerCase();
+      final extraIndex = lower.indexOf('yeni bulgu:');
+
+      final selectedPart = extraIndex == -1
+          ? body
+          : body.substring(0, extraIndex);
+      final extraPart = extraIndex == -1
+          ? ''
+          : body.substring(extraIndex + 'yeni bulgu:'.length).trim();
+
+      // selectedPart may end with a trailing ", " left by the join before
+      // "Yeni bulgu:"; trim that off before splitting.
+      var trimmedSelected = selectedPart.trim();
+      if (trimmedSelected.endsWith(',')) {
+        trimmedSelected =
+            trimmedSelected.substring(0, trimmedSelected.length - 1).trim();
+      }
+
+      final values = trimmedSelected
           .split(',')
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();
 
       target.addAll(values);
+
+      if (extraPart.isNotEmpty) {
+        extraCtrl.text = extraPart;
+      }
     }
 
-    fillSection('Hafif Kognitif Bozukluk / Alzheimer Hastalığı', _alzSymptoms);
-    fillSection('Parkinson', _pdSymptoms);
-    fillSection('ALS', _alsSymptoms);
-    fillSection('MS', _msSymptoms);
-    fillSection('Ataksi', _ataxiaSymptoms);
+    fillSection(
+      'Hafif Kognitif Bozukluk / Alzheimer Hastalığı',
+      _alzSymptoms,
+      _alzExtraCtrl,
+    );
+    fillSection('Parkinson', _pdSymptoms, _pdExtraCtrl);
+    fillSection('ALS', _alsSymptoms, _alsExtraCtrl);
+    fillSection('MS', _msSymptoms, _msExtraCtrl);
+    fillSection('Ataksi', _ataxiaSymptoms, _ataxiaExtraCtrl);
   }
 
   void _restoreDemographicsFromText(String text) {
@@ -582,7 +724,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _restoreDemographicsFromText(packedHikaye);
     _restoreSymptomsFromText(_extractSection(packedNotlar, 'Semptomlar'));
     final diseaseSection = _extractSection(packedNotlar, 'Hastalık');
-    _diseaseNoteCtrl.text = diseaseSection;
+    // CRITICAL: do NOT assign the entire Hastalık section back into
+    // _diseaseNoteCtrl. _composeDiseaseNote later wraps this controller's
+    // text under a "Klinisyen Notları" sub-header, so dumping the whole
+    // disease block in here would re-embed every previous round-trip on
+    // the next save and grow the saved notlar without bound. Only the
+    // Klinisyen Notları sub-section (free-text the user typed) belongs
+    // in this controller; if it isn't present, leave it empty so a
+    // resave produces an unchanged Hastalık block.
+    _diseaseNoteCtrl.text =
+        _extractDiseaseClinicianNote(diseaseSection);
     _restoreDiseaseSelectionsFromText(diseaseSection);
     _functionalsNoteCtrl.text = _extractSection(packedClinicianNotes, 'Klinisyen Notları');
     _clinicTypeCtrl.text = _extractInlineValue(packedClinicianNotes, 'Klinik tip');
@@ -599,11 +750,14 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _pulmonaryOpen = _pulmonarySymptoms.isNotEmpty || _pulmonaryExtraCtrl.text.trim().isNotEmpty;
     _otherOpen = _otherSymptoms.isNotEmpty || _otherExtraCtrl.text.trim().isNotEmpty;
 
-    _alzOpen = _alzSymptoms.isNotEmpty;
-    _pdOpen = _pdSymptoms.isNotEmpty;
-    _alsOpen = _alsSymptoms.isNotEmpty;
-    _msOpen = _msSymptoms.isNotEmpty;
-    _ataxiaOpen = _ataxiaSymptoms.isNotEmpty;
+    _alzOpen =
+        _alzSymptoms.isNotEmpty || _alzExtraCtrl.text.trim().isNotEmpty;
+    _pdOpen = _pdSymptoms.isNotEmpty || _pdExtraCtrl.text.trim().isNotEmpty;
+    _alsOpen =
+        _alsSymptoms.isNotEmpty || _alsExtraCtrl.text.trim().isNotEmpty;
+    _msOpen = _msSymptoms.isNotEmpty || _msExtraCtrl.text.trim().isNotEmpty;
+    _ataxiaOpen =
+        _ataxiaSymptoms.isNotEmpty || _ataxiaExtraCtrl.text.trim().isNotEmpty;
 
     _generalTestOpen =
         _chairStandCtrl.text.trim().isNotEmpty ||
@@ -638,13 +792,24 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     setState(() {});
   }
 
-  void _fillPatientProfile(patient_model.Patient patient) {
-    _applySelectedDbPatient(patient);
+  Future<void> _fillPatientProfile(patient_model.Patient patient) async {
+    patient_model.Patient resolvedPatient = patient;
+    try {
+      resolvedPatient = await PatientService.getHastaById(patient.hastaId);
+    } catch (e) {
+      debugPrint('Patient detail could not be loaded, using list row: $e');
+    }
+    if (!mounted) return;
+    _applySelectedDbPatient(resolvedPatient);
     setState(() {});
   }
 
   Future<void> _openPatientSelector() async {
     _patientQueryCtrl.clear();
+
+    if (_dbPatients.isEmpty) {
+      await _loadDbPatients();
+    }
 
     final selectedPatient =
     await showModalBottomSheet<patient_model.Patient>(
@@ -669,7 +834,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               height: MediaQuery.of(context).size.height * 0.82,
               decoration: const BoxDecoration(
                 color: _surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: SafeArea(
                 top: false,
@@ -728,16 +893,17 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () async {
+                            Navigator.pop(sheetContext);
                             await _openCreatePatientSheet();
                           },
                           icon: const Icon(Icons.person_add_alt_1_rounded),
                           label: const Text('Yeni Hasta Ekle'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _primary,
-                            side: const BorderSide(color: _primary),
+                            foregroundColor: _textMid,
+                            side: const BorderSide(color: _border),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),
@@ -770,15 +936,22 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                                 .toUpperCase();
 
                             return InkWell(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(16),
                               onTap: () =>
                                   Navigator.pop(sheetContext, patient),
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF7F9FD),
-                                  borderRadius: BorderRadius.circular(20),
+                                  color: _surface,
+                                  borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: _border),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x05000000),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
                                 child: Row(
                                   children: [
@@ -786,9 +959,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFE8F0FF),
+                                        color: _primarySoft,
                                         borderRadius:
-                                        BorderRadius.circular(16),
+                                        BorderRadius.circular(12),
                                       ),
                                       child: Center(
                                         child: Text(
@@ -859,14 +1032,19 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     );
 
     if (!mounted || selectedPatient == null) return;
-    _fillPatientProfile(selectedPatient);
+    await _fillPatientProfile(selectedPatient);
   }
 
   Future<patient_model.Patient?> _openCreatePatientSheet() async {
-    _showSnack(
-      'Yeni hasta ekleme henüz Supabase ile bağlanmadı. Lütfen mevcut bir hasta seçin.',
-      isError: true,
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PatientStep1Screen(),
+      ),
     );
+
+    if (!mounted) return null;
+    await _loadDbPatients();
     return null;
   }
 
@@ -921,27 +1099,27 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   String _composeDiseaseNote() {
     final sections = <String>[];
 
-    final alz = _joinSelected(_alzSymptoms, TextEditingController());
+    final alz = _joinSelected(_alzSymptoms, _alzExtraCtrl);
     if (alz.isNotEmpty) {
       sections.add("Hafif Kognitif Bozukluk / Alzheimer Hastalığı\n$alz");
     }
 
-    final pd = _joinSelected(_pdSymptoms, TextEditingController());
+    final pd = _joinSelected(_pdSymptoms, _pdExtraCtrl);
     if (pd.isNotEmpty) {
       sections.add("Parkinson\n$pd");
     }
 
-    final als = _joinSelected(_alsSymptoms, TextEditingController());
+    final als = _joinSelected(_alsSymptoms, _alsExtraCtrl);
     if (als.isNotEmpty) {
       sections.add("ALS\n$als");
     }
 
-    final ms = _joinSelected(_msSymptoms, TextEditingController());
+    final ms = _joinSelected(_msSymptoms, _msExtraCtrl);
     if (ms.isNotEmpty) {
       sections.add("MS\n$ms");
     }
 
-    final ataxia = _joinSelected(_ataxiaSymptoms, TextEditingController());
+    final ataxia = _joinSelected(_ataxiaSymptoms, _ataxiaExtraCtrl);
     if (ataxia.isNotEmpty) {
       sections.add("Ataksi\n$ataxia");
     }
@@ -1059,10 +1237,54 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return sections.join('\n\n');
   }
 
+  Future<int> _resolveCurrentDoctorId() async {
+    final provider = context.read<EvaluationProvider>();
+    final auth = context.read<AuthProvider>();
+
+    final providerDoctorId = provider.currentDoctorId;
+    if (providerDoctorId > 0) return providerDoctorId;
+
+    final authDoctorId = int.tryParse(auth.user?.id ?? '') ?? 0;
+    if (authDoctorId > 0) {
+      provider.setDoctorId(authDoctorId);
+      debugPrint(
+        'EvaluationFormScreen doctorId set from auth before save: $authDoctorId, roleId: ${auth.user?.rolId}, rolAdi: ${auth.user?.rolAdi}',
+      );
+      return authDoctorId;
+    }
+
+    final email = auth.user?.eposta.trim() ?? '';
+    if (email.isNotEmpty) {
+      final serviceDoctorId = await EvaluationService().getClinicianIdByEmail(email) ?? 0;
+      if (serviceDoctorId > 0) {
+        provider.setDoctorId(serviceDoctorId);
+        debugPrint(
+          'EvaluationFormScreen doctorId resolved by email before save: $serviceDoctorId, email: $email',
+        );
+        return serviceDoctorId;
+      }
+    }
+
+    debugPrint(
+      'EvaluationFormScreen doctorId could not be resolved. provider=$providerDoctorId, auth.user.id=${auth.user?.id}, email=$email',
+    );
+    return 0;
+  }
+
   Future<void> _saveEvaluation() async {
+
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<EvaluationProvider>();
+
+    final currentDoctorId = await _resolveCurrentDoctorId();
+    if (currentDoctorId <= 0) {
+      _showSnack(
+        'Klinisyen kullanıcı ID bulunamadı. Lütfen tekrar giriş yapın.',
+        isError: true,
+      );
+      return;
+    }
 
     if (_selectedDbPatient == null &&
         _hastaSearchCtrl.text.trim().isNotEmpty) {
@@ -1091,12 +1313,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       ..._cognitiveSymptoms,
       ..._pulmonarySymptoms,
       ..._otherSymptoms,
-      ..._alzSymptoms,
-      ..._pdSymptoms,
-      ..._alsSymptoms,
-      ..._msSymptoms,
-      ..._ataxiaSymptoms,
-    }.toList();
+    }
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
 
     final symptomsNoteText = _composeSymptomsNote().trim();
     final diseaseNoteText = _composeDiseaseNote().trim();
@@ -1134,7 +1354,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
     final evaluation = Evaluation(
       degerlendirmeId: widget.isEdit ? (provider.selected?.id ?? 0) : 0,
-      doctorId: provider.currentDoctorId,
+      doctorId: currentDoctorId,
       hastaId: effectiveHastaId,
       degerlendirmeTarihi: widget.isEdit && provider.selected != null
           ? provider.selected!.degerlendirmeTarihi
@@ -1153,6 +1373,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       hikaye: packedHikaye.isEmpty ? null : packedHikaye,
 
       notlar: packedNotlar.isEmpty ? null : packedNotlar,
+      // Önemli: update işleminde provider/service bu alanları eski değerlerle birleştirmemeli; tamamen replace etmeli.
 
       klinisyenNotlari:
       packedKlinisyenNotlari.isEmpty ? null : packedKlinisyenNotlari,
@@ -1210,26 +1431,24 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
         fontWeight: FontWeight.w500,
       ),
       filled: true,
-      fillColor: _surface,
-      contentPadding:
-      const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      fillColor: _inputFill,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       suffixIcon: suffixIcon,
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: _border),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: _primary, width: 1.35),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Colors.redAccent),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide:
-        const BorderSide(color: Colors.redAccent, width: 1.35),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
       ),
     );
   }
@@ -1278,12 +1497,25 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       backgroundColor: _surface,
       elevation: 0,
       centerTitle: false,
-      leading: IconButton(
-        onPressed: () => Navigator.pop(context),
-        icon: const Icon(
-          Icons.arrow_back_ios_new,
-          color: _textDark,
-          size: 22,
+      leadingWidth: 56,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: _primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: _primary,
+              size: 18,
+            ),
+          ),
         ),
       ),
       title: const Text(
@@ -1314,12 +1546,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: _primary,
-              borderRadius: BorderRadius.circular(16),
+              color: _primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
               Icons.health_and_safety_outlined,
-              color: Colors.white,
+              color: _primary,
             ),
           ),
           const SizedBox(width: 14),
@@ -1352,7 +1584,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               child: Container(
                 padding: const EdgeInsets.only(top: 14, bottom: 12),
                 decoration: BoxDecoration(
-                  color: selected ? const Color(0xFFF8FAFF) : _surface,
+                  color: selected ? _primary.withOpacity(0.06) : _surface,
                   border: Border(
                     bottom: BorderSide(
                       color: selected ? _primary : _border,
@@ -1402,8 +1634,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: const Color(0xFFDCE8FF),
-            borderRadius: BorderRadius.circular(18),
+            color: _primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(step.icon, color: _primary, size: 28),
         ),
@@ -1445,13 +1677,13 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       padding: padding,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 16,
-            offset: Offset(0, 6),
+            color: Color(0x05000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1469,12 +1701,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return Container(
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 14,
+            color: Color(0x05000000),
+            blurRadius: 10,
             offset: Offset(0, 4),
           ),
         ],
@@ -1483,7 +1715,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
         children: [
           InkWell(
             borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(22)),
+            const BorderRadius.vertical(top: Radius.circular(16)),
             onTap: onTap,
             child: Padding(
               padding:
@@ -1547,7 +1779,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                   }
                 });
               },
-              selectedColor: const Color(0xFFDCE8FF),
+              selectedColor: _primarySoft,
               checkmarkColor: _primary,
               labelStyle: TextStyle(
                 color: isSelected ? _primary : _textDark,
@@ -1568,7 +1800,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Widget _buildDemographics() {
-    final provider = context.watch<EvaluationProvider>();
+    context.watch<EvaluationProvider>();
     final selectedPatient = _findSelectedPatient();
 
     return Column(
@@ -1622,7 +1854,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: _successBg,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               '${selectedPatient.tamAd} adlı hastanın kaydı gösteriliyor',
@@ -1920,7 +2152,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           child: _symptomChecklist(
             options: const [],
             selected: _alzSymptoms,
-            extraCtrl: _diseaseNoteCtrl,
+            extraCtrl: _alzExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -1940,7 +2172,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Fleksör postür',
             ],
             selected: _pdSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _pdExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -1960,7 +2192,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Azalmış derin tendon refleksleri',
             ],
             selected: _alsSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _alsExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -1980,7 +2212,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Hemiparezi',
             ],
             selected: _msSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _msExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -1999,7 +2231,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Postüral instabilite',
             ],
             selected: _ataxiaSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _ataxiaExtraCtrl,
           ),
         ),
         const SizedBox(height: 18),
@@ -2306,13 +2538,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primary,
-                            disabledBackgroundColor:
-                            const Color(0xFF94B0FF),
+                            disabledBackgroundColor: _primary.withOpacity(0.45),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
                                 vertical: 18),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),

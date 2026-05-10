@@ -1,10 +1,20 @@
+// ============================================================
+// DOSYA 1: lib/views/clinical_evaluation/evaluation_list_screen.dart
+// ============================================================
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/patient.dart' as patient_model;
+import '../../providers/auth_provider.dart';
 import '../../providers/evaluation_provider.dart';
-import '../patient_list_screen.dart';
+import '../result_screen.dart';
 import 'evaluation_form_screen.dart';
+
+import 'package:flutter/foundation.dart';
+import '../../services/evaluation_service.dart';
 
 class EvaluationListScreen extends StatefulWidget {
   final int? hastaId;
@@ -17,93 +27,29 @@ class EvaluationListScreen extends StatefulWidget {
 }
 
 class _EvaluationListScreenState extends State<EvaluationListScreen> {
-  static const _bg = Color(0xFFF5F7FB);
+  static const _bg = Color(0xFFF8F9FC);
   static const _surface = Colors.white;
-  static const _primary = Color(0xFF2563F6);
-  static const _border = Color(0xFFDDE3EE);
-  static const _textDark = Color(0xFF253043);
-  static const _textMid = Color(0xFF6E778B);
-  static const _textLight = Color(0xFF98A1B3);
+  static const _primary = Color(0xFF0F766E);
+  static const _primarySoft = Color(0xFFE7F5F3);
+  static const _border = Color(0xFFE2E8F0);
+  static const _inputFill = Color(0xFFF1F5F9);
+  static const _textDark = Color(0xFF1E293B);
+  static const _textMid = Color(0xFF64748B);
+  static const _textLight = Color(0xFF94A3B8);
   static const _success = Color(0xFF0A8C3B);
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _showListLoading = false;
+  Timer? _listLoadingTimer;
 
-  Widget _bottomNav() {
-    final items = [
-      {'icon': Icons.home_outlined, 'label': 'Ana Sayfa'},
-      {'icon': Icons.people_alt_outlined, 'label': 'Hastalar'},
-      {'icon': Icons.person_add_outlined, 'label': 'Kayıt'},
-      {'icon': Icons.assignment_outlined, 'label': 'Değerlendir'},
-      {'icon': Icons.bar_chart_outlined, 'label': 'Raporlar'},
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: _border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (i) {
-              final aktif = i == 3;
-              return InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: () {
-                  if (i == 3) return;
-
-                  if (i == 1) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PatientListScreen(),
-                      ),
-                    );
-                    return;
-                  }
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Bu menü henüz bağlanmadı.'),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        items[i]['icon'] as IconData,
-                        color: aktif ? _primary : _textLight,
-                        size: 22,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        items[i]['label'] as String,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: aktif ? FontWeight.w700 : FontWeight.normal,
-                          color: aktif ? _primary : _textLight,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
+  // Karşılaştırma seçim modu
+  bool _compareMode = false;
+  final List<dynamic> _selectedEvaluations = [];
 
   @override
   void dispose() {
+    _listLoadingTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -111,24 +57,253 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<EvaluationProvider>();
-      if (widget.hastaId != null) {
-        provider.loadEvaluationsByPatient(widget.hastaId!);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadInitialEvaluations();
+    });
+  }
+
+  Future<void> _loadInitialEvaluations() async {
+    if (!mounted) return;
+
+    final provider = context.read<EvaluationProvider>();
+    final auth = context.read<AuthProvider>();
+
+    int doctorId = provider.currentDoctorId;
+
+    if (doctorId <= 0) {
+      doctorId = int.tryParse(auth.user?.id ?? '') ?? 0;
+    }
+
+    if (doctorId <= 0 && (auth.user?.eposta ?? '').trim().isNotEmpty) {
+      doctorId = await EvaluationService().getClinicianIdByEmail(
+            auth.user!.eposta,
+          ) ??
+          0;
+    }
+
+    if (doctorId > 0) {
+      provider.setDoctorId(doctorId);
+      debugPrint(
+        'EvaluationListScreen initial doctorId resolved: $doctorId, roleId: ${auth.user?.rolId}, rolAdi: ${auth.user?.rolAdi}',
+      );
+    } else {
+      debugPrint(
+        'EvaluationListScreen initial doctorId could not be resolved. provider=${provider.currentDoctorId}, auth.user.id=${auth.user?.id}, email=${auth.user?.eposta}',
+      );
+    }
+
+    setState(() => _showListLoading = true);
+    _listLoadingTimer?.cancel();
+    _listLoadingTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      setState(() => _showListLoading = false);
+    });
+
+    if (widget.hastaId != null) {
+      await provider.loadEvaluationsByPatient(widget.hastaId!);
+    } else {
+      provider.clearFilter();
+      await provider.loadEvaluations();
+    }
+
+    _listLoadingTimer?.cancel();
+    if (mounted) {
+      setState(() => _showListLoading = false);
+    }
+  }
+
+  void _toggleCompareMode() {
+    setState(() {
+      _compareMode = !_compareMode;
+      _selectedEvaluations.clear();
+    });
+  }
+
+  void _toggleSelection(dynamic ev) {
+    setState(() {
+      final alreadySelected = _selectedEvaluations.any(
+            (e) => e.degerlendirmeId == ev.degerlendirmeId,
+      );
+      if (alreadySelected) {
+        _selectedEvaluations.removeWhere(
+              (e) => e.degerlendirmeId == ev.degerlendirmeId,
+        );
+      } else if (_selectedEvaluations.length < 2) {
+        _selectedEvaluations.add(ev);
       } else {
-        provider.clearFilter();
-        provider.loadEvaluations();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('En fazla 2 değerlendirme seçebilirsiniz.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     });
   }
+
+  bool _isSelected(dynamic ev) {
+    return _selectedEvaluations.any(
+          (e) => e.degerlendirmeId == ev.degerlendirmeId,
+    );
+  }
+
+  /// Evaluation nesnesinden EvaluationDate oluşturur.
+  /// Test sonuçları bu ekranda mevcut değilse boş liste döner —
+  /// gerçek projede provider'dan testler çekilebilir.
+  Future<patient_model.EvaluationDate> _toEvaluationDateWithTests(
+      dynamic ev) async {
+    DateTime parsedDate;
+    try {
+      parsedDate = DateTime.parse(ev.degerlendirmeTarihi.toString());
+    } catch (_) {
+      parsedDate = DateTime.now();
+    }
+
+    final day = parsedDate.day.toString().padLeft(2, '0');
+    final month = parsedDate.month.toString().padLeft(2, '0');
+    final year = parsedDate.year.toString();
+
+    // API'den test sonuçlarını çek
+    List<patient_model.TestResult> testSonuclari = [];
+    try {
+      final rawTests = await EvaluationService().getTestSonuclari(
+        degerlendirmeId: ev.degerlendirmeId as int,
+        hastaId: ev.hastaId as int,
+      );
+      // EvaluationService.TestResult → patient_model.TestResult dönüşümü
+      testSonuclari = rawTests
+          .map((t) => patient_model.TestResult(
+        testSonucId: t.testSonucId,
+        testId: t.testId,
+        testAdi: t.testAdi,
+        olculenDeger: t.olculenDeger,
+        maxDeger: t.maxDeger,
+        birim: t.birim,
+        isLowerBetter: t.isLowerBetter,
+      ))
+          .toList();
+    } catch (e) {
+      debugPrint('Test sonuçları alınamadı: $e');
+    }
+
+    return patient_model.EvaluationDate(
+      degerlendirmeId: ev.degerlendirmeId as int,
+      tarih: '$day/$month/$year',
+      baslik: (ev.hastalikAdi?.toString().isNotEmpty == true
+          ? ev.hastalikAdi
+          : ev.diagnosis?.toString().isNotEmpty == true
+          ? ev.diagnosis
+          : 'Değerlendirme') ??
+          'Değerlendirme',
+      testSonuclari: testSonuclari,
+    );
+  }
+
+  /// Seçilen 2 değerlendirmeden Patient nesnesi oluşturur.
+  patient_model.Patient _buildPatient(dynamic ev) {
+    final adSoyad = (ev.hastaAdSoyad ?? '').toString().trim();
+    final parts = adSoyad.split(' ');
+    final ad = parts.isNotEmpty ? parts.first : 'Bilinmeyen';
+    final soyad = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+
+    return patient_model.Patient(
+      hastaId: ev.hastaId as int? ?? 0,
+      kullaniciId: ev.hastaId as int? ?? 0,
+      ad: ad,
+      soyad: soyad,
+      tani: (ev.hastalikAdi ?? ev.diagnosis ?? 'Tanı Yok').toString(),
+      durum: 'Aktif Hasta',
+      degerlendirmeler: [],
+    );
+  }
+
+  Future<void> _navigateToResults() async {
+    if (_selectedEvaluations.length != 2) return;
+
+    // Aynı hastaya ait mi? Farklı hastaların değerlendirmeleri karşılaştırılamaz.
+    final firstHastaId = _selectedEvaluations[0].hastaId;
+    final secondHastaId = _selectedEvaluations[1].hastaId;
+    if (firstHastaId != secondHastaId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Yalnızca aynı hastaya ait iki değerlendirme karşılaştırılabilir.',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Yükleniyor göstergesi
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0F766E)),
+      ),
+    );
+
+    try {
+      // Tarihe göre sırala
+      final sorted = List<dynamic>.from(_selectedEvaluations);
+      sorted.sort((a, b) {
+        DateTime dtA, dtB;
+        try {
+          dtA = DateTime.parse(a.degerlendirmeTarihi.toString());
+        } catch (_) {
+          dtA = DateTime.now();
+        }
+        try {
+          dtB = DateTime.parse(b.degerlendirmeTarihi.toString());
+        } catch (_) {
+          dtB = DateTime.now();
+        }
+        return dtA.compareTo(dtB);
+      });
+
+      final startEv = sorted[0];
+      final endEv = sorted[1];
+
+      // Test sonuçlarını API'den çek (paralel)
+      final results = await Future.wait([
+        _toEvaluationDateWithTests(startEv),
+        _toEvaluationDateWithTests(endEv),
+      ]);
+
+      final startDate = results[0];
+      final endDate = results[1];
+      final patient = _buildPatient(startEv);
+
+      if (!mounted) return;
+      Navigator.pop(context); // loading dialog'u kapat
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResultsScreen(
+            patient: patient,
+            startDate: startDate,
+            endDate: endDate,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // loading dialog'u kapat
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Veriler yüklenemedi: $e')),
+      );
+    }
+  }
+
   Widget _searchBar() {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _border),
+        color: _inputFill,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -144,6 +319,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               },
               decoration: const InputDecoration(
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
                 hintText: 'Hasta adına göre ara',
                 hintStyle: TextStyle(
                   color: _textLight,
@@ -166,7 +343,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
                   _searchQuery = '';
                 });
               },
-              icon: const Icon(Icons.close_rounded, color: _textLight, size: 20),
+              icon:
+              const Icon(Icons.close_rounded, color: _textLight, size: 20),
               splashRadius: 18,
             ),
         ],
@@ -188,7 +366,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       ),
     );
 
-    await provider.loadEvaluations();
+    await _loadInitialEvaluations();
   }
 
   Future<void> _deleteEvaluation(int id) async {
@@ -224,13 +402,23 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
     if (!ok) return;
 
-    await provider.delete(id);
-    await provider.loadEvaluations();
+    final deleted = await provider.delete(id);
+    if (deleted) {
+      await _loadInitialEvaluations();
+    }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Değerlendirme silindi')),
-    );
+    if (deleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Değerlendirme silindi')),
+      );
+    } else {
+      final errorMessage =
+          provider.listError ?? 'Değerlendirme silinemedi.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
   }
 
   String _formatDate(DateTime? dt) {
@@ -304,56 +492,83 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       backgroundColor: _surface,
       elevation: 0,
       centerTitle: false,
-      leading: IconButton(
-        onPressed: () {},
-        icon: const Icon(Icons.menu_rounded, color: _textDark, size: 28),
+      leadingWidth: 56,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => Navigator.of(context).maybePop(),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: _primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: _primary,
+              size: 18,
+            ),
+          ),
+        ),
       ),
-      title: const Text(
+      title: Text(
         'Klinik Değerlendirmeler',
-        style: TextStyle(
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
           color: _textDark,
           fontSize: 18,
           fontWeight: FontWeight.w800,
         ),
       ),
       actions: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: _textDark,
-                size: 27,
+        // Karşılaştırma modu toggle butonu
+        Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: TextButton.icon(
+            onPressed: _toggleCompareMode,
+            icon: Icon(
+              _compareMode ? Icons.close_rounded : Icons.compare_arrows_rounded,
+              size: 18,
+              color: _compareMode ? Colors.redAccent : _primary,
+            ),
+            label: Text(
+              _compareMode ? 'İptal' : 'Karşılaştır',
+              style: TextStyle(
+                color: _compareMode ? Colors.redAccent : _primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
             ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF4A4A),
-                  shape: BoxShape.circle,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: _textDark,
+                  size: 26,
                 ),
               ),
-            ),
-          ],
-        ),
-        const Padding(
-          padding: EdgeInsets.only(right: 16, left: 6),
-          child: CircleAvatar(
-            radius: 20,
-            backgroundColor: _primary,
-            child: Text(
-              'AK',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF4A4A),
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ],
@@ -364,32 +579,57 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     );
   }
 
-  Widget _topHeader() {
-    final baslik = widget.hastaAdi != null
-        ? '${widget.hastaAdi} — Değerlendirmeler'
-        : 'Hasta Değerlendirmelerim';
-    return Container(
+  // Karşılaştırma modu aktifken üstte gösterilen seçim bilgi bandı
+  Widget _compareSelectionBanner() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      decoration: const BoxDecoration(
-        color: _surface,
-        border: Border(bottom: BorderSide(color: _border)),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: _primary.withOpacity(0.08),
+        border: const Border(bottom: BorderSide(color: Color(0xFFCCE9E6))),
       ),
       child: Row(
         children: [
-          const Icon(Icons.assignment_outlined, color: _primary),
-          const SizedBox(width: 10),
+          const Icon(Icons.info_outline_rounded, color: _primary, size: 18),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              baslik,
+              _selectedEvaluations.isEmpty
+                  ? 'Karşılaştırmak için 2 değerlendirme seçin'
+                  : _selectedEvaluations.length == 1
+                  ? '1 değerlendirme seçildi — 1 tane daha seçin'
+                  : '2 değerlendirme seçildi',
               style: const TextStyle(
-                color: _textDark,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+                color: _primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (_selectedEvaluations.length == 2)
+            ElevatedButton.icon(
+              onPressed: _navigateToResults,
+              icon: const Icon(Icons.compare_arrows_rounded,
+                  size: 16, color: Colors.white),
+              label: const Text(
+                'Karşılaştır',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                elevation: 0,
+                padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -406,8 +646,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               width: 78,
               height: 78,
               decoration: BoxDecoration(
-                color: const Color(0xFFEAF0FF),
-                borderRadius: BorderRadius.circular(24),
+                color: _primarySoft,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(
                 Icons.note_alt_outlined,
@@ -451,7 +691,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
             ),
@@ -461,55 +701,25 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     );
   }
 
-  String _extractPackedSection(String source, String title) {
-    final text = source.trim();
-    if (text.isEmpty) return '';
-
-    final header = '$title:\n';
-    final start = text.indexOf(header);
-    if (start == -1) return '';
-
-    final contentStart = start + header.length;
-    final nextHeaders = [
-      '\n\nSemptomlar:\n',
-      '\n\nHastalık:\n',
-      '\n\nKlinisyen Notları:\n',
-      '\n\nFonksiyonel:\n',
-      '\n\nKlinik tip:',
-    ];
-
-    int? end;
-    for (final marker in nextHeaders) {
-      final idx = text.indexOf(marker, contentStart);
-      if (idx != -1 && (end == null || idx < end)) {
-        end = idx;
-      }
-    }
-
-    final result = end == null
-        ? text.substring(contentStart)
-        : text.substring(contentStart, end);
-    return result.trim();
-  }
-
-  String _extractInlineValue(String source, String label) {
-    if (source.trim().isEmpty) return '';
-    final pattern = RegExp(
-      '${RegExp.escape(label)}\\s*:\\s*(.+)',
-      caseSensitive: false,
-    );
-    final match = pattern.firstMatch(source);
-    if (match == null) return '';
-    return (match.group(1) ?? '').trim();
-  }
-
+  // Symptom count for the list card.
+  //
+  // Source of truth: notlar (Supabase row) → "Semptomlar:" section.
+  // We do NOT read ev.symptoms (a model-derived helper) because the count
+  // shown in the UI must always reflect exactly what is persisted in the
+  // canonical packed-text format, with no chance of disease/clinical-note
+  // content bleeding in.
+  //
+  // Strict rules:
+  //  • Only lines that begin EXACTLY with one of the six known symptom
+  //    labels ("Motor:", "Duyusal:", "Emosyonel:", "Kognitif:", "Pulmoner:",
+  //    "Diğer:") contribute.
+  //  • The "Semptomlar:" section is bounded by the next packed-section
+  //    header ("\n\nHastalık:\n" etc.) — anything past that boundary is
+  //    ignored.
+  //  • Free-text "Yeni bulgu:" extras are dropped.
+  //  • Sentinel placeholders (yok / none / - / seçilmedi / boş) are dropped.
+  //  • The result is deduped case-insensitively.
   int _savedSymptomCount(dynamic ev) {
-    final notlar = (ev.notlar ?? '').toString().trim();
-    if (notlar.isEmpty) return 0;
-
-    final semptomlar = _extractPackedSection(notlar, 'Semptomlar');
-    if (semptomlar.isEmpty) return 0;
-
     const labels = [
       'Motor',
       'Duyusal',
@@ -518,60 +728,73 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       'Pulmoner',
       'Diğer',
     ];
+    const emptyValues = {
+      'yok',
+      'none',
+      '-',
+      'seçilmedi',
+      'secilmedi',
+      'boş',
+      'bos',
+    };
+    const sectionHeader = 'Semptomlar:\n';
+    const endMarkers = [
+      '\n\nHastalık:\n',
+      '\n\nKlinisyen Notları:\n',
+      '\n\nFonksiyonel:\n',
+      '\n\nKlinik tip:',
+    ];
 
-    final uniqueSymptoms = <String>{};
+    final notlar = (ev.notlar ?? '').toString();
+    if (notlar.trim().isEmpty) return 0;
 
-    for (final rawLine in semptomlar.split('\n')) {
+    final headerIdx = notlar.indexOf(sectionHeader);
+    if (headerIdx == -1) return 0;
+
+    final contentStart = headerIdx + sectionHeader.length;
+    int? endIdx;
+    for (final marker in endMarkers) {
+      final idx = notlar.indexOf(marker, contentStart);
+      if (idx != -1 && (endIdx == null || idx < endIdx)) {
+        endIdx = idx;
+      }
+    }
+    final section = endIdx == null
+        ? notlar.substring(contentStart)
+        : notlar.substring(contentStart, endIdx);
+
+    final unique = <String>{};
+    for (final rawLine in section.split('\n')) {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
 
-      final matchedLabel = labels.cast<String?>().firstWhere(
-            (label) => line.toLowerCase().startsWith('${label!.toLowerCase()}:'),
-        orElse: () => null,
-      );
+      String? matched;
+      for (final label in labels) {
+        if (line.startsWith('$label:')) {
+          matched = label;
+          break;
+        }
+      }
+      if (matched == null) continue;
 
-      if (matchedLabel == null) continue;
-
-      final value = line.substring(matchedLabel.length + 1).trim();
+      final value = line.substring(matched.length + 1).trim();
       if (value.isEmpty) continue;
 
       final lower = value.toLowerCase();
-      final extraIndex = lower.indexOf('yeni bulgu:');
-      final selectedPart = extraIndex == -1
-          ? value
-          : value.substring(0, extraIndex).trim();
+      final extraIdx = lower.indexOf('yeni bulgu:');
+      final selected = extraIdx == -1 ? value : value.substring(0, extraIdx);
 
-      if (selectedPart.isEmpty) continue;
-
-      final normalizedWhole = selectedPart.toLowerCase();
-      if (normalizedWhole == 'yok' ||
-          normalizedWhole == 'none' ||
-          normalizedWhole == '-' ||
-          normalizedWhole == 'seçilmedi' ||
-          normalizedWhole == 'secilmedi' ||
-          normalizedWhole == 'boş' ||
-          normalizedWhole == 'bos') {
-        continue;
-      }
-
-      for (final item in selectedPart.split(',')) {
-        final symptom = item.trim();
-        if (symptom.isEmpty) continue;
-        final low = symptom.toLowerCase();
-        if (low == 'yok' ||
-            low == 'none' ||
-            low == '-' ||
-            low == 'seçilmedi' ||
-            low == 'secilmedi' ||
-            low == 'boş' ||
-            low == 'bos') {
-          continue;
-        }
-        uniqueSymptoms.add(symptom);
+      for (final item in selected.split(',')) {
+        final trimmed = item.trim();
+        if (trimmed.isEmpty) continue;
+        final norm = trimmed.toLowerCase();
+        if (emptyValues.contains(norm)) continue;
+        if (norm.startsWith('yeni bulgu:')) continue;
+        unique.add(norm);
       }
     }
 
-    return uniqueSymptoms.length;
+    return unique.length;
   }
 
   Widget _card(EvaluationProvider provider, dynamic ev) {
@@ -579,169 +802,198 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     final hastaAdi = _safeHastaAdi(ev.hastaAdSoyad);
     final olusturmaTarihi = ev.olusturmaTarihi as DateTime?;
     final symptomCount = _savedSymptomCount(ev);
+    final selected = _isSelected(ev);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 16,
-            offset: Offset(0, 6),
+    return GestureDetector(
+      onTap: _compareMode ? () => _toggleSelection(ev) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: selected ? _primary.withOpacity(0.06) : _surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? _primary : _border,
+            width: selected ? 2 : 1,
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F0FF),
-                  borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x05000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Seçim modu: checkbox veya avatar
+                if (_compareMode)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: selected ? _primary : _primarySoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: selected
+                          ? const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 24)
+                          : Text(
+                        _initials(hastaAdi),
+                        style: const TextStyle(
+                          color: _primary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: _primarySoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _initials(hastaAdi),
+                        style: const TextStyle(
+                          color: _primary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hastaAdi,
+                        style: const TextStyle(
+                          color: _textDark,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatDate(olusturmaTarihi),
+                        style: const TextStyle(
+                          color: _textLight,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Center(
+                if (!_compareMode)
+                  PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        provider.select(ev);
+                        await _openForm(isEdit: true);
+                      }
+                      if (value == 'delete' && ev.id != null) {
+                        await _deleteEvaluation(ev.id!);
+                      }
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Düzenle')),
+                      PopupMenuItem(value: 'delete', child: Text('Sil')),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: _inputFill,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                previewText,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _textMid,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.45,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE9F7EE),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Text(
-                    _initials(hastaAdi),
+                    symptomCount == 0
+                        ? 'Semptom seçilmedi'
+                        : '$symptomCount semptom',
                     style: const TextStyle(
-                      color: _primary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
+                      color: _success,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hastaAdi,
-                      style: const TextStyle(
-                        color: _textDark,
-                        fontSize: 16,
+                const Spacer(),
+                if (!_compareMode)
+                  TextButton.icon(
+                    onPressed: () async {
+                      provider.select(ev);
+                      await _openForm(isEdit: true);
+                    },
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    label: const Text('Aç'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _primary,
+                      textStyle: const TextStyle(
                         fontWeight: FontWeight.w800,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDate(olusturmaTarihi),
-                      style: const TextStyle(
-                        color: _textLight,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  )
+                else
+                  Text(
+                    selected ? '✓ Seçildi' : 'Seçmek için dokun',
+                    style: TextStyle(
+                      color: selected ? _primary : _textLight,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
-                ),
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) async {
-                  if (value == 'edit') {
-                    provider.select(ev);
-                    await _openForm(isEdit: true);
-                  }
-                  if (value == 'delete' && ev.id != null) {
-                    await _deleteEvaluation(ev.id!);
-                  }
-                },
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Text('Düzenle'),
                   ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Sil'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7F9FD),
-              borderRadius: BorderRadius.circular(16),
+              ],
             ),
-            child: Text(
-              previewText,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _textMid,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                height: 1.45,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE9F7EE),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  symptomCount == 0
-                      ? 'Semptom seçilmedi'
-                      : '$symptomCount semptom',
-                  style: const TextStyle(
-                    color: _success,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () async {
-                  provider.select(ev);
-                  await _openForm(isEdit: true);
-                },
-                icon: const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 18,
-                ),
-                label: const Text('Aç'),
-                style: TextButton.styleFrom(
-                  foregroundColor: _primary,
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _loadingList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: 4,
-      itemBuilder: (_, __) => const _EvaluationSkeletonCard(),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -750,111 +1002,105 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       appBar: _appBar(),
       body: Consumer<EvaluationProvider>(
         builder: (context, provider, _) {
+          // Karşılaştırma modunda ilk değerlendirme seçildiyse, listeyi
+          // yalnızca o hastanın diğer değerlendirmeleriyle daralt.
+          final int? lockedHastaId =
+              _compareMode && _selectedEvaluations.isNotEmpty
+                  ? _selectedEvaluations[0].hastaId as int?
+                  : null;
+
           final filteredEvaluations = provider.evaluations.where((ev) {
+            if (lockedHastaId != null && ev.hastaId != lockedHastaId) {
+              return false;
+            }
             final query = _searchQuery.trim().toLowerCase();
             if (query.isEmpty) return true;
-
             final hastaAdi = _safeHastaAdi(ev.hastaAdSoyad).toLowerCase();
             return hastaAdi.contains(query);
           }).toList();
 
-          if (provider.isListLoading && provider.evaluations.isEmpty) {
-            return _loadingList();
-          }
-
           if (provider.evaluations.isEmpty) {
             return Column(
               children: [
-                _topHeader(),
                 _searchBar(),
-                Expanded(child: _emptyState()),
+                Expanded(
+                  child: provider.isListLoading && _showListLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: _primary),
+                        )
+                      : _emptyState(),
+                ),
               ],
             );
           }
 
           return Column(
             children: [
-              _topHeader(),
+              if (_compareMode) _compareSelectionBanner(),
               _searchBar(),
               Expanded(
                 child: filteredEvaluations.isEmpty
                     ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(
-                          Icons.search_off_rounded,
-                          color: _textLight,
-                          size: 42,
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Aramaya uygun değerlendirme bulunamadı.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _textMid,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                        child: Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.search_off_rounded,
+                                color: _textLight,
+                                size: 42,
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'Aramaya uygun değerlendirme bulunamadı.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _textMid,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                )
+                      )
                     : RefreshIndicator(
-                  color: _primary,
-                  onRefresh: provider.refresh,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
-                    itemCount: filteredEvaluations.length,
-                    itemBuilder: (_, i) {
-                      final ev = filteredEvaluations[i];
-                      return _card(provider, ev);
-                    },
-                  ),
-                ),
+                        color: _primary,
+                        onRefresh: provider.refresh,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
+                          itemCount: filteredEvaluations.length,
+                          itemBuilder: (_, i) {
+                            final ev = filteredEvaluations[i];
+                            return _card(provider, ev);
+                          },
+                        ),
+                      ),
               ),
             ],
           );
         },
       ),
-      bottomNavigationBar: _bottomNav(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openForm(),
-        backgroundColor: _primary,
-        elevation: 0,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Yeni Değerlendirme',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 15,
-          ),
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
-      ),
-    );
-  }
-}
-
-class _EvaluationSkeletonCard extends StatelessWidget {
-  const _EvaluationSkeletonCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 178,
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFDDE3EE)),
-      ),
+      floatingActionButton: _compareMode
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _openForm(),
+              backgroundColor: _primary,
+              elevation: 0,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Yeni Değerlendirme',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
     );
   }
 }
