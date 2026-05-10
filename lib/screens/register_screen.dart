@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../core/theme.dart';
 import '../widgets/custom_button.dart';
+import '../services/auth_service.dart';
 
 // NeuraApp Design System — Hasta Renk Paleti
 const Color kBackground = Color(0xFFF8F9FC);
@@ -26,6 +27,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordConfirmController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
+
+  // Klinisyen seçimi
+  List<Map<String, dynamic>> _klinisyenler = [];
+  int? _selectedKlinisyenId;
+  bool _klinisyenlerYukleniyor = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _klinisyenleriYukle();
+  }
+
+  Future<void> _klinisyenleriYukle() async {
+    try {
+      final liste = await AuthService.getKlinisyenler();
+      if (mounted) {
+        setState(() {
+          _klinisyenler = liste;
+          _klinisyenlerYukleniyor = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _klinisyenlerYukleniyor = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -70,6 +98,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showValidationError('Şifreler uyuşmuyor');
       return;
     }
+    if (_selectedKlinisyenId == null) {
+      _showValidationError('Lütfen bir klinisyen seçin');
+      return;
+    }
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final nameParts = fullName.split(' ');
@@ -82,6 +114,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       eposta: email,
       sifre: password,
       rolAdi: 'Hasta',
+      klinisyenId: _selectedKlinisyenId,
     );
 
     if (!mounted) return;
@@ -149,11 +182,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else if (errorType.contains('KULLANICI_BULUNAMADI')) {
       title = 'Kayıt Sorunu';
       message =
-      'Hesabınız oluşturuldu fakat veritabanına kaydedilemedi. Lütfen destek ekibiyle iletişime geçin.';
+          'Hesabınız oluşturuldu fakat veritabanına kaydedilemedi. Lütfen destek ekibiyle iletişime geçin.';
     } else {
       title = 'Bağlantı Hatası';
       message =
-      'Şu anda internete bağlı değilsiniz. Lütfen bağlantınızı kontrol edin.';
+          'Şu anda internete bağlı değilsiniz. Lütfen bağlantınızı kontrol edin.';
     }
 
     showDialog(
@@ -228,6 +261,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  String _formatKlinisyen(Map<String, dynamic> k) {
+    final unvan = (k['unvan'] ?? '').toString().trim();
+    final ad = (k['ad'] ?? '').toString().trim();
+    final soyad = (k['soyad'] ?? '').toString().trim();
+    return [unvan, ad, soyad].where((e) => e.isNotEmpty).join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -299,6 +339,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Tam Ad
                     const Text('Tam Adınız',
                         style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
@@ -310,6 +351,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hint: 'Ad Soyad', prefixIcon: Icons.person_outline),
                     ),
                     const SizedBox(height: 16),
+
+                    // E-posta
                     const Text('E-posta Adresi',
                         style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
@@ -322,6 +365,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hint: 'ornek@email.com', prefixIcon: Icons.email_outlined),
                     ),
                     const SizedBox(height: 16),
+
+                    // Şifre
                     const Text('Şifre',
                         style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
@@ -349,6 +394,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Şifre Tekrar
                     const Text('Şifre Tekrar',
                         style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600, color: kTextDark)),
@@ -372,6 +419,124 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 20),
+
+                    // ── Klinisyen Seçimi ──────────────────────────────
+                    const Divider(color: Color(0xFFE2E8F0)),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Text('Klinisyeniniz',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: kTextDark)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: kPrimary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text('Zorunlu',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: kPrimary,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Sizi takip edecek klinisyeni seçin',
+                      style: TextStyle(fontSize: 11, color: kTextGrey),
+                    ),
+                    const SizedBox(height: 8),
+                    _klinisyenlerYukleniyor
+                        ? Container(
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: kInputFill,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: kPrimary),
+                              ),
+                            ),
+                          )
+                        : _klinisyenler.isEmpty
+                            ? Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: const Color(0xFFFDE68A)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded,
+                                        color: Color(0xFFD97706), size: 18),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Klinisyen bulunamadı. Lütfen daha sonra tekrar deneyin.',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF92400E)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : DropdownButtonFormField<int>(
+                                value: _selectedKlinisyenId,
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(
+                                      Icons.medical_services_outlined,
+                                      color: kPrimary,
+                                      size: 20),
+                                  hintText: 'Klinisyen seçiniz',
+                                  hintStyle: const TextStyle(
+                                      color: kTextHint, fontSize: 14),
+                                  filled: true,
+                                  fillColor: kInputFill,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 16),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide.none),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide.none),
+                                  focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                          color: kPrimary, width: 1.5)),
+                                ),
+                                icon: const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: kTextGrey),
+                                dropdownColor: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                items: _klinisyenler
+                                    .map((k) => DropdownMenuItem<int>(
+                                          value: k['klinisyenId'] as int,
+                                          child: Text(
+                                            _formatKlinisyen(k),
+                                            style: const TextStyle(
+                                                color: kTextDark, fontSize: 14),
+                                          ),
+                                        ))
+                                    .toList(),
+                                onChanged: (v) =>
+                                    setState(() => _selectedKlinisyenId = v),
+                              ),
                   ],
                 ),
               ),
@@ -394,7 +559,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              CustomButton(text: 'Kayıt Ol', isLoading: auth.isLoading, onPressed: _register),
+              CustomButton(
+                  text: 'Kayıt Ol',
+                  isLoading: auth.isLoading,
+                  onPressed: _register),
               const SizedBox(height: 16),
               Center(
                 child: TextButton(
@@ -406,7 +574,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         TextSpan(
                             text: 'Giriş Yap',
-                            style: TextStyle(color: kPrimary, fontWeight: FontWeight.bold))
+                            style:
+                                TextStyle(color: kPrimary, fontWeight: FontWeight.bold))
                       ],
                     ),
                   ),

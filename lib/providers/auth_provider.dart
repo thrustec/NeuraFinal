@@ -60,6 +60,7 @@ class AuthProvider extends ChangeNotifier {
     required String sifre,
     required String rolAdi,
     String? unvan,
+    int? klinisyenId,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -67,8 +68,13 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _user = await _authService.register(
-        ad: ad, soyad: soyad, eposta: eposta,
-        sifre: sifre, rolAdi: rolAdi, unvan: unvan,
+        ad: ad,
+        soyad: soyad,
+        eposta: eposta,
+        sifre: sifre,
+        rolAdi: rolAdi,
+        unvan: unvan,
+        klinisyenId: klinisyenId,
       );
       await _saveSession(_user!);
       _isLoading = false;
@@ -135,12 +141,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ── Avatar Yükleme ───────────────────────────────────────
-
   Future<bool> updateAvatar(Uint8List bytes) async {
     if (_user == null) return false;
 
     try {
-      // Token'ı set et
       if (_user!.token.isNotEmpty) {
         await Supabase.instance.client.auth.setSession(_user!.token);
       }
