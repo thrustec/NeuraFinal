@@ -31,21 +31,23 @@ Map<String, String> _headers({bool write = false}) {
 
 class PatientService {
 
-  /// Tüm hastaları getirir (lookup tablolarıyla birlikte)
-  static Future<List<Patient>> getHastalar({String? aramaMetni}) async {
+  /// Tüm hastaları getirir.
+  /// [klinisyenId] verilirse yalnızca o klinisyene atanmış hastalar döner.
+  static Future<List<Patient>> getHastalar({
+    String? aramaMetni,
+    int? klinisyenId,
+  }) async {
     try {
-      // Hasta seçimi için önce hızlı ve hafif sorguyu kullanıyoruz.
-      // Detaylı join sorgusu bazı durumlarda timeout oluşturduğu için fallback olarak kalmalı.
-      final basicPatients = await _fetchPatientsBasic();
+      final basicPatients = await _fetchPatientsBasic(klinisyenId: klinisyenId);
       return _filterPatients(basicPatients, aramaMetni);
     } catch (e) {
       debugPrint('PatientService.getHastalar basic fetch failed: $e');
-      final detailedPatients = await _fetchPatientsDetailed();
+      final detailedPatients = await _fetchPatientsDetailed(klinisyenId: klinisyenId);
       return _filterPatients(detailedPatients, aramaMetni);
     }
   }
 
-  static Future<List<Patient>> _fetchPatientsDetailed() async {
+  static Future<List<Patient>> _fetchPatientsDetailed({int? klinisyenId}) async {
     final select = Uri.encodeComponent(
       '*, '
       'kullanicilar(ad,soyad,eposta), '
@@ -56,7 +58,11 @@ class PatientService {
       'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
     );
 
-    final url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    String url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    if (klinisyenId != null) {
+      url += '&klinisyenId=eq.$klinisyenId';
+    }
+
     final response = await http
         .get(Uri.parse(url), headers: _headers())
         .timeout(const Duration(seconds: 5));
@@ -70,16 +76,21 @@ class PatientService {
     }
 
     throw Exception(
-      'Hastalar detaylı yüklenemedi. Kod: ${response.statusCode}, Body: ${response.body}',
+      'Hastalar detaylı yüklenemedi. Kod: ${response.statusCode}',
     );
   }
 
-  static Future<List<Patient>> _fetchPatientsBasic() async {
+  static Future<List<Patient>> _fetchPatientsBasic({int? klinisyenId}) async {
     final select = Uri.encodeComponent(
-      'hastaId,kullaniciId,notlar,dogumTarihi,telefonNo,boy,kilo,kullanicilar(ad,soyad,eposta)',
+      'hastaId,kullaniciId,notlar,dogumTarihi,telefonNo,boy,kilo,'
+      'kullanicilar(ad,soyad,eposta)',
     );
 
-    final url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    String url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    if (klinisyenId != null) {
+      url += '&klinisyenId=eq.$klinisyenId';
+    }
+
     final response = await http
         .get(Uri.parse(url), headers: _headers())
         .timeout(const Duration(seconds: 5));
@@ -93,7 +104,7 @@ class PatientService {
     }
 
     throw Exception(
-      'Hastalar temel yüklenemedi. Kod: ${response.statusCode}, Body: ${response.body}',
+      'Hastalar temel yüklenemedi. Kod: ${response.statusCode}',
     );
   }
 
@@ -138,7 +149,7 @@ class PatientService {
       final matches = basicList.where((p) => p.hastaId == hastaId).toList();
       if (matches.isNotEmpty) return matches.first;
 
-      throw Exception('Hasta bulunamadı. Kod: ${response.statusCode}, Body: ${response.body}');
+      throw Exception('Hasta bulunamadı.');
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
     }
@@ -148,22 +159,17 @@ class PatientService {
   static Future<bool> hastaGuncelle(
       int hastaId, Map<String, dynamic> data) async {
     try {
-      // klinisyenNotlari degerlendirmeler tablosunda,
-      // boy/kilo hastalar tablosunda — ikisini ayırıyoruz
       final hastaData = <String, dynamic>{};
       if (data.containsKey('boy')) hastaData['boy'] = data['boy'];
       if (data.containsKey('kilo')) hastaData['kilo'] = data['kilo'];
 
-      // Hastalar tablosunu güncelle
       if (hastaData.isNotEmpty) {
         final response = await http.patch(
-          Uri.parse(
-              '$SUPABASE_URL/hastalar?hastaId=eq.$hastaId'),
+          Uri.parse('$SUPABASE_URL/hastalar?hastaId=eq.$hastaId'),
           headers: _headers(write: true),
           body: json.encode(hastaData),
         );
-        if (response.statusCode != 200 &&
-            response.statusCode != 204) {
+        if (response.statusCode != 200 && response.statusCode != 204) {
           throw Exception('Hasta güncellenemedi.');
         }
       }

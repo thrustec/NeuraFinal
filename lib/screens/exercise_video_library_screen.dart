@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/exercise_video_model.dart';
 import '../services/exercise_video_service.dart';
 import 'exercise_video_detail_screen.dart';
+import 'video_upload_screen.dart';
+
 
 class ExerciseVideoLibraryScreen extends StatefulWidget {
   const ExerciseVideoLibraryScreen({super.key});
@@ -78,6 +80,19 @@ class _ExerciseVideoLibraryScreenState
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
       // AppBar ve BottomNavigationBar silindi, MainScreen bunları zaten veriyor.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final yuklendi = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(builder: (_) => const VideoUploadScreen()),
+          );
+          if (yuklendi == true) _baslangicYukle();
+        },
+        backgroundColor: const Color(0xFF0F766E),
+        icon: const Icon(Icons.upload, color: Colors.white),
+        label: const Text('Video Yükle',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
       body: Column(
         children: [
           _ustPanel(),
