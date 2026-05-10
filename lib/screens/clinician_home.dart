@@ -34,7 +34,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
     await _loadPatientCount();
   }
 
-  /// Giriş yapan kullanıcının klinisyenler.klinisyenId'sini çeker.
+  /// Giriş yapan kullanıcının klinisyenler.klinisyenId'sini çeker
   Future<void> _resolveKlinisyenId() async {
     if (!mounted) return;
     final auth = context.read<AuthProvider>();

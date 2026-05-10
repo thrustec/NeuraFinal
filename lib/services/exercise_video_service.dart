@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/exercise_video_model.dart';
 
 // ─────────────────────────────────────────────────────────────
-// Supabase PostgREST — doğrudan bağlantı
+// Supabase PostgREST — dogrudan bağlantı
 // ─────────────────────────────────────────────────────────────
 const String SUPABASE_URL =
     'https://griteunvazwekosffmjo.supabase.co/rest/v1';

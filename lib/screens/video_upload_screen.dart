@@ -13,7 +13,7 @@ class VideoUploadScreen extends StatefulWidget {
   State<VideoUploadScreen> createState() => _VideoUploadScreenState();
 }
 
-class _VideoUploadScreenState extends State<VideoUploadScreen> {
+class _VideoUploadScreenState  extends State<VideoUploadScreen> {
   static const Color kPrimary = Color(0xFF0F766E);
 
   final _baslikCtrl = TextEditingController();

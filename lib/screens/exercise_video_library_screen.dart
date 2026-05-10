@@ -79,7 +79,7 @@ class _ExerciseVideoLibraryScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
-      // AppBar ve BottomNavigationBar silindi, MainScreen bunları zaten veriyor.
+      
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final yuklendi = await Navigator.push<bool>(
