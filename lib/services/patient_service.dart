@@ -31,21 +31,23 @@ Map<String, String> _headers({bool write = false}) {
 
 class PatientService {
 
-  /// Tüm hastaları getirir (lookup tablolarıyla birlikte)
-  static Future<List<Patient>> getHastalar({String? aramaMetni}) async {
+  /// Tüm hastaları getirir.
+  /// [klinisyenId] verilirse yalnızca o klinisyene atanmış hastalar döner.
+  static Future<List<Patient>> getHastalar({
+    String? aramaMetni,
+    int? klinisyenId,
+  }) async {
     try {
-      // Hasta seçimi için önce hızlı ve hafif sorguyu kullanıyoruz.
-      // Detaylı join sorgusu bazı durumlarda timeout oluşturduğu için fallback olarak kalmalı.
-      final basicPatients = await _fetchPatientsBasic();
+      final basicPatients = await _fetchPatientsBasic(klinisyenId: klinisyenId);
       return _filterPatients(basicPatients, aramaMetni);
     } catch (e) {
       debugPrint('PatientService.getHastalar basic fetch failed: $e');
-      final detailedPatients = await _fetchPatientsDetailed();
+      final detailedPatients = await _fetchPatientsDetailed(klinisyenId: klinisyenId);
       return _filterPatients(detailedPatients, aramaMetni);
     }
   }
 
-  static Future<List<Patient>> _fetchPatientsDetailed() async {
+  static Future<List<Patient>> _fetchPatientsDetailed({int? klinisyenId}) async {
     final select = Uri.encodeComponent(
       '*, '
       'kullanicilar(ad,soyad,eposta), '
@@ -53,13 +55,14 @@ class PatientService {
       'medeniDurumlar(medeniDurumAdi), '
       'egitimDurumlari(egitimDurumAdi), '
       'meslekler(meslekAdi), '
-      'sigaraDurumu(sigaraDurumAdi), '
-      'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),'
-      'klinisyenNotlari,baslangicTarihi,bakiciKisi,sigaraDurumId,'
-      'hikaye,degerlendirmeTarihi)',
+      'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
     );
 
-    final url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    String url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    if (klinisyenId != null) {
+      url += '&klinisyenId=eq.$klinisyenId';
+    }
+
     final response = await http
         .get(Uri.parse(url), headers: _headers())
         .timeout(const Duration(seconds: 5));
@@ -73,16 +76,21 @@ class PatientService {
     }
 
     throw Exception(
-      'Hastalar detaylı yüklenemedi. Kod: ${response.statusCode}, Body: ${response.body}',
+      'Hastalar detaylı yüklenemedi. Kod: ${response.statusCode}',
     );
   }
 
-  static Future<List<Patient>> _fetchPatientsBasic() async {
+  static Future<List<Patient>> _fetchPatientsBasic({int? klinisyenId}) async {
     final select = Uri.encodeComponent(
-      'hastaId,kullaniciId,notlar,dogumTarihi,telefonNo,boy,kilo,kullanicilar(ad,soyad,eposta)',
+      'hastaId,kullaniciId,notlar,dogumTarihi,telefonNo,boy,kilo,'
+      'kullanicilar(ad,soyad,eposta)',
     );
 
-    final url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    String url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
+    if (klinisyenId != null) {
+      url += '&klinisyenId=eq.$klinisyenId';
+    }
+
     final response = await http
         .get(Uri.parse(url), headers: _headers())
         .timeout(const Duration(seconds: 5));
@@ -96,7 +104,7 @@ class PatientService {
     }
 
     throw Exception(
-      'Hastalar temel yüklenemedi. Kod: ${response.statusCode}, Body: ${response.body}',
+      'Hastalar temel yüklenemedi. Kod: ${response.statusCode}',
     );
   }
 
@@ -122,10 +130,7 @@ class PatientService {
         'medeniDurumlar(medeniDurumAdi), '
         'egitimDurumlari(egitimDurumAdi), '
         'meslekler(meslekAdi), '
-        'sigaraDurumu(sigaraDurumAdi), '
-        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),'
-        'klinisyenNotlari,baslangicTarihi,bakiciKisi,sigaraDurumId,'
-        'hikaye,degerlendirmeTarihi)',
+        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
       );
       final url = '$SUPABASE_URL/hastalar?select=$select&hastaId=eq.$hastaId';
 
@@ -144,7 +149,7 @@ class PatientService {
       final matches = basicList.where((p) => p.hastaId == hastaId).toList();
       if (matches.isNotEmpty) return matches.first;
 
-      throw Exception('Hasta bulunamadı. Kod: ${response.statusCode}, Body: ${response.body}');
+      throw Exception('Hasta bulunamadı.');
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
     }
@@ -154,22 +159,17 @@ class PatientService {
   static Future<bool> hastaGuncelle(
       int hastaId, Map<String, dynamic> data) async {
     try {
-      // klinisyenNotlari degerlendirmeler tablosunda,
-      // boy/kilo hastalar tablosunda — ikisini ayırıyoruz
       final hastaData = <String, dynamic>{};
       if (data.containsKey('boy')) hastaData['boy'] = data['boy'];
       if (data.containsKey('kilo')) hastaData['kilo'] = data['kilo'];
 
-      // Hastalar tablosunu güncelle
       if (hastaData.isNotEmpty) {
         final response = await http.patch(
-          Uri.parse(
-              '$SUPABASE_URL/hastalar?hastaId=eq.$hastaId'),
+          Uri.parse('$SUPABASE_URL/hastalar?hastaId=eq.$hastaId'),
           headers: _headers(write: true),
           body: json.encode(hastaData),
         );
-        if (response.statusCode != 200 &&
-            response.statusCode != 204) {
+        if (response.statusCode != 200 && response.statusCode != 204) {
           throw Exception('Hasta güncellenemedi.');
         }
       }
@@ -206,43 +206,13 @@ class PatientService {
     final mes = raw['meslekler'];
     if (mes is Map) flat['meslekAdi'] = mes['meslekAdi'];
 
-    final sigara = raw['sigaraDurumu'];
-    if (sigara is Map) {
-      flat['sigaraDurumAdi'] = sigara['sigaraDurumAdi'];
-    }
-    flat['sigaraDurumAdi'] ??= _sigaraDurumAdi(flat['sigaraDurumId']);
-    flat['baskinElAdi'] ??= _baskinElAdi(flat['baskinId']);
-
     // degerlendirmeler → en son kaydın hastalıkAdı ve klinisyenNotlari
     final degList = raw['degerlendirmeler'];
     if (degList is List && degList.isNotEmpty) {
-      final sorted = degList.whereType<Map<String, dynamic>>().toList()
-        ..sort((a, b) {
-          final aDate = DateTime.tryParse(
-                (a['degerlendirmeTarihi'] ?? '').toString(),
-              ) ??
-              DateTime.fromMillisecondsSinceEpoch(0);
-          final bDate = DateTime.tryParse(
-                (b['degerlendirmeTarihi'] ?? '').toString(),
-              ) ??
-              DateTime.fromMillisecondsSinceEpoch(0);
-          return bDate.compareTo(aDate);
-        });
-      for (final evaluation in sorted) {
-        final h = evaluation['hastaliklar'];
-        final disease = h is Map ? h['hastalikAdi']?.toString().trim() : '';
-        if ((flat['hastalikAdi']?.toString().trim() ?? '').isEmpty &&
-            disease != null &&
-            disease.isNotEmpty) {
-          flat['hastalikAdi'] = disease;
-        }
-        _setFirstNonEmpty(flat, 'klinisyenNotlari', evaluation['klinisyenNotlari']);
-        _setFirstNonEmpty(flat, 'baslangicTarihi', evaluation['baslangicTarihi']);
-        _setFirstNonEmpty(flat, 'bakiciKisi', evaluation['bakiciKisi']);
-        _setFirstNonEmpty(flat, 'notlar', evaluation['hikaye']);
-        flat['sigaraDurumId'] ??= evaluation['sigaraDurumId'];
-        flat['sigaraDurumAdi'] ??= _sigaraDurumAdi(evaluation['sigaraDurumId']);
-      }
+      final son = degList.first as Map<String, dynamic>;
+      final h = son['hastaliklar'];
+      if (h is Map) flat['hastalikAdi'] = h['hastalikAdi'];
+      flat['klinisyenNotlari'] = son['klinisyenNotlari'];
     }
 
     // İç içe nesneleri temizle
@@ -251,45 +221,8 @@ class PatientService {
     flat.remove('medeniDurumlar');
     flat.remove('egitimDurumlari');
     flat.remove('meslekler');
-    flat.remove('sigaraDurumu');
     flat.remove('degerlendirmeler');
 
     return flat;
-  }
-
-  static String? _sigaraDurumAdi(dynamic idValue) {
-    final id = idValue is int ? idValue : int.tryParse(idValue?.toString() ?? '');
-    switch (id) {
-      case 1:
-        return 'İçiyor';
-      case 2:
-        return 'İçmiyor';
-      case 3:
-        return 'Bırakmış';
-    }
-    return null;
-  }
-
-  static void _setFirstNonEmpty(
-    Map<String, dynamic> target,
-    String key,
-    dynamic value,
-  ) {
-    if ((target[key]?.toString().trim() ?? '').isNotEmpty) return;
-    final text = value?.toString().trim() ?? '';
-    if (text.isNotEmpty) target[key] = value;
-  }
-
-  static String? _baskinElAdi(dynamic idValue) {
-    final id = idValue is int ? idValue : int.tryParse(idValue?.toString() ?? '');
-    switch (id) {
-      case 1:
-        return 'Sağ';
-      case 2:
-        return 'Sol';
-      case 3:
-        return 'Her ikisi';
-    }
-    return null;
   }
 }
