@@ -4,7 +4,12 @@ import '../services/patient_service.dart';
 import 'patient_detail_screen.dart';
 
 class PatientListScreen extends StatefulWidget {
-  const PatientListScreen({super.key});
+  final bool showBack;
+
+  const PatientListScreen({
+    super.key,
+    this.showBack = false,
+  });
 
   @override
   State<PatientListScreen> createState() => _PatientListScreenState();
@@ -36,6 +41,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
       _yukleniyor = true;
       _hata = null;
     });
+
     try {
       final hastalar = await PatientService.getHastalar();
       setState(() {
@@ -58,9 +64,11 @@ class _PatientListScreenState extends State<PatientListScreen> {
       } else {
         final q = sorgu.toLowerCase();
         _filtrelenmis = _hastalar
-            .where((h) =>
-        h.tamAd.toLowerCase().contains(q) ||
-            h.hastaId.toString().contains(q))
+            .where(
+              (h) =>
+          h.tamAd.toLowerCase().contains(q) ||
+              h.hastaId.toString().contains(q),
+        )
             .toList();
       }
     });
@@ -70,73 +78,140 @@ class _PatientListScreenState extends State<PatientListScreen> {
     final guncellendi = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-          builder: (_) => PatientDetailScreen(hasta: hasta)),
+        builder: (_) => PatientDetailScreen(hasta: hasta),
+      ),
     );
-    if (guncellendi == true) _hastalariYukle();
+
+    if (guncellendi == true) {
+      _hastalariYukle();
+    }
+  }
+
+  void _handleBack() {
+    Navigator.pop(context);
+  }
+
+  Widget _buildHeaderIcon() {
+    if (widget.showBack) {
+      return GestureDetector(
+        onTap: _handleBack,
+        child: Container(
+          width: 36,
+          height: 36,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: kPrimary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.arrow_back_ios_new,
+            color: kPrimary,
+            size: 18,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: 36,
+      height: 36,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: kPrimary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Icon(
+        Icons.people_alt_outlined,
+        color: kPrimary,
+        size: 20,
+      ),
+    );
+  }
+
+  PreferredSizeWidget _appBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      titleSpacing: 16,
+      title: Row(
+        children: [
+          _buildHeaderIcon(),
+          const Expanded(
+            child: Text(
+              'Hasta Listesi',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ),
+        ],
+      ),
+      centerTitle: false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF1E293B), size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Hasta Listesi',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E293B))),
-        centerTitle: false,
-      ),
+      appBar: _appBar(),
       body: Column(
         children: [
           Container(
             color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: _aramaCtrl,
-                  onChanged: _aramaYap,
-                  decoration: InputDecoration(
-                    hintText: 'İsim veya hasta ID ile ara...',
-                    hintStyle: const TextStyle(
-                        color: Color(0xFF94A3B8), fontSize: 14),
-                    prefixIcon: const Icon(Icons.search,
-                        color: Color(0xFF94A3B8), size: 20),
-                    suffixIcon: _aramaCtrl.text.isNotEmpty
-                        ? IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Color(0xFF94A3B8), size: 18),
-                        onPressed: () {
-                          _aramaCtrl.clear();
-                          _aramaYap('');
-                        })
-                        : null,
-                    filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0), width: 1)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                            color: kPrimary, width: 1.5)),
+            child: TextField(
+              controller: _aramaCtrl,
+              onChanged: _aramaYap,
+              decoration: InputDecoration(
+                hintText: 'İsim veya hasta ID ile ara...',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 14,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Color(0xFF94A3B8),
+                  size: 20,
+                ),
+                suffixIcon: _aramaCtrl.text.isNotEmpty
+                    ? IconButton(
+                  icon: const Icon(
+                    Icons.close,
+                    color: Color(0xFF94A3B8),
+                    size: 18,
+                  ),
+                  onPressed: () {
+                    _aramaCtrl.clear();
+                    _aramaYap('');
+                  },
+                )
+                    : null,
+                filled: true,
+                fillColor: const Color(0xFFF1F5F9),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFE2E8F0),
+                    width: 1,
                   ),
                 ),
-              ],
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: kPrimary,
+                    width: 1.5,
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 1),
@@ -149,7 +224,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
   Widget _govde() {
     if (_yukleniyor) {
       return const Center(
-          child: CircularProgressIndicator(color: kPrimary));
+        child: CircularProgressIndicator(color: kPrimary),
+      );
     }
 
     if (_hata != null) {
@@ -159,17 +235,25 @@ class _PatientListScreenState extends State<PatientListScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline,
-                  size: 56, color: Colors.red),
+              const Icon(
+                Icons.error_outline,
+                size: 56,
+                color: Colors.red,
+              ),
               const SizedBox(height: 12),
-              const Text('Bağlantı Hatası',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text(
+                'Bağlantı Hatası',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(_hata!,
-                  textAlign: TextAlign.center,
-                  style:
-                  const TextStyle(color: Color(0xFF64748B))),
+              Text(
+                _hata!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF64748B)),
+              ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -178,10 +262,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimary,
                     foregroundColor: Colors.white,
-                    padding:
-                    const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   child: const Text('Tekrar Dene'),
                 ),
@@ -197,8 +281,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_search,
-                size: 56, color: Colors.grey[300]),
+            Icon(Icons.person_search, size: 56, color: Colors.grey[300]),
             const SizedBox(height: 12),
             Text(
               _aramaCtrl.text.isEmpty
@@ -219,18 +302,25 @@ class _PatientListScreenState extends State<PatientListScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text('${_filtrelenmis.length} HASTA',
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF94A3B8),
-                    letterSpacing: 0.8)),
+            child: Text(
+              '${_filtrelenmis.length} HASTA',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF94A3B8),
+                letterSpacing: 0.8,
+              ),
+            ),
           ),
-          ..._filtrelenmis.map((hasta) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _HastaKarti(
-                hasta: hasta, onTap: () => _detayaGit(hasta)),
-          )),
+          ..._filtrelenmis.map(
+                (hasta) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _HastaKarti(
+                hasta: hasta,
+                onTap: () => _detayaGit(hasta),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -240,16 +330,26 @@ class _PatientListScreenState extends State<PatientListScreen> {
 class _HastaKarti extends StatelessWidget {
   final Patient hasta;
   final VoidCallback onTap;
-  const _HastaKarti({required this.hasta, required this.onTap});
+
+  const _HastaKarti({
+    required this.hasta,
+    required this.onTap,
+  });
 
   String _yas(String? dogumTarihi) {
     if (dogumTarihi == null) return '?';
+
     try {
       final d = DateTime.parse(dogumTarihi);
       final now = DateTime.now();
+
       int yas = now.year - d.year;
+
       if (now.month < d.month ||
-          (now.month == d.month && now.day < d.day)) yas--;
+          (now.month == d.month && now.day < d.day)) {
+        yas--;
+      }
+
       return '$yas';
     } catch (_) {
       return '?';
@@ -270,68 +370,90 @@ class _HastaKarti extends StatelessWidget {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: const Color(0xFFF0FDFA),
-              child: Text(
-                hasta.ad.isNotEmpty
-                    ? hasta.ad[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: const Color(0xFFF0FDFA),
+                child: Text(
+                  hasta.ad.isNotEmpty ? hasta.ad[0].toUpperCase() : '?',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F766E)),
+                    color: Color(0xFF0F766E),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(hasta.tamAd,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasta.tamAd,
                       style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E293B))),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    _Etiket(
-                        label: hasta.hastalikAdi ?? 'Tanı Yok'),
-                    const SizedBox(width: 6),
-                    _Etiket(
-                      label: '${_yas(hasta.dogumTarihi)} yaş',
-                      renk: const Color(0xFF0F766E),
-                      arkaplan: const Color(0xFFF0FDFA),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E293B),
+                      ),
                     ),
-                  ]),
-                  const SizedBox(height: 5),
-                  Row(children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 12, color: Color(0xFF94A3B8)),
-                    const SizedBox(width: 3),
-                    Text(hasta.adres ?? 'Adres yok',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF94A3B8))),
-                  ]),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _Etiket(label: hasta.hastalikAdi ?? 'Tanı Yok'),
+                        const SizedBox(width: 6),
+                        _Etiket(
+                          label: '${_yas(hasta.dogumTarihi)} yaş',
+                          renk: const Color(0xFF0F766E),
+                          arkaplan: const Color(0xFFF0FDFA),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 12,
+                          color: Color(0xFF94A3B8),
+                        ),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            hasta.adres ?? 'Adres yok',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '#${hasta.hastaId}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF94A3B8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Color(0xFFCBD5E1),
+                    size: 20,
+                  ),
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('#${hasta.hastaId}',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w500)),
-                const SizedBox(height: 12),
-                const Icon(Icons.chevron_right,
-                    color: Color(0xFFCBD5E1), size: 20),
-              ],
-            ),
-          ]),
+            ],
+          ),
         ),
       ),
     );
@@ -342,6 +464,7 @@ class _Etiket extends StatelessWidget {
   final String label;
   final Color renk;
   final Color arkaplan;
+
   const _Etiket({
     required this.label,
     this.renk = const Color(0xFF0F766E),
@@ -351,16 +474,19 @@ class _Etiket extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-          color: arkaplan,
-          borderRadius: BorderRadius.circular(20)),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: renk)),
+        color: arkaplan,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: renk,
+        ),
+      ),
     );
   }
 }
