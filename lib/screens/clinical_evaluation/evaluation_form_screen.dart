@@ -373,12 +373,18 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   String _extractInlineValue(String source, String label) {
     if (source.trim().isEmpty) return '';
     final pattern = RegExp(
-      '${RegExp.escape(label)}\\s*:\\s*(.+)',
+      '^${RegExp.escape(label)}\\s*:[ \\t]*(.*)\$',
       caseSensitive: false,
     );
-    final match = pattern.firstMatch(source);
-    if (match == null) return '';
-    return (match.group(1) ?? '').trim();
+
+    for (final rawLine in source.split('\n')) {
+      final match = pattern.firstMatch(rawLine.trimRight());
+      if (match != null) {
+        return (match.group(1) ?? '').trim();
+      }
+    }
+
+    return '';
   }
 
   void _fillFunctionalControllersFromText(String text) {

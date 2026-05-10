@@ -488,10 +488,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   }
 
   PreferredSizeWidget _appBar() {
-    final title = widget.hastaAdi != null
-        ? '${widget.hastaAdi} — Değerlendirmeler'
-        : 'Klinik Değerlendirmeler';
-
     return AppBar(
       backgroundColor: _surface,
       elevation: 0,
@@ -518,7 +514,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
         ),
       ),
       title: Text(
-        title,
+        'Klinik Değerlendirmeler',
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           color: _textDark,
@@ -1009,7 +1005,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
           // Karşılaştırma modunda ilk değerlendirme seçildiyse, listeyi
           // yalnızca o hastanın diğer değerlendirmeleriyle daralt.
           final int? lockedHastaId =
-              _compareMode && _selectedEvaluations.length == 1
+              _compareMode && _selectedEvaluations.isNotEmpty
                   ? _selectedEvaluations[0].hastaId as int?
                   : null;
 
