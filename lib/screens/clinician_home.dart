@@ -9,6 +9,7 @@ import 'patient_step_1_screen.dart';
 import 'telerehab_clinician_screen.dart';
 import 'clinical_evaluation/evaluation_list_screen.dart';
 import '../services/patient_service.dart';
+import '../services/auth_service.dart';
 
 class ClinicianHome extends StatefulWidget {
   const ClinicianHome({super.key});
@@ -20,27 +21,42 @@ class ClinicianHome extends StatefulWidget {
 class _ClinicianHomeState extends State<ClinicianHome> {
   static const Color _primaryTeal = Color(0xFF0F766E);
   String _activePatientCount = '...';
+  int? _klinisyenId;
 
   @override
   void initState() {
     super.initState();
-    _loadPatientCount();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await _resolveKlinisyenId();
+    await _loadPatientCount();
+  }
+
+  /// Giriş yapan kullanıcının klinisyenler.klinisyenId'sini çeker
+  Future<void> _resolveKlinisyenId() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final kullaniciId = int.tryParse(auth.user?.id ?? '');
+    if (kullaniciId == null) return;
+
+    try {
+      final id = await AuthService.getKlinisyenIdByKullaniciId(kullaniciId);
+      if (mounted) setState(() => _klinisyenId = id);
+    } catch (_) {}
   }
 
   Future<void> _loadPatientCount() async {
     try {
-      final patients = await PatientService.getHastalar();
+      final patients = await PatientService.getHastalar(
+        klinisyenId: _klinisyenId,
+      );
       if (mounted) {
-        setState(() {
-          _activePatientCount = patients.length.toString();
-        });
+        setState(() => _activePatientCount = patients.length.toString());
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _activePatientCount = '0';
-        });
-      }
+      if (mounted) setState(() => _activePatientCount = '0');
     }
   }
 
@@ -48,7 +64,6 @@ class _ClinicianHomeState extends State<ClinicianHome> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.user;
-
     final displayName = user?.displayName ?? 'Değerli Hocam';
 
     return SingleChildScrollView(
@@ -97,7 +112,9 @@ class _ClinicianHomeState extends State<ClinicianHome> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const PatientListScreen(showBack: true),
+                      builder: (_) => PatientListScreen(
+                        klinisyenId: _klinisyenId,
+                      ),
                     ),
                   ),
                 ),
@@ -110,9 +127,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
                   '3',
                   Icons.assessment_outlined,
                   Colors.orange,
-                  onTap: () {
-                    // İleride raporlar sayfası için kullanılabilir
-                  },
+                  onTap: () {},
                 ),
               ),
             ],
@@ -303,9 +318,14 @@ class _ClinicianHomeState extends State<ClinicianHome> {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String title, String count,
-      IconData icon, Color color,
-      {VoidCallback? onTap}) {
+  Widget _buildStatCard(
+    BuildContext context,
+    String title,
+    String count,
+    IconData icon,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -345,11 +365,12 @@ class _QuickActionTile extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _QuickActionTile(
-      {required this.icon,
-        required this.label,
-        required this.color,
-        required this.onTap});
+  const _QuickActionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
