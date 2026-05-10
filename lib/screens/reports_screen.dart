@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../services/report_service.dart';
 import '../models/comparison_report.dart';
@@ -12,6 +14,54 @@ const Color kInputFill = Color(0xFFF1F5F9);
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
+
+  Future<void> _downloadReport(
+    BuildContext context,
+    ComparisonReport report,
+  ) async {
+    if (report.filePath == null || report.filePath!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Bu rapor için PDF dosyası bulunamadı."),
+        ),
+      );
+      return;
+    }
+
+    final sourceFile = File(report.filePath!);
+
+    if (!await sourceFile.exists()) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("PDF dosyası cihazda bulunamadı."),
+        ),
+      );
+      return;
+    }
+
+    final targetDirectory = Directory('/storage/emulated/0/Download');
+
+    if (!await targetDirectory.exists()) {
+      await targetDirectory.create(recursive: true);
+    }
+
+    final safeTitle = report.raporBasligi
+        .replaceAll(RegExp(r'[^\w\s-]'), '')
+        .replaceAll(' ', '_');
+
+    final targetPath = '${targetDirectory.path}/${safeTitle}_${report.id}.pdf';
+
+    final targetFile = await sourceFile.copy(targetPath);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("PDF indirildi: ${targetFile.path}"),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +90,7 @@ class ReportsScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final report = reports[index];
 
-                return _buildReportCard(report);
+                return _buildReportCard(context, report);
               },
             ),
           ),
@@ -94,7 +144,10 @@ class ReportsScreen extends StatelessWidget {
   }
 
   // RAPOR KARTI
-  Widget _buildReportCard(ComparisonReport report) {
+  Widget _buildReportCard(
+    BuildContext context,
+    ComparisonReport report,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(
           horizontal: 16, vertical: 6),
@@ -154,27 +207,39 @@ class ReportsScreen extends StatelessWidget {
             ),
           ),
 
-          Container(
-            padding:
-            const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 4,
-            ),
-            decoration: BoxDecoration(
-              color:
-              kPrimary.withValues(alpha:0.1),
-              borderRadius:
-              BorderRadius.circular(8),
-            ),
-            child: Text(
-              report.durum,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight:
-                FontWeight.w600,
-                color: kPrimary,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                  kPrimary.withValues(alpha:0.1),
+                  borderRadius:
+                  BorderRadius.circular(8),
+                ),
+                child: Text(
+                  report.durum,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight:
+                    FontWeight.w600,
+                    color: kPrimary,
+                  ),
+                ),
               ),
-            ),
+              IconButton(
+                onPressed: () => _downloadReport(context, report),
+                icon: const Icon(
+                  Icons.download_rounded,
+                  color: kPrimary,
+                ),
+              ),
+            ],
           ),
         ],
       ),
