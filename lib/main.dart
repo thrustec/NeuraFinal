@@ -25,33 +25,25 @@ class NeuraApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => EvaluationProvider()),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, _) {
-          return MaterialApp(
-            title: 'Neura',
-            debugShowCheckedModeBanner: false,
-            theme: NeuraTheme.lightTheme,
-            darkTheme: NeuraTheme.darkTheme,
-            themeMode: themeProvider.themeMode,
-            initialRoute: '/',
-            routes: {
-              '/': (context) => const SplashScreen(),
-              '/login': (context) => const LoginScreen(),
-              '/register': (context) => const RegisterScreen(),
-              '/forgot-password': (context) => const ForgotPasswordScreen(),
-              '/register-clinician': (context) =>
-                  const RegisterClinicianScreen(),
-              '/clinician-agenda': (context) => const ClinicianAgenda(),
-              '/patient-home': (context) =>
-                  const MainScreen(isClinician: false),
-              '/clinician-home': (context) =>
-                  const MainScreen(isClinician: true),
-            },
-          );
+      child: MaterialApp(
+        title: 'Neura',
+        debugShowCheckedModeBanner: false,
+        theme: NeuraTheme.lightTheme,
+        darkTheme: NeuraTheme.darkTheme,
+        themeMode: ThemeMode.system,
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const SplashScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/register-clinician': (context) => const RegisterClinicianScreen(),
+          '/clinician-agenda': (context) => const ClinicianAgenda(),
+          '/patient-home': (context) => const MainScreen(isClinician: false),
+          '/clinician-home': (context) => const MainScreen(isClinician: true),
         },
       ),
     );
