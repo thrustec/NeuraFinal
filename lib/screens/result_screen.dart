@@ -2,6 +2,11 @@
 // lib/views/result_screen.dart
 
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
+
+import 'package:path_provider/path_provider.dart';
 import '../models/patient.dart';
 import '../models/comparison_result.dart';
 import '../models/comparison_report.dart';
@@ -431,6 +436,8 @@ class ResultsScreen extends StatelessWidget {
       ],
     );
   }
+
+  //eski versiyon (pdfsiz)
   void _createReport(BuildContext context) {
     final report = ComparisonReport(
       id: DateTime.now().millisecondsSinceEpoch,
@@ -451,6 +458,149 @@ class ResultsScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _createPdfReport(BuildContext context) async {
+    try {
+      final pdf = pw.Document();
+
+      final List<ComparisonResult> dynamicResults =
+      endDate.testSonuclari.map((currentTest) {
+        final baselineTest = startDate.testSonuclari.firstWhere(
+              (t) => t.testAdi == currentTest.testAdi,
+          orElse: () => currentTest,
+        );
+
+        return ComparisonResult(
+          testAdi: currentTest.testAdi,
+          baselineDeger: baselineTest.olculenDeger,
+          guncelDeger: currentTest.olculenDeger,
+          maxDeger: currentTest.maxDeger,
+          birim: currentTest.birim,
+          isLowerBetter: currentTest.isLowerBetter,
+        );
+      }).toList();
+
+      pdf.addPage(
+        pw.MultiPage(
+          build: (context) => [
+            pw.Text(
+              'Degerlendirme Karsilastirma Raporu',
+              style: pw.TextStyle(
+                fontSize: 22,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 16),
+
+            pw.Text('Hasta: ${patient.tamAd}'),
+            pw.Text('Hasta ID: ${patient.hastaId}'),
+            pw.Text('Baslangic Tarihi: ${startDate.tarih}'),
+            pw.Text('Bitis Tarihi: ${endDate.tarih}'),
+
+            pw.SizedBox(height: 20),
+
+            pw.TableHelper.fromTextArray(
+              headers: [
+                'Test',
+                'Once',
+                'Sonra',
+                'Fark',
+                'Birim',
+                'Durum',
+              ],
+              data: dynamicResults.map((r) {
+                return [
+                  r.testAdi,
+                  r.baselineDeger.toStringAsFixed(1),
+                  r.guncelDeger.toStringAsFixed(1),
+                  r.fark.toStringAsFixed(1),
+                  r.birim,
+                  r.iyilesme ? 'Iyilesme' : 'Degisim yok / Kotu',
+                ];
+              }).toList(),
+            ),
+          ],
+        ),
+      );
+
+      final directory = await getApplicationDocumentsDirectory();
+
+      final fileName =
+          'comparison_report_${patient.hastaId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+      final file = File('${directory.path}/$fileName');
+
+      await file.writeAsBytes(await pdf.save());
+
+      final report = ComparisonReport(
+        id: DateTime.now().millisecondsSinceEpoch,
+        hastaId: patient.hastaId,
+        hastaAdi: patient.tamAd,
+        baslangicTarihi: startDate.tarih,
+        bitisTarihi: endDate.tarih,
+        olusturmaTarihi: DateTime.now(),
+        raporBasligi: '${patient.tamAd} Karşılaştırma Raporu',
+        filePath: file.path,
+      );
+
+      ReportService.addReport(report);
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PDF raporu oluşturuldu ve Raporlar sayfasına eklendi.'),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF oluşturulamadı: $e'),
+        ),
+      );
+    }
+  }
+  Future<void> _shareLatestPdfReport(BuildContext context) async {
+    final reports = ReportService.getReports();
+
+    if (reports.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Paylaşılacak rapor bulunamadı. Önce PDF raporu oluşturun."),
+        ),
+      );
+      return;
+    }
+
+    final latestReport = reports.first;
+
+    if (latestReport.filePath == null || latestReport.filePath!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Bu rapor için PDF dosyası bulunamadı."),
+        ),
+      );
+      return;
+    }
+
+    final file = File(latestReport.filePath!);
+
+    if (!await file.exists()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("PDF dosyası cihazda bulunamadı."),
+        ),
+      );
+      return;
+    }
+
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      text: latestReport.raporBasligi,
+    );
+  }
+
   Widget _buildActionButtons(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -462,7 +612,7 @@ class ResultsScreen extends StatelessWidget {
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () => _createReport(context),
+              onPressed: () => _createPdfReport(context),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kTextGrey,
                 minimumSize: const Size.fromHeight(50),
@@ -481,7 +631,7 @@ class ResultsScreen extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () => _shareLatestPdfReport(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimary,
                 foregroundColor: Colors.white,

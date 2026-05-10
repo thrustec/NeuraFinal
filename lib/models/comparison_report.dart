@@ -7,6 +7,7 @@ class ComparisonReport {
   final DateTime olusturmaTarihi;
   final String raporBasligi;
   final String durum;
+  final String? filePath; // PDF dosya yolu
 
   ComparisonReport({
     required this.id,
@@ -17,5 +18,6 @@ class ComparisonReport {
     required this.olusturmaTarihi,
     required this.raporBasligi,
     this.durum = 'Oluşturuldu',
+    this.filePath,
   });
 }
