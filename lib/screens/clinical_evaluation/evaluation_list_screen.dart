@@ -488,8 +488,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   }
 
   PreferredSizeWidget _appBar() {
-    final auth = context.watch<AuthProvider>();
-    final initials = _userInitials(auth.user?.ad, auth.user?.soyad);
     final title = widget.hastaAdi != null
         ? '${widget.hastaAdi} — Değerlendirmeler'
         : 'Klinik Değerlendirmeler';
@@ -531,7 +529,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       actions: [
         // Karşılaştırma modu toggle butonu
         Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 4),
           child: TextButton.icon(
             onPressed: _toggleCompareMode,
             icon: Icon(
@@ -549,56 +547,32 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
             ),
           ),
         ),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: _textDark,
-                size: 27,
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF4A4A),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
         Padding(
-          padding: const EdgeInsets.only(right: 16, left: 6),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: _openProfileSheet,
-              child: Ink(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _primary,
-                  borderRadius: BorderRadius.circular(12),
+          padding: const EdgeInsets.only(right: 12),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: _textDark,
+                  size: 26,
                 ),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF4A4A),
+                    shape: BoxShape.circle,
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ],
@@ -606,151 +580,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
         preferredSize: Size.fromHeight(1),
         child: Divider(height: 1, thickness: 1, color: _border),
       ),
-    );
-  }
-
-  String _userInitials(String? ad, String? soyad) {
-    String firstLetter(String? value) {
-      if (value == null) return '';
-      final trimmed = value.trim();
-      if (trimmed.isEmpty) return '';
-      return trimmed.substring(0, 1).toUpperCase();
-    }
-
-    final parts = [firstLetter(ad), firstLetter(soyad)]
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    return parts.join();
-  }
-
-  // Tap-target for the top-right profile badge.
-  // The app does not yet have a dedicated Profile screen — the existing
-  // profile pattern is the user header in MainScreen's drawer (name + role).
-  // We surface that same data here as a bottom sheet so the badge becomes a
-  // real tap target without inventing a new screen/route.
-  void _openProfileSheet() {
-    final user = context.read<AuthProvider>().user;
-    final fullName = (user?.fullName ?? '').trim().isNotEmpty
-        ? user!.fullName.trim()
-        : 'Kullanıcı';
-    final email = (user?.eposta ?? '').trim();
-    final role = (user?.rolAdi ?? '').trim();
-    final initials = _userInitials(user?.ad, user?.soyad);
-
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: _surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9DFEA),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: _primary,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Center(
-                        child: Text(
-                          initials,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            fullName,
-                            style: const TextStyle(
-                              color: _textDark,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (role.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              role,
-                              style: const TextStyle(
-                                color: _primary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                          if (email.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              email,
-                              style: const TextStyle(
-                                color: _textMid,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    style: TextButton.styleFrom(
-                      foregroundColor: _textMid,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: _border),
-                      ),
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    child: const Text('Kapat'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 

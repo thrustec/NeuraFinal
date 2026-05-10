@@ -305,7 +305,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if (text.isEmpty) return '';
 
     final header = '$title:\n';
-    final start = text.lastIndexOf(header);
+    // Use the FIRST occurrence so any later string that accidentally
+    // spells the same header (e.g. inside an accumulated clinician note)
+    // cannot redirect the start of the real section.
+    final start = text.indexOf(header);
     if (start == -1) return '';
 
     final contentStart = start + header.length;
@@ -332,6 +335,39 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
         : text.substring(contentStart, end);
 
     return result.trim();
+  }
+
+  // Extract only the body of the "Klinisyen Notları" sub-section inside the
+  // disease block. The disease block uses headers WITHOUT a trailing colon
+  // (e.g. "Parkinson\n...", "Klinisyen Notları\n...") so we cannot reuse
+  // _extractSection (which expects "Title:\n"). The body is bounded by any
+  // other disease sub-section header on a new paragraph.
+  String _extractDiseaseClinicianNote(String diseaseSection) {
+    final text = diseaseSection.trim();
+    if (text.isEmpty) return '';
+    const header = 'Klinisyen Notları\n';
+    final start = text.indexOf(header);
+    if (start == -1) return '';
+    final contentStart = start + header.length;
+    const otherHeaders = [
+      '\n\nHafif Kognitif Bozukluk / Alzheimer Hastalığı\n',
+      '\n\nParkinson\n',
+      '\n\nALS\n',
+      '\n\nMS\n',
+      '\n\nAtaksi\n',
+      '\n\nKlinisyen Notları\n',
+    ];
+    int? end;
+    for (final marker in otherHeaders) {
+      final idx = text.indexOf(marker, contentStart);
+      if (idx != -1 && (end == null || idx < end)) {
+        end = idx;
+      }
+    }
+    final body = end == null
+        ? text.substring(contentStart)
+        : text.substring(contentStart, end);
+    return body.trim();
   }
 
   String _extractInlineValue(String source, String label) {
@@ -633,7 +669,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _restoreDemographicsFromText(packedHikaye);
     _restoreSymptomsFromText(_extractSection(packedNotlar, 'Semptomlar'));
     final diseaseSection = _extractSection(packedNotlar, 'Hastalık');
-    _diseaseNoteCtrl.text = diseaseSection;
+    // CRITICAL: do NOT assign the entire Hastalık section back into
+    // _diseaseNoteCtrl. _composeDiseaseNote later wraps this controller's
+    // text under a "Klinisyen Notları" sub-header, so dumping the whole
+    // disease block in here would re-embed every previous round-trip on
+    // the next save and grow the saved notlar without bound. Only the
+    // Klinisyen Notları sub-section (free-text the user typed) belongs
+    // in this controller; if it isn't present, leave it empty so a
+    // resave produces an unchanged Hastalık block.
+    _diseaseNoteCtrl.text =
+        _extractDiseaseClinicianNote(diseaseSection);
     _restoreDiseaseSelectionsFromText(diseaseSection);
     _functionalsNoteCtrl.text = _extractSection(packedClinicianNotes, 'Klinisyen Notları');
     _clinicTypeCtrl.text = _extractInlineValue(packedClinicianNotes, 'Klinik tip');
