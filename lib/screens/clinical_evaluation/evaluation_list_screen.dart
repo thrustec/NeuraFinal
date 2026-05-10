@@ -488,6 +488,12 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   }
 
   PreferredSizeWidget _appBar() {
+    final auth = context.watch<AuthProvider>();
+    final initials = _userInitials(auth.user?.ad, auth.user?.soyad);
+    final title = widget.hastaAdi != null
+        ? '${widget.hastaAdi} — Değerlendirmeler'
+        : 'Klinik Değerlendirmeler';
+
     return AppBar(
       backgroundColor: _surface,
       elevation: 0,
@@ -497,7 +503,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
         padding: const EdgeInsets.only(left: 12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () {},
+          onTap: () => Navigator.of(context).maybePop(),
           child: Container(
             width: 36,
             height: 36,
@@ -505,13 +511,18 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               color: _primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.menu_rounded, color: _primary, size: 22),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: _primary,
+              size: 18,
+            ),
           ),
         ),
       ),
-      title: const Text(
-        'Klinik Değerlendirmeler',
-        style: TextStyle(
+      title: Text(
+        title,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
           color: _textDark,
           fontSize: 18,
           fontWeight: FontWeight.w800,
@@ -572,10 +583,10 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
               color: _primary,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'AK',
-                style: TextStyle(
+                initials,
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                 ),
@@ -591,43 +602,19 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     );
   }
 
-  Widget _topHeader() {
-    final baslik = widget.hastaAdi != null
-        ? '${widget.hastaAdi} — Değerlendirmeler'
-        : 'Hasta Değerlendirmelerim';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      decoration: const BoxDecoration(
-        color: _surface,
-        border: Border(bottom: BorderSide(color: _border)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: _primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.assignment_outlined, color: _primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              baslik,
-              style: const TextStyle(
-                color: _textDark,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
+  String _userInitials(String? ad, String? soyad) {
+    String firstLetter(String? value) {
+      if (value == null) return '';
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return '';
+      return trimmed.substring(0, 1).toUpperCase();
+    }
+
+    final parts = [firstLetter(ad), firstLetter(soyad)]
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '?';
+    return parts.join();
   }
 
   // Karşılaştırma modu aktifken üstte gösterilen seçim bilgi bandı
@@ -752,38 +739,11 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     );
   }
 
-  String _extractPackedSection(String source, String title) {
-    final text = source.trim();
-    if (text.isEmpty) return '';
-
-    final header = '$title:\n';
-    final start = text.lastIndexOf(header);
-    if (start == -1) return '';
-
-    final contentStart = start + header.length;
-    final nextHeaders = [
-      '\n\nSemptomlar:\n',
-      '\n\nHastalık:\n',
-      '\n\nKlinisyen Notları:\n',
-      '\n\nFonksiyonel:\n',
-      '\n\nKlinik tip:',
-    ];
-
-    int? end;
-    for (final marker in nextHeaders) {
-      final idx = text.indexOf(marker, contentStart);
-      if (idx != -1 && (end == null || idx < end)) {
-        end = idx;
-      }
-    }
-
-    final result = end == null
-        ? text.substring(contentStart)
-        : text.substring(contentStart, end);
-
-    return result.trim();
-  }
-
+  // Sadece "Semptomlar" bölümünden gelen seçimleri sayar.
+  // Hastalık bölümünden gelen seçimler bu sayıyı etkilemez:
+  // Evaluation.fromJson, ev.symptoms alanını yalnızca notların
+  // "Semptomlar:" bölümünden ayrıştırır; bu yüzden tek doğru kaynak
+  // ev.symptoms'tur. Notlar üzerinden ikincil ayrıştırma yapmıyoruz.
   int _savedSymptomCount(dynamic ev) {
     const emptyValues = {
       'yok',
@@ -795,75 +755,18 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       'bos',
     };
 
-    int countListSymptoms(dynamic symptomsValue) {
-      if (symptomsValue is! List) return 0;
-      final uniqueSymptoms = <String>{};
-      for (final raw in symptomsValue) {
-        final symptom = raw?.toString().trim() ?? '';
-        if (symptom.isEmpty) continue;
-        final normalized = symptom.toLowerCase();
-        if (emptyValues.contains(normalized)) continue;
-        if (normalized.startsWith('yeni bulgu:')) continue;
-        uniqueSymptoms.add(normalized);
-      }
-      return uniqueSymptoms.length;
-    }
-
-    final listCount = countListSymptoms(ev.symptoms);
-    if (listCount > 0) return listCount;
-
-    final notlar = (ev.notlar ?? '').toString().trim();
-    if (notlar.isEmpty) return 0;
-
-    final semptomlar = _extractPackedSection(notlar, 'Semptomlar');
-    if (semptomlar.isEmpty) return 0;
-
-    const labels = [
-      'Motor',
-      'Duyusal',
-      'Emosyonel',
-      'Kognitif',
-      'Pulmoner',
-      'Diğer',
-    ];
+    final symptomsValue = ev.symptoms;
+    if (symptomsValue is! List) return 0;
 
     final uniqueSymptoms = <String>{};
-
-    for (final rawLine in semptomlar.split('\n')) {
-      final line = rawLine.trim();
-      if (line.isEmpty) continue;
-
-      String? matchedLabel;
-      for (final label in labels) {
-        if (line.toLowerCase().startsWith('${label.toLowerCase()}:')) {
-          matchedLabel = label;
-          break;
-        }
-      }
-
-      if (matchedLabel == null) continue;
-
-      final value = line.substring(matchedLabel.length + 1).trim();
-      if (value.isEmpty) continue;
-
-      final lower = value.toLowerCase();
-      final extraIndex = lower.indexOf('yeni bulgu:');
-      final selectedPart = extraIndex == -1
-          ? value
-          : value.substring(0, extraIndex).trim();
-
-      if (selectedPart.isEmpty) continue;
-
-      for (final item in selectedPart.split(',')) {
-        final symptom = item.trim();
-        if (symptom.isEmpty) continue;
-        final normalized = symptom.toLowerCase();
-        if (emptyValues.contains(normalized)) continue;
-        if (normalized.startsWith('yeni bulgu:')) continue;
-        uniqueSymptoms.add(normalized);
-      }
+    for (final raw in symptomsValue) {
+      final symptom = raw?.toString().trim() ?? '';
+      if (symptom.isEmpty) continue;
+      final normalized = symptom.toLowerCase();
+      if (emptyValues.contains(normalized)) continue;
+      if (normalized.startsWith('yeni bulgu:')) continue;
+      uniqueSymptoms.add(normalized);
     }
-
     return uniqueSymptoms.length;
   }
 
@@ -1072,7 +975,17 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
       appBar: _appBar(),
       body: Consumer<EvaluationProvider>(
         builder: (context, provider, _) {
+          // Karşılaştırma modunda ilk değerlendirme seçildiyse, listeyi
+          // yalnızca o hastanın diğer değerlendirmeleriyle daralt.
+          final int? lockedHastaId =
+              _compareMode && _selectedEvaluations.length == 1
+                  ? _selectedEvaluations[0].hastaId as int?
+                  : null;
+
           final filteredEvaluations = provider.evaluations.where((ev) {
+            if (lockedHastaId != null && ev.hastaId != lockedHastaId) {
+              return false;
+            }
             final query = _searchQuery.trim().toLowerCase();
             if (query.isEmpty) return true;
             final hastaAdi = _safeHastaAdi(ev.hastaAdSoyad).toLowerCase();
@@ -1082,7 +995,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
           if (provider.evaluations.isEmpty) {
             return Column(
               children: [
-                _topHeader(),
                 _searchBar(),
                 Expanded(
                   child: provider.isListLoading && _showListLoading
@@ -1097,7 +1009,6 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
           return Column(
             children: [
-              _topHeader(),
               if (_compareMode) _compareSelectionBanner(),
               _searchBar(),
               Expanded(
