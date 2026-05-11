@@ -73,12 +73,12 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
       final data = await Supabase.instance.client
           .schema('neura')
           .from('v_hasta_listesi')
-          .select('sontani')
-          .not('sontani', 'is', null);
+          .select('sonTani')
+          .not('sonTani', 'is', null);
 
       final taniSet = <String>{};
       for (final row in (data as List)) {
-        final t = row['sontani'];
+        final t = row['sonTani'];
         if (t != null) taniSet.add(t.toString());
       }
 
@@ -110,7 +110,7 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
       var sorgu = Supabase.instance.client
           .schema('neura')
           .from('v_hasta_listesi')
-          .select('hastaId, ad, soyad, tamAd, sontani, klinisyenId');
+          .select('hastaId, ad, soyad, tamAd, sonTani, klinisyenId');
 
       // Klinisyene ozel filtre
       if (widget.klinisyenId != null) {
@@ -132,7 +132,7 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
 
       // Tani filtresi — sontani kolonu
       if (_seciliTani != null) {
-        sorgu = sorgu.ilike('sontani', '%$_seciliTani%');
+        sorgu = sorgu.ilike('sonTani', '%$_seciliTani%');
       }
 
       final data = await sorgu
@@ -144,7 +144,7 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
           hastaId: row['hastaId'] ?? 0,
           ad:      row['ad'] ?? '',
           soyad:   row['soyad'] ?? '',
-          tani:    row['sontani'],
+          tani:    row['sonTani'],
         );
       }).toList();
 
