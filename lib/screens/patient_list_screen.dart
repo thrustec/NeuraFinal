@@ -61,11 +61,6 @@ class _PatientListScreenState extends State<PatientListScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              color: Color(0xFF1E293B), size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text('Hasta Listesi',
             style: TextStyle(
                 fontSize: 18,

@@ -45,7 +45,7 @@ class _MainScreenState extends State<MainScreen> {
         ? [
       const ClinicianHome(),
       PatientListScreen(
-        klinisyenId: int.tryParse(u?.id ?? '0'),
+        klinisyenId: u?.klinisyenId,
       ),
       const PatientStep1Screen(),
       const ComparisonScreen(),
