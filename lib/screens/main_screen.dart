@@ -44,7 +44,9 @@ class _MainScreenState extends State<MainScreen> {
     final List<Widget> pages = widget.isClinician
         ? [
       const ClinicianHome(),
-      const PatientListScreen(),
+      PatientListScreen(
+        klinisyenId: u?.klinisyenId,
+      ),
       const PatientStep1Screen(),
       const ComparisonScreen(),
       const ReportsScreen(),

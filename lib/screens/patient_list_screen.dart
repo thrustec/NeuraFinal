@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/patient_model.dart';
 import '../services/patient_service.dart';
 import 'patient_detail_screen.dart';
+import '../widgets/hasta_arama_widget.dart';
 
 class PatientListScreen extends StatefulWidget {
-  /// Verilirse yalnızca bu klinisyene atanmış hastalar gösterilir.
+  // Arkadaşının eklediği klinisyenId parametresi — korundu
   final int? klinisyenId;
 
   const PatientListScreen({super.key, this.klinisyenId});
@@ -18,7 +19,6 @@ class _PatientListScreenState extends State<PatientListScreen> {
   List<Patient> _filtrelenmis = [];
   bool _yukleniyor = true;
   String? _hata;
-  final TextEditingController _aramaCtrl = TextEditingController();
 
   static const Color kPrimary = Color(0xFF0F766E);
 
@@ -28,18 +28,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
     _hastalariYukle();
   }
 
-  @override
-  void dispose() {
-    _aramaCtrl.dispose();
-    super.dispose();
-  }
-
   Future<void> _hastalariYukle() async {
-    setState(() {
-      _yukleniyor = true;
-      _hata = null;
-    });
+    setState(() { _yukleniyor = true; _hata = null; });
     try {
+      // Arkadaşının klinisyenId filtresi korundu
       final hastalar = await PatientService.getHastalar(
         klinisyenId: widget.klinisyenId,
       );
@@ -49,26 +41,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
         _yukleniyor = false;
       });
     } catch (e) {
-      setState(() {
-        _hata = e.toString();
-        _yukleniyor = false;
-      });
+      setState(() { _hata = e.toString(); _yukleniyor = false; });
     }
-  }
-
-  void _aramaYap(String sorgu) {
-    setState(() {
-      if (sorgu.isEmpty) {
-        _filtrelenmis = _hastalar;
-      } else {
-        final q = sorgu.toLowerCase();
-        _filtrelenmis = _hastalar
-            .where((h) =>
-                h.tamAd.toLowerCase().contains(q) ||
-                h.hastaId.toString().contains(q))
-            .toList();
-      }
-    });
   }
 
   void _detayaGit(Patient hasta) async {
@@ -83,156 +57,138 @@ class _PatientListScreenState extends State<PatientListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              color: Color(0xFF1E293B), size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text('Hasta Listesi',
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF1E293B))),
         centerTitle: false,
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(color: const Color(0xFFE2E8F0), height: 1)),
       ),
-      body: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: TextField(
-              controller: _aramaCtrl,
-              onChanged: _aramaYap,
-              decoration: InputDecoration(
-                hintText: 'İsim veya hasta ID ile ara...',
-                hintStyle:
-                    const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                prefixIcon: const Icon(Icons.search,
-                    color: Color(0xFF94A3B8), size: 20),
-                suffixIcon: _aramaCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Color(0xFF94A3B8), size: 18),
-                        onPressed: () {
-                          _aramaCtrl.clear();
-                          _aramaYap('');
-                        })
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF1F5F9),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(
-                        color: Color(0xFFE2E8F0), width: 1)),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: kPrimary, width: 1.5)),
+      body: RefreshIndicator(
+        onRefresh: _hastalariYukle,
+        color: kPrimary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+
+              // ── Filtreli Arama Widget'i ─────────────────
+              HastaAramaWidget(
+                klinisyenId: widget.klinisyenId?.toString(),
+                onHastaSecildi: (hasta) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PatientDetailScreen(
+                        hasta: Patient(
+                          hastaId:     hasta.hastaId,
+                          kullaniciId: 0,
+                          ad:          hasta.ad,
+                          soyad:       hasta.soyad,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
+              const SizedBox(height: 20),
+
+              // ── Tam Liste ─────────────────────────────────
+              if (_yukleniyor)
+                const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(child: CircularProgressIndicator(
+                        color: kPrimary)))
+              else if (_hata != null)
+                _hataEkrani()
+              else if (_filtrelenmis.isEmpty)
+                  _bosEkran()
+                else ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                            '${_filtrelenmis.length} HASTA',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF94A3B8),
+                                letterSpacing: 0.8)),
+                      ),
+                    ),
+                    ..._filtrelenmis.map((hasta) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _HastaKarti(
+                          hasta: hasta,
+                          onTap: () => _detayaGit(hasta)),
+                    )),
+                  ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _hataEkrani() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, size: 56, color: Colors.red),
+          const SizedBox(height: 12),
+          const Text('Baglanti Hatasi',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text(_hata!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF64748B))),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _hastalariYukle,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Tekrar Dene'),
             ),
           ),
-          const SizedBox(height: 1),
-          Expanded(child: _govde()),
         ],
       ),
     );
   }
 
-  Widget _govde() {
-    if (_yukleniyor) {
-      return const Center(
-          child: CircularProgressIndicator(color: kPrimary));
-    }
-
-    if (_hata != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 56, color: Colors.red),
-              const SizedBox(height: 12),
-              const Text('Bağlantı Hatası',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Text(_hata!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFF64748B))),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _hastalariYukle,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Tekrar Dene'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_filtrelenmis.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.person_search, size: 56, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            Text(
-              _aramaCtrl.text.isEmpty
-                  ? 'Henüz hasta kaydı yok'
-                  : '"${_aramaCtrl.text}" için sonuç bulunamadı',
-              style: const TextStyle(color: Color(0xFF94A3B8)),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _hastalariYukle,
-      color: kPrimary,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+  Widget _bosEkran() {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text('${_filtrelenmis.length} HASTA',
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF94A3B8),
-                    letterSpacing: 0.8)),
-          ),
-          ..._filtrelenmis.map((hasta) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _HastaKarti(
-                    hasta: hasta, onTap: () => _detayaGit(hasta)),
-              )),
+          Icon(Icons.person_search, size: 56, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          const Text('Henuz hasta kaydi yok',
+              style: TextStyle(color: Color(0xFF94A3B8))),
         ],
       ),
     );
   }
 }
 
+// ── Hasta Karti ───────────────────────────────────────────────
 class _HastaKarti extends StatelessWidget {
   final Patient hasta;
   final VoidCallback onTap;
@@ -247,9 +203,7 @@ class _HastaKarti extends StatelessWidget {
       if (now.month < d.month ||
           (now.month == d.month && now.day < d.day)) yas--;
       return '$yas';
-    } catch (_) {
-      return '?';
-    }
+    } catch (_) { return '?'; }
   }
 
   @override
@@ -264,6 +218,9 @@ class _HastaKarti extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 8, offset: const Offset(0, 2))],
           ),
           padding: const EdgeInsets.all(14),
           child: Row(children: [
@@ -271,9 +228,9 @@ class _HastaKarti extends StatelessWidget {
               radius: 24,
               backgroundColor: const Color(0xFFF0FDFA),
               child: Text(
-                hasta.ad.isNotEmpty ? hasta.ad[0].toUpperCase() : '?',
-                style: const TextStyle(
-                    fontSize: 18,
+                hasta.ad.isNotEmpty
+                    ? hasta.ad[0].toUpperCase() : '?',
+                style: const TextStyle(fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF0F766E)),
               ),
@@ -284,16 +241,15 @@ class _HastaKarti extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(hasta.tamAd,
-                      style: const TextStyle(
-                          fontSize: 15,
+                      style: const TextStyle(fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF1E293B))),
                   const SizedBox(height: 4),
                   Row(children: [
-                    _Etiket(label: hasta.hastalikAdi ?? 'Tanı Yok'),
+                    _Etiket(label: hasta.hastalikAdi ?? 'Tani Yok'),
                     const SizedBox(width: 6),
                     _Etiket(
-                      label: '${_yas(hasta.dogumTarihi)} yaş',
+                      label: '${_yas(hasta.dogumTarihi)} yas',
                       renk: const Color(0xFF0F766E),
                       arkaplan: const Color(0xFFF0FDFA),
                     ),
@@ -304,8 +260,8 @@ class _HastaKarti extends StatelessWidget {
                         size: 12, color: Color(0xFF94A3B8)),
                     const SizedBox(width: 3),
                     Text(hasta.adres ?? 'Adres yok',
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF94A3B8))),
+                        style: const TextStyle(fontSize: 12,
+                            color: Color(0xFF94A3B8))),
                   ]),
                 ],
               ),
@@ -314,8 +270,7 @@ class _HastaKarti extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text('#${hasta.hastaId}',
-                    style: const TextStyle(
-                        fontSize: 11,
+                    style: const TextStyle(fontSize: 11,
                         color: Color(0xFF94A3B8),
                         fontWeight: FontWeight.w500)),
                 const SizedBox(height: 12),
@@ -330,6 +285,7 @@ class _HastaKarti extends StatelessWidget {
   }
 }
 
+// ── Etiket ───────────────────────────────────────────────────
 class _Etiket extends StatelessWidget {
   final String label;
   final Color renk;
@@ -345,10 +301,11 @@ class _Etiket extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-          color: arkaplan, borderRadius: BorderRadius.circular(20)),
+          color: arkaplan,
+          borderRadius: BorderRadius.circular(20)),
       child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w500, color: renk)),
+          style: TextStyle(fontSize: 11,
+              fontWeight: FontWeight.w500, color: renk)),
     );
   }
 }
