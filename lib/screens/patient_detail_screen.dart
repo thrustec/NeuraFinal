@@ -361,32 +361,8 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _hizliButon(
-            ikon: Icons.assignment_outlined,
-            etiket: 'Değerlendirme\nBaşlat',
-            renk: kPrimary,
-            arkaplan: kPrimary.withOpacity(0.05),
-            onTap: () {
-              final provider = context.read<EvaluationProvider>();
-              provider.clearSelection();
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChangeNotifierProvider.value(
-                    value: provider,
-                    child: const EvaluationFormScreen(isEdit: false),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-
-        const SizedBox(width: 10),
-        Expanded(
-          child: _hizliButon(
             ikon: Icons.fitness_center_outlined,
-            etiket: 'Egzersiz\nProgramı',
+            etiket: 'Egzersiz\nAta',
             renk: const Color(0xFF9333EA),
             arkaplan: const Color(0xFFFAF5FF),
             onTap: () => Navigator.push(

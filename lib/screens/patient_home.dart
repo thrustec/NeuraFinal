@@ -221,12 +221,7 @@ class PatientHome extends StatelessWidget {
       physics: const BouncingScrollPhysics(),
       child: Row(
         children: [
-          _QuickActionTile(
-            icon: Icons.monitor_heart_outlined,
-            label: 'Sensör Verileri',
-            color: Colors.teal,
-            onTap: () => _showComingSoon(context),
-          ),
+
           const SizedBox(width: 12),
           _QuickActionTile(
             icon: Icons.video_camera_front_outlined,
