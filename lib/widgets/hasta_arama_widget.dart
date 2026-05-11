@@ -130,7 +130,7 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
         sorgu = sorgu.or('ad.ilike.%$q%,soyad.ilike.%$q%');
       }
 
-      // Tani filtresi — sontani kolonu
+      // Tani filtresi — sonTani kolonu
       if (_seciliTani != null) {
         sorgu = sorgu.ilike('sonTani', '%$_seciliTani%');
       }
