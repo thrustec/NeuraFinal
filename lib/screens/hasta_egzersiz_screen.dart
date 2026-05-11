@@ -34,7 +34,7 @@ class HastaEgzersizScreen extends StatefulWidget {
 }
 
 class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
-  static const Color kPrimary = Color(0xFF0F766E);
+  static const Color kPrimary = Color(0xFF2563EB);
 
   List<EgzersizAtama> _atamalar = [];
   bool _yukleniyor = true;
@@ -57,9 +57,9 @@ class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
         Uri.parse('$_sbUrl/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
         headers: _sbHeaders(),
       );
-      if (res.statusCode != 200) throw Exception('Hasta kaydi bulunamadi.');
+      if (res.statusCode != 200) throw Exception('Atanmış egzersiz bulunamadı.');
       final list = jsonDecode(res.body) as List;
-      if (list.isEmpty) throw Exception('Hasta kaydi bulunamadi.');
+      if (list.isEmpty) throw Exception('Atanmış egzersiz bulunamadı.');
       final hastaId = (list.first as Map<String, dynamic>)['hastaId'] as int;
 
       final atamalar = await EgzersizAtamaService.getAtamalarForHasta(hastaId);
@@ -114,14 +114,14 @@ class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
       const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Egzersizlerim', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
         SizedBox(height: 2),
-        Text('Klinisyeninizin atadigi egzersizler', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        Text('Klinisyeninizin atadığı egzersizleri buradan görebilirsiniz.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
       ])),
       IconButton(icon: const Icon(Icons.refresh, color: Color(0xFF64748B)), onPressed: _yukle),
     ]),
   );
 
   Widget _govde() {
-    if (_yukleniyor) return const Center(child: CircularProgressIndicator(color: Color(0xFF0F766E)));
+    if (_yukleniyor) return const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)));
     if (_hata != null) {
       return Center(child: Padding(
         padding: const EdgeInsets.all(24),
@@ -185,7 +185,7 @@ class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
 class _AtamaKarti extends StatelessWidget {
   final EgzersizAtama atama;
   final VoidCallback? onTamamla;
-  static const Color kPrimary = Color(0xFF0F766E);
+  static const Color kPrimary = Color(0xFF2563EB);
   const _AtamaKarti({required this.atama, this.onTamamla});
 
   @override

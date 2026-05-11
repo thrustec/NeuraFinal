@@ -282,37 +282,6 @@ class _MainScreenState extends State<MainScreen> {
                     },
                   ),
 
-                  // ── Tema Anahtarı ─────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
-                    child: Container(
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(14)),
-                      child: SwitchListTile(
-                        value: _isDarkMode,
-                        onChanged: (v) => setState(() => _isDarkMode = v),
-                        secondary: Icon(
-                            _isDarkMode
-                                ? Icons.dark_mode
-                                : Icons.light_mode_outlined,
-                            color: _isDarkMode
-                                ? const Color(0xFF8B5CF6)
-                                : const Color(0xFFF59E0B)),
-                        title: Text(
-                            _isDarkMode ? 'Karanlık Tema' : 'Açık Tema',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600, color: kTextDark)),
-                        activeColor: primaryColor,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                  ),
-
                   const SizedBox(height: 4),
 
                   // ── Yardım ve Destek ──────────────────────

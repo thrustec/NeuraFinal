@@ -386,7 +386,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
         Expanded(
           child: _hizliButon(
             ikon: Icons.fitness_center_outlined,
-            etiket: 'Egzersiz\nProgramı',
+            etiket: 'Egzersiz\nAta',
             renk: const Color(0xFF9333EA),
             arkaplan: const Color(0xFFFAF5FF),
             onTap: () => Navigator.push(
