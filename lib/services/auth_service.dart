@@ -18,27 +18,27 @@ class AuthService {
   };
 
   Map<String, String> _restHeaders(String token) => {
-        'Content-Type': 'application/json',
-        'apikey': _anonKey,
-        'Authorization': 'Bearer ${token.isNotEmpty ? token : _anonKey}',
-        'Accept-Profile': 'neura',
-        'Content-Profile': 'neura',
-        'Prefer': 'return=representation',
-      };
+    'Content-Type': 'application/json',
+    'apikey': _anonKey,
+    'Authorization': 'Bearer ${token.isNotEmpty ? token : _anonKey}',
+    'Accept-Profile': 'neura',
+    'Content-Profile': 'neura',
+    'Prefer': 'return=representation',
+  };
 
   Map<String, String> _restGetHeaders(String token) => {
-        'Content-Type': 'application/json',
-        'apikey': _anonKey,
-        'Authorization': 'Bearer ${token.isNotEmpty ? token : _anonKey}',
-        'Accept-Profile': 'neura',
-      };
+    'Content-Type': 'application/json',
+    'apikey': _anonKey,
+    'Authorization': 'Bearer ${token.isNotEmpty ? token : _anonKey}',
+    'Accept-Profile': 'neura',
+  };
 
   static Map<String, String> get _staticGetHeaders => {
-        'Content-Type': 'application/json',
-        'apikey': _anonKey,
-        'Authorization': 'Bearer $_anonKey',
-        'Accept-Profile': 'neura',
-      };
+    'Content-Type': 'application/json',
+    'apikey': _anonKey,
+    'Authorization': 'Bearer $_anonKey',
+    'Accept-Profile': 'neura',
+  };
 
   String _rolAdiFromId(int rolId) =>
       rolId == _rolIdKlinisyen ? 'Klinisyen' : 'Hasta';
@@ -47,7 +47,7 @@ class AuthService {
       rolAdi == 'Klinisyen' ? _rolIdKlinisyen : _rolIdHasta;
 
   // ============================================================================
-  // Klinisyen listesini getir — hasta kayıt ekranı için (static)
+  // Klinisyen listesini getir
   // ============================================================================
   static Future<List<Map<String, dynamic>>> getKlinisyenler() async {
     try {
@@ -81,8 +81,7 @@ class AuthService {
   }
 
   // ============================================================================
-  // kullaniciId → klinisyenId çevirici (clinician_home için)
-  // klinisyenler tablosunda kullaniciId ile eşleşen klinisyenId'yi döndürür.
+  // kullaniciId → klinisyenId
   // ============================================================================
   static Future<int?> getKlinisyenIdByKullaniciId(int kullaniciId) async {
     try {
@@ -113,12 +112,13 @@ class AuthService {
   // ============================================================================
   Future<UserModel> login(String eposta, String sifre) async {
     try {
+      // 1. Auth token al
       final authRes = await http
           .post(
-            Uri.parse('$_baseUrl/auth/v1/token?grant_type=password'),
-            headers: _authHeaders,
-            body: jsonEncode({'email': eposta, 'password': sifre}),
-          )
+        Uri.parse('$_baseUrl/auth/v1/token?grant_type=password'),
+        headers: _authHeaders,
+        body: jsonEncode({'email': eposta, 'password': sifre}),
+      )
           .timeout(const Duration(seconds: 30));
 
       print('[LOGIN] auth/v1/token => ${authRes.statusCode}: ${authRes.body}');
@@ -131,12 +131,13 @@ class AuthService {
       final authData = jsonDecode(authRes.body) as Map<String, dynamic>;
       final token = authData['access_token'] as String? ?? '';
 
+      // 2. kullanicilar tablosundan kullanıcıyı bul
       final userRes = await http
           .get(
-            Uri.parse(
-                '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId,ad,soyad,eposta,rolId'),
-            headers: _restGetHeaders(token),
-          )
+        Uri.parse(
+            '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId,ad,soyad,eposta,rolId'),
+        headers: _restGetHeaders(token),
+      )
           .timeout(const Duration(seconds: 30));
 
       print('[LOGIN] kullanicilar => ${userRes.statusCode}: ${userRes.body}');
@@ -151,37 +152,41 @@ class AuthService {
       final int kullaniciId = user['kullaniciId'] as int;
       final String rolAdi = _rolAdiFromId(rolId);
 
+      // 3. Klinisyen ise unvan + klinisyenId çek
       String? unvan;
+      int? klinisyenId;
+
       if (rolId == _rolIdKlinisyen) {
         final clinRes = await http
             .get(
-              Uri.parse(
-                  '$_baseUrl/rest/v1/klinisyenler?kullaniciId=eq.$kullaniciId&select=unvan'),
-              headers: _restGetHeaders(token),
-            )
+          Uri.parse(
+              '$_baseUrl/rest/v1/klinisyenler?kullaniciId=eq.$kullaniciId&select=klinisyenId,unvan'),
+          headers: _restGetHeaders(token),
+        )
             .timeout(const Duration(seconds: 30));
 
-        print(
-            '[LOGIN] klinisyenler => ${clinRes.statusCode}: ${clinRes.body}');
+        print('[LOGIN] klinisyenler => ${clinRes.statusCode}: ${clinRes.body}');
 
         if (clinRes.statusCode == 200) {
           final list = jsonDecode(clinRes.body) as List;
           if (list.isNotEmpty) {
             final c = list.first as Map<String, dynamic>;
-            unvan = c['unvan'] as String?;
+            unvan       = c['unvan'] as String?;
+            klinisyenId = c['klinisyenId'] as int?; // ← klinisyenId alındı
           }
         }
       }
 
       return UserModel.fromJson({
-        'id': kullaniciId.toString(),
-        'ad': user['ad'] ?? '',
-        'soyad': user['soyad'] ?? '',
-        'eposta': user['eposta'] ?? eposta,
-        'rolId': rolId,
-        'rolAdi': rolAdi,
-        'token': token,
-        'unvan': unvan,
+        'id':          kullaniciId.toString(),
+        'ad':          user['ad'] ?? '',
+        'soyad':       user['soyad'] ?? '',
+        'eposta':      user['eposta'] ?? eposta,
+        'rolId':       rolId,
+        'rolAdi':      rolAdi,
+        'token':       token,
+        'unvan':       unvan,
+        'klinisyenId': klinisyenId, // ← UserModel'e geçirildi
       });
     } on SocketException {
       throw Exception('BAĞLANTI_HATASI');
@@ -194,7 +199,6 @@ class AuthService {
 
   // ============================================================================
   // KAYIT OL
-  // klinisyenId: hasta kayıt ekranından seçilen klinisyen (hastalar.klinisyenId)
   // ============================================================================
   Future<UserModel> register({
     required String ad,
@@ -211,18 +215,17 @@ class AuthService {
       // ADIM 1: Supabase Auth signup
       final authRes = await http
           .post(
-            Uri.parse('$_baseUrl/auth/v1/signup'),
-            headers: _authHeaders,
-            body: jsonEncode({
-              'email': eposta,
-              'password': sifre,
-              'data': {'ad': ad, 'soyad': soyad, 'rolId': rolId},
-            }),
-          )
+        Uri.parse('$_baseUrl/auth/v1/signup'),
+        headers: _authHeaders,
+        body: jsonEncode({
+          'email': eposta,
+          'password': sifre,
+          'data': {'ad': ad, 'soyad': soyad, 'rolId': rolId},
+        }),
+      )
           .timeout(const Duration(seconds: 30));
 
-      print(
-          '[REGISTER] auth/v1/signup => ${authRes.statusCode}: ${authRes.body}');
+      print('[REGISTER] auth/v1/signup => ${authRes.statusCode}: ${authRes.body}');
 
       if (authRes.statusCode == 422) throw Exception('EMAIL_KAYITLI');
       if (authRes.statusCode != 200 && authRes.statusCode != 201) {
@@ -238,33 +241,30 @@ class AuthService {
       int? kullaniciId = await _getKullaniciId(eposta, token);
 
       if (kullaniciId != null) {
-        print(
-            '[REGISTER] Trigger zaten ekledi, kullaniciId: $kullaniciId');
+        print('[REGISTER] Trigger zaten ekledi, kullaniciId: $kullaniciId');
       } else {
-        print('[REGISTER] Manuel kullanicilar insert başlıyor...');
+        print('[REGISTER] Manuel kullanicilar insert basliyor...');
         final insertRes = await http
             .post(
-              Uri.parse('$_baseUrl/rest/v1/kullanicilar'),
-              headers: _restHeaders(token),
-              body: jsonEncode({
-                'ad': ad,
-                'soyad': soyad,
-                'eposta': eposta,
-                'sifreHash': sifre,
-                'rolId': rolId,
-                'aktifMi': true,
-              }),
-            )
+          Uri.parse('$_baseUrl/rest/v1/kullanicilar'),
+          headers: _restHeaders(token),
+          body: jsonEncode({
+            'ad':       ad,
+            'soyad':    soyad,
+            'eposta':   eposta,
+            'sifreHash': sifre,
+            'rolId':    rolId,
+            'aktifMi':  true,
+          }),
+        )
             .timeout(const Duration(seconds: 30));
 
-        print(
-            '[REGISTER] kullanicilar insert => ${insertRes.statusCode}: ${insertRes.body}');
+        print('[REGISTER] kullanicilar insert => ${insertRes.statusCode}: ${insertRes.body}');
 
         if (insertRes.statusCode >= 200 && insertRes.statusCode < 300) {
           kullaniciId = _extractId(insertRes.body, 'kullaniciId');
         } else {
-          print(
-              '[REGISTER] UYARI: kullanicilar insert başarısız. Yanıt: ${insertRes.body}');
+          print('[REGISTER] UYARI: kullanicilar insert basarisiz. Yanit: ${insertRes.body}');
         }
       }
 
@@ -272,54 +272,50 @@ class AuthService {
       if (rolId == _rolIdKlinisyen && kullaniciId != null) {
         final clinRes = await http
             .post(
-              Uri.parse('$_baseUrl/rest/v1/klinisyenler'),
-              headers: _restHeaders(token),
-              body: jsonEncode({
-                'kullaniciId': kullaniciId,
-                'unvan': (unvan ?? '').trim().isEmpty ? null : unvan!.trim(),
-                'aktifMi': true,
-              }),
-            )
+          Uri.parse('$_baseUrl/rest/v1/klinisyenler'),
+          headers: _restHeaders(token),
+          body: jsonEncode({
+            'kullaniciId': kullaniciId,
+            'unvan': (unvan ?? '').trim().isEmpty ? null : unvan!.trim(),
+            'aktifMi': true,
+          }),
+        )
             .timeout(const Duration(seconds: 30));
 
-        print(
-            '[REGISTER] klinisyenler => ${clinRes.statusCode}: ${clinRes.body}');
+        print('[REGISTER] klinisyenler => ${clinRes.statusCode}: ${clinRes.body}');
       }
 
-      // ADIM 4: Hasta ise hastalar tablosuna ekle — klinisyenId dahil
+      // ADIM 4: Hasta ise hastalar tablosuna ekle
       if (rolId == _rolIdHasta && kullaniciId != null) {
         try {
           final hastaBody = <String, dynamic>{'kullaniciId': kullaniciId};
-
-          // Seçilen klinisyeni ata
           if (klinisyenId != null) {
             hastaBody['klinisyenId'] = klinisyenId;
           }
 
           final hastaRes = await http
               .post(
-                Uri.parse('$_baseUrl/rest/v1/hastalar'),
-                headers: _restHeaders(token),
-                body: jsonEncode(hastaBody),
-              )
+            Uri.parse('$_baseUrl/rest/v1/hastalar'),
+            headers: _restHeaders(token),
+            body: jsonEncode(hastaBody),
+          )
               .timeout(const Duration(seconds: 30));
 
-          print(
-              '[REGISTER] hastalar => ${hastaRes.statusCode}: ${hastaRes.body}');
+          print('[REGISTER] hastalar => ${hastaRes.statusCode}: ${hastaRes.body}');
         } catch (e) {
-          print('[REGISTER] hastalar insert atlandı: $e');
+          print('[REGISTER] hastalar insert atlandi: $e');
         }
       }
 
       return UserModel.fromJson({
-        'id': (kullaniciId ?? authData['user']?['id'] ?? '').toString(),
-        'ad': ad,
+        'id':    (kullaniciId ?? authData['user']?['id'] ?? '').toString(),
+        'ad':    ad,
         'soyad': soyad,
         'eposta': eposta,
-        'rolId': rolId,
+        'rolId':  rolId,
         'rolAdi': rolAdi,
-        'token': token,
-        'unvan': unvan,
+        'token':  token,
+        'unvan':  unvan,
       });
     } on SocketException {
       throw Exception('BAĞLANTI_HATASI');
@@ -335,10 +331,10 @@ class AuthService {
     try {
       final res = await http
           .get(
-            Uri.parse(
-                '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId'),
-            headers: _restGetHeaders(token),
-          )
+        Uri.parse(
+            '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId'),
+        headers: _restGetHeaders(token),
+      )
           .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {

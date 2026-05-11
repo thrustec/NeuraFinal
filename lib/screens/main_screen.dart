@@ -15,6 +15,7 @@ import 'hasta_profil_screen.dart';
 import 'ayarlar_screen.dart';
 import 'yardim_destek_screen.dart';
 import 'reports_screen.dart';
+import 'hasta_egzersiz_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final bool isClinician;
@@ -44,14 +45,16 @@ class _MainScreenState extends State<MainScreen> {
     final List<Widget> pages = widget.isClinician
         ? [
       const ClinicianHome(),
-      const PatientListScreen(),
+      PatientListScreen(
+        klinisyenId: u?.klinisyenId,
+      ),
       const PatientStep1Screen(),
       const ComparisonScreen(),
       const ReportsScreen(),
     ]
         : [
       const PatientHome(),
-      const ExerciseVideoLibraryScreen(),
+      const HastaEgzersizScreen(),
       const Center(child: Text('Gelişim')),
     ];
 
@@ -384,7 +387,7 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       switch (index) {
         case 0: return 'Ana Sayfa';
-        case 1: return 'Egzersiz Kütüphanesi';
+        case 1: return 'Egzersizlerim';
         case 2: return 'Gelişimim';
         default: return 'NeuraApp';
       }
