@@ -34,7 +34,7 @@ class HastaEgzersizScreen extends StatefulWidget {
 }
 
 class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
-  static const Color kPrimary = Color(0xFF0F766E);
+  static const Color kPrimary = Color(0xFF2563EB);
 
   List<EgzersizAtama> _atamalar = [];
   bool _yukleniyor = true;
@@ -121,7 +121,7 @@ class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
   );
 
   Widget _govde() {
-    if (_yukleniyor) return const Center(child: CircularProgressIndicator(color: Color(0xFF0F766E)));
+    if (_yukleniyor) return const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)));
     if (_hata != null) {
       return Center(child: Padding(
         padding: const EdgeInsets.all(24),
@@ -185,7 +185,7 @@ class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
 class _AtamaKarti extends StatelessWidget {
   final EgzersizAtama atama;
   final VoidCallback? onTamamla;
-  static const Color kPrimary = Color(0xFF0F766E);
+  static const Color kPrimary = Color(0xFF2563EB);
   const _AtamaKarti({required this.atama, this.onTamamla});
 
   @override
