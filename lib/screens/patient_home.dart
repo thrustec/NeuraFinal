@@ -98,7 +98,7 @@ class PatientHome extends StatelessWidget {
               children: [
                 Icon(Icons.monitor_heart, color: Colors.white, size: 14),
                 SizedBox(width: 6),
-                Text('Durum: Stabil', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text('Hasta', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
               ],
             ),
           ),

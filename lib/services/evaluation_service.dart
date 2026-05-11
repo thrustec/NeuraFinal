@@ -214,7 +214,8 @@ class EvaluationService {
 
       final List<EvaluationDate> evaluations = [];
 
-      for (final item in data) {
+      for (var i = 0; i < data.length; i++) {
+        final item = data[i];
         final map = item as Map<String, dynamic>;
         final degerlendirmeId = map['degerlendirmeId'] as int;
 
@@ -232,7 +233,13 @@ class EvaluationService {
           );
         }
 
-        evaluations.add(_parseEvaluationDate(map, testSonuclari));
+        evaluations.add(
+          _parseEvaluationDate(
+            map,
+            testSonuclari,
+            isFirstEvaluation: i == data.length - 1,
+          ),
+        );
       }
 
       return evaluations;
@@ -303,9 +310,8 @@ class EvaluationService {
   EvaluationDate _parseEvaluationDate(
       Map<String, dynamic> map,
       List<TestResult> testSonuclari,
+      {bool isFirstEvaluation = false}
       ) {
-    final hastaliklarMap = map['hastaliklar'] as Map<String, dynamic>?;
-
     final DateTime dt = map['degerlendirmeTarihi'] is DateTime
         ? map['degerlendirmeTarihi'] as DateTime
         : DateTime.parse(map['degerlendirmeTarihi'] as String);
@@ -315,9 +321,10 @@ class EvaluationService {
         "${dt.month.toString().padLeft(2, '0')}/"
         "${dt.year}";
 
-    final String baslik = (map['notlar'] as String?)?.isNotEmpty == true
-        ? map['notlar'] as String
-        : hastaliklarMap?['hastalikAdi'] as String? ?? 'Değerlendirme';
+    final String baslik = _buildEvaluationDisplayTitle(
+      map,
+      isFirstEvaluation: isFirstEvaluation,
+    );
 
     return EvaluationDate(
       degerlendirmeId: map['degerlendirmeId'] as int,
@@ -325,6 +332,72 @@ class EvaluationService {
       baslik: baslik,
       testSonuclari: testSonuclari,
     );
+  }
+
+  String _buildEvaluationDisplayTitle(
+    Map<String, dynamic> map, {
+    required bool isFirstEvaluation,
+  }) {
+    const titleKeys = [
+      'raporBasligi',
+      'reportTitle',
+      'degerlendirmeBasligi',
+      'evaluationTitle',
+      'baslik',
+      'title',
+      'ziyaretTipi',
+      'visitType',
+      'degerlendirmeTipi',
+      'summary',
+      'ozet',
+      'özet',
+      'aciklama',
+      'açıklama',
+    ];
+
+    for (final key in titleKeys) {
+      final value = map[key]?.toString().trim() ?? '';
+      if (_isCleanEvaluationTitle(value)) return value;
+    }
+
+    final notlar = map['notlar']?.toString().trim() ?? '';
+    if (_isCleanEvaluationTitle(notlar)) return notlar;
+
+    final hastaliklarMap = map['hastaliklar'] as Map<String, dynamic>?;
+    final diagnosis = [
+      hastaliklarMap?['hastalikAdi'],
+      hastaliklarMap?['hastalik_adi'],
+      map['hastalikAdi'],
+      map['hastalik_adi'],
+      map['tani'],
+      map['tanı'],
+      map['diagnosis'],
+    ]
+        .map((value) => value?.toString().trim() ?? '')
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
+
+    final visitLabel = isFirstEvaluation ? 'İlk değerlendirme' : 'Takip';
+    if (diagnosis.isNotEmpty) return '$visitLabel - $diagnosis';
+    return visitLabel;
+  }
+
+  bool _isCleanEvaluationTitle(String value) {
+    final text = value.trim();
+    if (text.isEmpty || text.contains('\n')) return false;
+    final lower = text.toLowerCase();
+    if (lower == 'semptomlar:' || lower.startsWith('semptomlar:')) {
+      return false;
+    }
+    const symptomLabels = [
+      'motor:',
+      'duyusal:',
+      'emosyonel:',
+      'kognitif:',
+      'pulmoner:',
+      'diğer:',
+      'diger:',
+    ];
+    return !symptomLabels.any(lower.startsWith);
   }
 
   TestResult _parseTestResult(Map<String, dynamic> map, int hastaId) {
@@ -359,7 +432,7 @@ class EvaluationService {
             '&limit=1',
       );
 
-      if (data is! List || data.isEmpty) {
+      if (data.isEmpty) {
         return null;
       }
 

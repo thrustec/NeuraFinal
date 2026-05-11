@@ -8,6 +8,7 @@ import '../services/empatica_service.dart';
 import 'clinical_evaluation/evaluation_list_screen.dart';
 import 'empatica_screen.dart';
 import 'exercise_video_library_screen.dart';
+import 'clinical_evaluation/evaluation_form_screen.dart';
 
 class PatientDetailScreen extends StatefulWidget {
   final Patient hasta;
@@ -41,6 +42,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     super.initState();
     _hasta = widget.hasta;
     _controllerBaslat();
+    _hastaDetayYukle();
     _degerlendirmeleriYukle();
   }
 
@@ -63,6 +65,19 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       });
     } catch (_) {
       setState(() => _degerlendirmeYukleniyor = false);
+    }
+  }
+
+  Future<void> _hastaDetayYukle() async {
+    try {
+      final detay = await PatientService.getHastaById(_hasta.hastaId);
+      if (!mounted) return;
+      setState(() {
+        _hasta = detay;
+        _controllerBaslat();
+      });
+    } catch (e) {
+      debugPrint('Hasta detay bilgileri yüklenemedi: $e');
     }
   }
 
@@ -142,6 +157,15 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     }
   }
 
+  String _tarihGoster(String? tarih) {
+    if (tarih == null || tarih.trim().isEmpty) return '-';
+    final d = DateTime.tryParse(tarih);
+    if (d == null) return tarih;
+    return '${d.day.toString().padLeft(2, '0')}.'
+        '${d.month.toString().padLeft(2, '0')}.'
+        '${d.year}';
+  }
+
   void _tumunuGor() {
     Navigator.push(
       context,
@@ -207,6 +231,12 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                     sag: _sabit('MESLEK',
                         _hasta.meslekAdi ?? '-'),
                   ),
+                  _satirIkili(
+                    sol: _sabit('SİGARA KULLANIMI',
+                        _hasta.sigaraDurumAdi ?? '-'),
+                    sag: _sabit('DOMİNANT TARAF',
+                        _hasta.baskinElAdi ?? '-'),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -219,6 +249,13 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                 rozet: _duzenleniyor ? 'Düzenleniyor' : null,
                 icerik: [
                   _sabit('TANI', _hasta.hastalikAdi ?? '-'),
+                  _satirIkili(
+                    sol: _sabit('İLK ŞİKAYET TARİHİ',
+                        _tarihGoster(_hasta.baslangicTarihi)),
+                    sag: _sabit('BAKIM VEREN',
+                        _hasta.bakiciKisi ?? '-'),
+                  ),
+                  const SizedBox(height: 12),
                   _satirIkili(
                     sol: _duzenlenebilir('BOY (CM)', _boyCtrl,
                         klavyeTipi: TextInputType.number,
@@ -328,9 +365,23 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             etiket: 'Değerlendirme\nBaşlat',
             renk: kPrimary,
             arkaplan: kPrimary.withOpacity(0.05),
-            onTap: () {},
+            onTap: () {
+              final provider = context.read<EvaluationProvider>();
+              provider.clearSelection();
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider.value(
+                    value: provider,
+                    child: const EvaluationFormScreen(isEdit: false),
+                  ),
+                ),
+              );
+            },
           ),
         ),
+
         const SizedBox(width: 10),
         Expanded(
           child: _hizliButon(

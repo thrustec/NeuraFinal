@@ -31,7 +31,9 @@ class NeuraApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Neura',
         debugShowCheckedModeBanner: false,
-        theme: NeuraTheme.theme,
+        theme: NeuraTheme.lightTheme,
+        darkTheme: NeuraTheme.darkTheme,
+        themeMode: ThemeMode.system,
         initialRoute: '/',
         routes: {
           '/': (context) => const SplashScreen(),

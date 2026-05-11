@@ -71,6 +71,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   final _functionalsNoteCtrl = TextEditingController();
   final _clinicTypeCtrl = TextEditingController();
 
+  final _alzExtraCtrl = TextEditingController();
+  final _pdExtraCtrl = TextEditingController();
+  final _alsExtraCtrl = TextEditingController();
+  final _msExtraCtrl = TextEditingController();
+  final _ataxiaExtraCtrl = TextEditingController();
+
   final _miniMentalScoreCtrl = TextEditingController();
   final _updrsEngineScoreCtrl = TextEditingController();
   final _alsfrsScoreCtrl = TextEditingController();
@@ -174,6 +180,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _functionalsNoteCtrl.dispose();
     _clinicTypeCtrl.dispose();
 
+    _alzExtraCtrl.dispose();
+    _pdExtraCtrl.dispose();
+    _alsExtraCtrl.dispose();
+    _msExtraCtrl.dispose();
+    _ataxiaExtraCtrl.dispose();
+
     _miniMentalScoreCtrl.dispose();
     _updrsEngineScoreCtrl.dispose();
     _alsfrsScoreCtrl.dispose();
@@ -203,7 +215,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   Future<void> _loadDbPatients() async {
     try {
       final hastalar = await PatientService.getHastalar();
-      print('DB hasta sayısı: ${hastalar.length}');
+      debugPrint('DB hasta sayısı: ${hastalar.length}');
       if (!mounted) return;
 
       setState(() {
@@ -215,11 +227,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           provider.selected?.hastaId ?? provider.filterHastaId ?? _hastaId;
 
       if (targetHastaId != null) {
-        final dbPatient = _findDbPatientById(targetHastaId);
-        if (dbPatient != null) {
-          _applySelectedDbPatient(dbPatient);
-          if (mounted) setState(() {});
+        final listPatient = _findDbPatientById(targetHastaId);
+        patient_model.Patient? dbPatient = listPatient;
+        try {
+          dbPatient = await PatientService.getHastaById(targetHastaId);
+        } catch (e) {
+          debugPrint('Patient detail could not be loaded during preload: $e');
         }
+        if (dbPatient == null) return;
+        _applySelectedDbPatient(dbPatient);
+        if (mounted) setState(() {});
       }
     } catch (e) {
       if (!mounted) return;
@@ -283,9 +300,53 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if ((patient.adres ?? '').trim().isNotEmpty) {
       _locationCtrl.text = patient.adres!;
     }
+    if ((patient.baslangicTarihi ?? '').trim().isNotEmpty) {
+      _complaintDateCtrl.text = _formatPatientDate(patient.baslangicTarihi!);
+    }
+    if ((patient.bakiciKisi ?? '').trim().isNotEmpty) {
+      _caregiverCtrl.text = patient.bakiciKisi!;
+    }
+    if (patient.sigaraDurumId != null) {
+      _sigaraDurumId = patient.sigaraDurumId;
+    }
+    final dominantSide = _normalizeDominantSide(
+      patient.baskinElAdi ?? patient.baskinId?.toString(),
+    );
+    if (dominantSide != null) {
+      _dominantSide = dominantSide;
+    }
     if ((patient.notlar ?? '').trim().isNotEmpty) {
       _medicalHistoryCtrl.text = patient.notlar!;
     }
+  }
+
+  String _formatPatientDate(String value) {
+    final date = DateTime.tryParse(value);
+    if (date == null) return value;
+    return '${date.day.toString().padLeft(2, '0')}.'
+        '${date.month.toString().padLeft(2, '0')}.'
+        '${date.year}';
+  }
+
+  String? _normalizeDominantSide(String? value) {
+    final normalized = (value ?? '').trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    if (normalized == '1' ||
+        normalized == 'right' ||
+        normalized == 'sağ' ||
+        normalized == 'sag') {
+      return 'Right';
+    }
+    if (normalized == '2' || normalized == 'left' || normalized == 'sol') {
+      return 'Left';
+    }
+    if (normalized == '3' ||
+        normalized == 'both' ||
+        normalized == 'her ikisi' ||
+        normalized == 'her i̇kisi') {
+      return 'Both';
+    }
+    return null;
   }
 
   String _extractSection(String source, String title) {
@@ -293,7 +354,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if (text.isEmpty) return '';
 
     final header = '$title:\n';
-    final start = text.lastIndexOf(header);
+    // Use the FIRST occurrence so any later string that accidentally
+    // spells the same header (e.g. inside an accumulated clinician note)
+    // cannot redirect the start of the real section.
+    final start = text.indexOf(header);
     if (start == -1) return '';
 
     final contentStart = start + header.length;
@@ -322,15 +386,54 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return result.trim();
   }
 
+  // Extract only the body of the "Klinisyen Notları" sub-section inside the
+  // disease block. The disease block uses headers WITHOUT a trailing colon
+  // (e.g. "Parkinson\n...", "Klinisyen Notları\n...") so we cannot reuse
+  // _extractSection (which expects "Title:\n"). The body is bounded by any
+  // other disease sub-section header on a new paragraph.
+  String _extractDiseaseClinicianNote(String diseaseSection) {
+    final text = diseaseSection.trim();
+    if (text.isEmpty) return '';
+    const header = 'Klinisyen Notları\n';
+    final start = text.indexOf(header);
+    if (start == -1) return '';
+    final contentStart = start + header.length;
+    const otherHeaders = [
+      '\n\nHafif Kognitif Bozukluk / Alzheimer Hastalığı\n',
+      '\n\nParkinson\n',
+      '\n\nALS\n',
+      '\n\nMS\n',
+      '\n\nAtaksi\n',
+      '\n\nKlinisyen Notları\n',
+    ];
+    int? end;
+    for (final marker in otherHeaders) {
+      final idx = text.indexOf(marker, contentStart);
+      if (idx != -1 && (end == null || idx < end)) {
+        end = idx;
+      }
+    }
+    final body = end == null
+        ? text.substring(contentStart)
+        : text.substring(contentStart, end);
+    return body.trim();
+  }
+
   String _extractInlineValue(String source, String label) {
     if (source.trim().isEmpty) return '';
     final pattern = RegExp(
-      '${RegExp.escape(label)}\\s*:\\s*(.+)',
+      '^${RegExp.escape(label)}\\s*:[ \\t]*(.*)\$',
       caseSensitive: false,
     );
-    final match = pattern.firstMatch(source);
-    if (match == null) return '';
-    return (match.group(1) ?? '').trim();
+
+    for (final rawLine in source.split('\n')) {
+      final match = pattern.firstMatch(rawLine.trimRight());
+      if (match != null) {
+        return (match.group(1) ?? '').trim();
+      }
+    }
+
+    return '';
   }
 
   void _fillFunctionalControllersFromText(String text) {
@@ -370,6 +473,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _diseaseNoteCtrl.clear();
     _functionalsNoteCtrl.clear();
     _clinicTypeCtrl.clear();
+
+    _alzExtraCtrl.clear();
+    _pdExtraCtrl.clear();
+    _alsExtraCtrl.clear();
+    _msExtraCtrl.clear();
+    _ataxiaExtraCtrl.clear();
 
     _miniMentalScoreCtrl.clear();
     _updrsEngineScoreCtrl.clear();
@@ -455,7 +564,11 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   void _restoreDiseaseSelectionsFromText(String text) {
     if (text.trim().isEmpty) return;
 
-    void fillSection(String header, Set<String> target) {
+    void fillSection(
+      String header,
+      Set<String> target,
+      TextEditingController extraCtrl,
+    ) {
       final start = text.indexOf('$header\n');
       if (start == -1) return;
 
@@ -483,20 +596,46 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           ? text.substring(contentStart)
           : text.substring(contentStart, end);
 
-      final values = body
+      final lower = body.toLowerCase();
+      final extraIndex = lower.indexOf('yeni bulgu:');
+
+      final selectedPart = extraIndex == -1
+          ? body
+          : body.substring(0, extraIndex);
+      final extraPart = extraIndex == -1
+          ? ''
+          : body.substring(extraIndex + 'yeni bulgu:'.length).trim();
+
+      // selectedPart may end with a trailing ", " left by the join before
+      // "Yeni bulgu:"; trim that off before splitting.
+      var trimmedSelected = selectedPart.trim();
+      if (trimmedSelected.endsWith(',')) {
+        trimmedSelected =
+            trimmedSelected.substring(0, trimmedSelected.length - 1).trim();
+      }
+
+      final values = trimmedSelected
           .split(',')
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();
 
       target.addAll(values);
+
+      if (extraPart.isNotEmpty) {
+        extraCtrl.text = extraPart;
+      }
     }
 
-    fillSection('Hafif Kognitif Bozukluk / Alzheimer Hastalığı', _alzSymptoms);
-    fillSection('Parkinson', _pdSymptoms);
-    fillSection('ALS', _alsSymptoms);
-    fillSection('MS', _msSymptoms);
-    fillSection('Ataksi', _ataxiaSymptoms);
+    fillSection(
+      'Hafif Kognitif Bozukluk / Alzheimer Hastalığı',
+      _alzSymptoms,
+      _alzExtraCtrl,
+    );
+    fillSection('Parkinson', _pdSymptoms, _pdExtraCtrl);
+    fillSection('ALS', _alsSymptoms, _alsExtraCtrl);
+    fillSection('MS', _msSymptoms, _msExtraCtrl);
+    fillSection('Ataksi', _ataxiaSymptoms, _ataxiaExtraCtrl);
   }
 
   void _restoreDemographicsFromText(String text) {
@@ -585,7 +724,16 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _restoreDemographicsFromText(packedHikaye);
     _restoreSymptomsFromText(_extractSection(packedNotlar, 'Semptomlar'));
     final diseaseSection = _extractSection(packedNotlar, 'Hastalık');
-    _diseaseNoteCtrl.text = diseaseSection;
+    // CRITICAL: do NOT assign the entire Hastalık section back into
+    // _diseaseNoteCtrl. _composeDiseaseNote later wraps this controller's
+    // text under a "Klinisyen Notları" sub-header, so dumping the whole
+    // disease block in here would re-embed every previous round-trip on
+    // the next save and grow the saved notlar without bound. Only the
+    // Klinisyen Notları sub-section (free-text the user typed) belongs
+    // in this controller; if it isn't present, leave it empty so a
+    // resave produces an unchanged Hastalık block.
+    _diseaseNoteCtrl.text =
+        _extractDiseaseClinicianNote(diseaseSection);
     _restoreDiseaseSelectionsFromText(diseaseSection);
     _functionalsNoteCtrl.text = _extractSection(packedClinicianNotes, 'Klinisyen Notları');
     _clinicTypeCtrl.text = _extractInlineValue(packedClinicianNotes, 'Klinik tip');
@@ -602,11 +750,14 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _pulmonaryOpen = _pulmonarySymptoms.isNotEmpty || _pulmonaryExtraCtrl.text.trim().isNotEmpty;
     _otherOpen = _otherSymptoms.isNotEmpty || _otherExtraCtrl.text.trim().isNotEmpty;
 
-    _alzOpen = _alzSymptoms.isNotEmpty;
-    _pdOpen = _pdSymptoms.isNotEmpty;
-    _alsOpen = _alsSymptoms.isNotEmpty;
-    _msOpen = _msSymptoms.isNotEmpty;
-    _ataxiaOpen = _ataxiaSymptoms.isNotEmpty;
+    _alzOpen =
+        _alzSymptoms.isNotEmpty || _alzExtraCtrl.text.trim().isNotEmpty;
+    _pdOpen = _pdSymptoms.isNotEmpty || _pdExtraCtrl.text.trim().isNotEmpty;
+    _alsOpen =
+        _alsSymptoms.isNotEmpty || _alsExtraCtrl.text.trim().isNotEmpty;
+    _msOpen = _msSymptoms.isNotEmpty || _msExtraCtrl.text.trim().isNotEmpty;
+    _ataxiaOpen =
+        _ataxiaSymptoms.isNotEmpty || _ataxiaExtraCtrl.text.trim().isNotEmpty;
 
     _generalTestOpen =
         _chairStandCtrl.text.trim().isNotEmpty ||
@@ -641,8 +792,15 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     setState(() {});
   }
 
-  void _fillPatientProfile(patient_model.Patient patient) {
-    _applySelectedDbPatient(patient);
+  Future<void> _fillPatientProfile(patient_model.Patient patient) async {
+    patient_model.Patient resolvedPatient = patient;
+    try {
+      resolvedPatient = await PatientService.getHastaById(patient.hastaId);
+    } catch (e) {
+      debugPrint('Patient detail could not be loaded, using list row: $e');
+    }
+    if (!mounted) return;
+    _applySelectedDbPatient(resolvedPatient);
     setState(() {});
   }
 
@@ -874,7 +1032,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     );
 
     if (!mounted || selectedPatient == null) return;
-    _fillPatientProfile(selectedPatient);
+    await _fillPatientProfile(selectedPatient);
   }
 
   Future<patient_model.Patient?> _openCreatePatientSheet() async {
@@ -941,27 +1099,27 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   String _composeDiseaseNote() {
     final sections = <String>[];
 
-    final alz = _joinSelected(_alzSymptoms, TextEditingController());
+    final alz = _joinSelected(_alzSymptoms, _alzExtraCtrl);
     if (alz.isNotEmpty) {
       sections.add("Hafif Kognitif Bozukluk / Alzheimer Hastalığı\n$alz");
     }
 
-    final pd = _joinSelected(_pdSymptoms, TextEditingController());
+    final pd = _joinSelected(_pdSymptoms, _pdExtraCtrl);
     if (pd.isNotEmpty) {
       sections.add("Parkinson\n$pd");
     }
 
-    final als = _joinSelected(_alsSymptoms, TextEditingController());
+    final als = _joinSelected(_alsSymptoms, _alsExtraCtrl);
     if (als.isNotEmpty) {
       sections.add("ALS\n$als");
     }
 
-    final ms = _joinSelected(_msSymptoms, TextEditingController());
+    final ms = _joinSelected(_msSymptoms, _msExtraCtrl);
     if (ms.isNotEmpty) {
       sections.add("MS\n$ms");
     }
 
-    final ataxia = _joinSelected(_ataxiaSymptoms, TextEditingController());
+    final ataxia = _joinSelected(_ataxiaSymptoms, _ataxiaExtraCtrl);
     if (ataxia.isNotEmpty) {
       sections.add("Ataksi\n$ataxia");
     }
@@ -1642,7 +1800,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Widget _buildDemographics() {
-    final provider = context.watch<EvaluationProvider>();
+    context.watch<EvaluationProvider>();
     final selectedPatient = _findSelectedPatient();
 
     return Column(
@@ -1994,7 +2152,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           child: _symptomChecklist(
             options: const [],
             selected: _alzSymptoms,
-            extraCtrl: _diseaseNoteCtrl,
+            extraCtrl: _alzExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -2014,7 +2172,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Fleksör postür',
             ],
             selected: _pdSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _pdExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -2034,7 +2192,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Azalmış derin tendon refleksleri',
             ],
             selected: _alsSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _alsExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -2054,7 +2212,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Hemiparezi',
             ],
             selected: _msSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _msExtraCtrl,
           ),
         ),
         const SizedBox(height: 16),
@@ -2073,7 +2231,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               'Postüral instabilite',
             ],
             selected: _ataxiaSymptoms,
-            extraCtrl: TextEditingController(),
+            extraCtrl: _ataxiaExtraCtrl,
           ),
         ),
         const SizedBox(height: 18),
