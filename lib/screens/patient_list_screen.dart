@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/patient_model.dart';
 import '../services/patient_service.dart';
 import 'patient_detail_screen.dart';
+import '../widgets/hasta_arama_widget.dart';
 
 class PatientListScreen extends StatefulWidget {
   const PatientListScreen({super.key});
@@ -95,52 +96,55 @@ class _PatientListScreenState extends State<PatientListScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: _aramaCtrl,
-                  onChanged: _aramaYap,
-                  decoration: InputDecoration(
-                    hintText: 'İsim veya hasta ID ile ara...',
-                    hintStyle: const TextStyle(
-                        color: Color(0xFF94A3B8), fontSize: 14),
-                    prefixIcon: const Icon(Icons.search,
-                        color: Color(0xFF94A3B8), size: 20),
-                    suffixIcon: _aramaCtrl.text.isNotEmpty
-                        ? IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Color(0xFF94A3B8), size: 18),
-                        onPressed: () {
-                          _aramaCtrl.clear();
-                          _aramaYap('');
-                        })
-                        : null,
-                    filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0), width: 1)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                            color: kPrimary, width: 1.5)),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Filtreli arama widget'i
+                  HastaAramaWidget(
+                    klinisyenId: null, // klinisyene özel olacaksa auth.user?.id yaz
+                    onHastaSecildi: (hasta) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PatientDetailScreen(
+                            hasta: Patient(
+                              hastaId: hasta.hastaId,
+                              kullaniciId: 0,
+                              ad: hasta.ad,
+                              soyad: hasta.soyad,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+
+                  // Alt kısımda tam liste de kalsın
+                  if (_yukleniyor)
+                    const Center(child: CircularProgressIndicator(
+                        color: kPrimary))
+                  else ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text('${_filtrelenmis.length} HASTA',
+                          style: const TextStyle(fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF94A3B8),
+                              letterSpacing: 0.8)),
+                    ),
+                    ..._filtrelenmis.map((hasta) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _HastaKarti(
+                          hasta: hasta, onTap: () => _detayaGit(hasta)),
+                    )),
+                  ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 1),
-          Expanded(child: _govde()),
         ],
       ),
     );
