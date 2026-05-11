@@ -16,6 +16,8 @@ import 'ayarlar_screen.dart';
 import 'yardim_destek_screen.dart';
 import 'reports_screen.dart';
 import 'hasta_egzersiz_screen.dart';
+import 'notifications_screen.dart';
+import '../services/notification_service.dart';
 
 class MainScreen extends StatefulWidget {
   final bool isClinician;
@@ -28,6 +30,30 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _isDarkMode = false;
+  int _unreadNotificationCount = 0;
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUnreadNotifications();
+    });
+  }
+
+  Future<void> _loadUnreadNotifications() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final userId = int.tryParse(auth.user?.id ?? '');
+
+    if (userId == null) return;
+
+    final count = await NotificationService.getUnreadCount(userId);
+
+    if (!mounted) return;
+
+    setState(() {
+      _unreadNotificationCount = count;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,16 +101,50 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined, color: kTextDark),
-                onPressed: () {},
+                onPressed: () async {
+                  final userId = int.tryParse(u?.id ?? '');
+
+                  if (userId == null) return;
+
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NotificationsScreen(
+                        kullaniciId: userId,
+                      ),
+                    ),
+                  );
+
+                  _loadUnreadNotifications();
+                },
               ),
-              Positioned(
-                right: 12, top: 12,
-                child: Container(
-                  width: 8, height: 8,
-                  decoration: const BoxDecoration(
-                      color: Colors.red, shape: BoxShape.circle),
+              if (_unreadNotificationCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    child: Text(
+                      _unreadNotificationCount > 99
+                          ? '99+'
+                          : _unreadNotificationCount.toString(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
           IconButton(
