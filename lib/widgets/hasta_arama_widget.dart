@@ -17,6 +17,13 @@ class HastaAramaSonucu {
   String get tamAd => '$ad $soyad';
 }
 
+// Tanı modeli: dropdown için id+isim birlikte taşıyoruz
+class _TaniItem {
+  final int hastalikId;
+  final String hastalikAdi;
+  _TaniItem(this.hastalikId, this.hastalikAdi);
+}
+
 class HastaAramaWidget extends StatefulWidget {
   final String? klinisyenId;
   final Color primaryColor;
@@ -44,8 +51,11 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
   final _adCtrl = TextEditingController();
 
   List<HastaAramaSonucu> _sonuclar = [];
-  List<String> _tanilar            = [];
-  String? _seciliTani;
+
+  // FIX 1: Tanı listesini id+isim olarak tut (text değil)
+  List<_TaniItem> _tanilar         = [];
+  _TaniItem? _seciliTani;
+
   bool _loading  = false;
   bool _searched = false;
   String? _hata;
@@ -67,27 +77,24 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
     super.dispose();
   }
 
-  // Tani dropdown — v_hasta_listesi'ndeki sontani kolonundan cek
+  // FIX 1: hastaliklar tablosundan id+isim çek (text match değil, kesin ID filtresi için)
   Future<void> _tanilarYukle() async {
     try {
       final data = await Supabase.instance.client
           .schema('neura')
-          .from('v_hasta_listesi')
-          .select('sonTani')
-          .not('sonTani', 'is', null);
+          .from('hastaliklar')
+          .select('hastalikId, hastalikAdi')
+          .order('hastalikAdi', ascending: true);
 
-      final taniSet = <String>{};
-      for (final row in (data as List)) {
-        final t = row['sonTani'];
-        if (t != null) taniSet.add(t.toString());
-      }
+      final liste = (data as List).map((row) {
+        return _TaniItem(
+          row['hastalikId'] as int,
+          row['hastalikAdi']?.toString() ?? '',
+        );
+      }).where((t) => t.hastalikAdi.isNotEmpty).toList();
 
-      setState(() {
-        _tanilar = taniSet.toList()..sort();
-      });
-    } catch (_) {
-      // Sessizce devam et
-    }
+      setState(() => _tanilar = liste);
+    } catch (_) {}
   }
 
   void _anlikAra() {
@@ -110,9 +117,9 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
       var sorgu = Supabase.instance.client
           .schema('neura')
           .from('v_hasta_listesi')
-          .select('hastaId, ad, soyad, tamAd, sonTani, klinisyenId');
+          .select('hastaId, ad, soyad, tamAd, sonTani, sonHastalikId, klinisyenId');
 
-      // Klinisyene ozel filtre
+      // Klinisyene özel filtre
       if (widget.klinisyenId != null) {
         sorgu = sorgu.eq('klinisyenId',
             int.tryParse(widget.klinisyenId!) ?? 0);
@@ -130,9 +137,9 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
         sorgu = sorgu.or('ad.ilike.%$q%,soyad.ilike.%$q%');
       }
 
-      // Tani filtresi — sonTani kolonu
+      // FIX 1: hastalikId ile kesin eşleşme (text ilike değil)
       if (_seciliTani != null) {
-        sorgu = sorgu.ilike('sonTani', '%$_seciliTani%');
+        sorgu = sorgu.eq('sonHastalikId', _seciliTani!.hastalikId);
       }
 
       final data = await sorgu
@@ -155,17 +162,17 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
       });
     } catch (e) {
       setState(() {
-        _hata    = e.toString();
-        _loading = false;
+        _hata     = e.toString();
+        _loading  = false;
         _searched = true;
       });
     }
   }
 
   void _temizle() {
+    _idCtrl.clear();
+    _adCtrl.clear();
     setState(() {
-      _idCtrl.clear();
-      _adCtrl.clear();
       _seciliTani = null;
       _sonuclar   = [];
       _searched   = false;
@@ -175,11 +182,15 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // FIX 3: Overflow — Column yerine hiç shrinkWrap yok;
+    // parent'ın zaten scroll içinde olduğunu varsayıyoruz (SingleChildScrollView).
+    // Widget tamamen Column'dur, içinde sabit yükseklik yoktur.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
 
-        // ── Arama Blogu ─────────────────────────────────────
+        // ── Arama Bloğu ─────────────────────────────────────
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -193,9 +204,10 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
 
-              // Baslik + Temizle
+              // Başlık + Temizle
               Row(children: [
                 Container(
                     padding: const EdgeInsets.all(8),
@@ -214,8 +226,7 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
                   TextButton(
                     onPressed: _temizle,
                     child: Text('Temizle',
-                        style: TextStyle(
-                            color: kPrimary, fontSize: 13)),
+                        style: TextStyle(color: kPrimary, fontSize: 13)),
                   ),
               ]),
               const SizedBox(height: 14),
@@ -238,16 +249,17 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
                   child: _aramaAlani(
                     ctrl: _adCtrl,
                     label: 'AD SOYAD',
-                    hint: 'Hasta adi yazin...',
+                    hint: 'Hasta adı yazın...',
                     ikon: Icons.person_outline,
                   ),
                 ),
               ]),
               const SizedBox(height: 12),
 
-              // Tani Dropdown
+              // FIX 2: Tanı Dropdown — beyaz arka plan, açık tema
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('TANI',
                       style: TextStyle(fontSize: 10,
@@ -268,15 +280,17 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
                           width: 1.5),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
+                      child: DropdownButton<_TaniItem?>(
                         value: _seciliTani,
+                        // FIX 2: Dropdown popup'ı beyaz yap
+                        dropdownColor: Colors.white,
                         hint: Row(children: [
                           Icon(Icons.medical_information_outlined,
                               color: const Color(0xFF94A3B8), size: 16),
                           const SizedBox(width: 8),
-                          const Text('Tani secin (opsiyonel)',
+                          const Text('Tanı seçin (opsiyonel)',
                               style: TextStyle(
-                                  color: Color(0xFFCBD5E1), fontSize: 13)),
+                                  color: Color(0xFF94A3B8), fontSize: 13)),
                         ]),
                         isExpanded: true,
                         icon: Icon(Icons.keyboard_arrow_down,
@@ -285,17 +299,19 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
                                 : const Color(0xFF94A3B8)),
                         style: const TextStyle(
                             fontSize: 14, color: kTextDark),
+                        // FIX 2: Her item'ın arka planı da beyaz
                         items: [
-                          DropdownMenuItem<String>(
+                          DropdownMenuItem<_TaniItem?>(
                             value: null,
-                            child: Text('Tumu',
+                            child: Text('Tümü',
                                 style: TextStyle(
                                     color: kTextGrey, fontSize: 14)),
                           ),
-                          ..._tanilar.map((t) => DropdownMenuItem<String>(
+                          ..._tanilar.map((t) => DropdownMenuItem<_TaniItem?>(
                             value: t,
-                            child: Text(t,
-                                style: const TextStyle(fontSize: 14)),
+                            child: Text(t.hastalikAdi,
+                                style: const TextStyle(
+                                    fontSize: 14, color: kTextDark)),
                           )),
                         ],
                         onChanged: (v) {
@@ -311,7 +327,7 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
           ),
         ),
 
-        // ── Sonuclar ────────────────────────────────────────
+        // ── Sonuçlar ────────────────────────────────────────
         if (_searched) ...[
           const SizedBox(height: 14),
 
@@ -326,123 +342,112 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
               else
                 Text(
                     _hata != null
-                        ? 'Hata olustu'
-                        : '${_sonuclar.length} SONUC',
-                    style: const TextStyle(fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: kTextGrey,
-                        letterSpacing: 0.8)),
+                        ? 'Hata oluştu'
+                        : '${_sonuclar.length} SONUÇ',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _hata != null ? Colors.red : kTextGrey,
+                        letterSpacing: 0.5)),
             ]),
           ),
 
-          if (_hata != null)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFCA5A5)),
-              ),
-              child: Row(children: [
-                const Icon(Icons.error_outline,
-                    color: Colors.red, size: 18),
-                const SizedBox(width: 10),
-                Expanded(child: Text(_hata!,
-                    style: const TextStyle(
-                        color: Colors.red, fontSize: 12))),
-              ]),
-            )
-          else if (!_loading && _sonuclar.isEmpty)
-            Container(
+          if (_loading)
+            Center(child: Padding(
               padding: const EdgeInsets.all(24),
+              child: CircularProgressIndicator(color: kPrimary, strokeWidth: 2),
+            ))
+          else if (_hata != null)
+            Container(
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Center(child: Column(children: [
-                Icon(Icons.person_search,
-                    size: 40, color: Color(0xFF94A3B8)),
-                SizedBox(height: 8),
-                Text('Sonuc bulunamadi',
-                    style: TextStyle(
-                        color: Color(0xFF94A3B8), fontSize: 14)),
-              ])),
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12)),
+              child: Text('Arama hatası. Lütfen tekrar deneyin.',
+                  style: TextStyle(fontSize: 13, color: Colors.red.shade700)),
             )
-          else if (!_loading)
+          else if (_sonuclar.isEmpty)
               Container(
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))],
-                ),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _sonuclar.length,
-                  separatorBuilder: (_, __) => const Divider(
-                      height: 1, color: Color(0xFFE2E8F0)),
-                  itemBuilder: (_, i) {
-                    final hasta = _sonuclar[i];
-                    return InkWell(
-                      onTap: () => widget.onHastaSecildi(hasta),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor:
-                            kPrimary.withValues(alpha: 0.1),
-                            child: Text(
-                                hasta.ad.isNotEmpty
-                                    ? hasta.ad[0].toUpperCase()
-                                    : '?',
-                                style: TextStyle(fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: kPrimary)),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(hasta.tamAd,
-                                  style: const TextStyle(fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: kTextDark)),
-                              if (hasta.tani != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 3),
-                                  child: Text(hasta.tani!,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: kTextGrey)),
-                                ),
-                            ],
-                          )),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                                color: kPrimary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(20)),
-                            child: Text('#${hasta.hastaId}',
-                                style: TextStyle(fontSize: 11,
-                                    color: kPrimary,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.chevron_right,
-                              color: Color(0xFFCBD5E1), size: 18),
-                        ]),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0))),
+                child: Row(children: [
+                  Icon(Icons.search_off, color: kTextGrey, size: 20),
+                  const SizedBox(width: 10),
+                  const Text('Eşleşen hasta bulunamadı.',
+                      style: TextStyle(fontSize: 13, color: kTextGrey)),
+                ]),
+              )
+            else
+            // FIX 3: ListView yerine Column — parent zaten scroll içinde
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _sonuclar.map((hasta) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: () => widget.onHastaSecildi(hasta),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: const Color(0xFFE2E8F0))),
+                          child: Row(children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: kPrimary.withValues(alpha: 0.1),
+                              child: Text(
+                                  hasta.ad.isNotEmpty
+                                      ? hasta.ad[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: kPrimary)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(hasta.tamAd,
+                                    style: const TextStyle(fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: kTextDark)),
+                                if (hasta.tani != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(hasta.tani!,
+                                        style: const TextStyle(
+                                            fontSize: 12, color: kTextGrey)),
+                                  ),
+                              ],
+                            )),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                  color: kPrimary.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(20)),
+                              child: Text('#${hasta.hastaId}',
+                                  style: TextStyle(fontSize: 11,
+                                      color: kPrimary,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.chevron_right,
+                                color: Color(0xFFCBD5E1), size: 18),
+                          ]),
+                        ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                }).toList(),
               ),
         ],
       ],
@@ -458,10 +463,13 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: kTextGrey, letterSpacing: 0.5)),
+        Text(label,
+            style: const TextStyle(fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: kTextGrey,
+                letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
@@ -469,14 +477,12 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
           style: const TextStyle(fontSize: 14, color: kTextDark),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(
-                color: Color(0xFFCBD5E1), fontSize: 13),
-            prefixIcon: Icon(ikon,
-                color: const Color(0xFF94A3B8), size: 16),
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            prefixIcon: Icon(ikon, color: const Color(0xFF94A3B8), size: 17),
             filled: true,
             fillColor: kInputFill,
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 10),
+            contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none),
