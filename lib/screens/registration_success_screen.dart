@@ -3,7 +3,7 @@ import 'main_screen.dart'; // 🔥 BUNU EKLEDİK
 
 // NeuraApp Design System — Sabit Renkler
 const Color kBackground = Color(0xFFF8F9FC);
-const Color kPrimary = Color(0xFF2563EB);
+const Color kPrimary = Color(0xFF124153);
 const Color kTextDark = Color(0xFF1E293B);
 const Color kTextGrey = Color(0xFF64748B);
 const Color kTextHint = Color(0xFF94A3B8);

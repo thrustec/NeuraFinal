@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/patient_form_data.dart';
+import '../services/supabase_service.dart';
 import 'patient_step_6_screen.dart';
 
 class PatientStep5Screen extends StatefulWidget {
@@ -15,9 +16,8 @@ class PatientStep5Screen extends StatefulWidget {
 }
 
 class _PatientStep5ScreenState extends State<PatientStep5Screen> {
-  // NeuraApp Renk Paleti
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF2563EB); // HASTA SAYFASI
+  static const Color kPrimary = Color(0xFF124153);
   static const Color kTextDark = Color(0xFF1E293B);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
@@ -28,10 +28,13 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
   TextEditingController();
   final TextEditingController complaintDateController =
   TextEditingController();
-  final TextEditingController medicationsController =
-  TextEditingController();
+  final TextEditingController medicationsController = TextEditingController();
 
+  List<Map<String, dynamic>> diseases = [];
+  int? selectedDiagnosisId;
   String? selectedDiagnosis;
+
+  bool isLoadingDiseases = true;
 
   @override
   void initState() {
@@ -41,8 +44,41 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
     complaintDateController.text = widget.formData.complaintDate;
     medicationsController.text = widget.formData.medications;
 
+    selectedDiagnosisId = widget.formData.diagnosisId;
     selectedDiagnosis =
     widget.formData.diagnosis.isEmpty ? null : widget.formData.diagnosis;
+
+    _loadDiseases();
+  }
+
+  Future<void> _loadDiseases() async {
+    try {
+      final response = await SupabaseService.client
+          .schema('neura')
+          .from('hastaliklar')
+          .select('hastalikId, hastalikAdi')
+          .order('hastalikAdi', ascending: true);
+
+      if (!mounted) return;
+
+      setState(() {
+        diseases = List<Map<String, dynamic>>.from(response);
+        isLoadingDiseases = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoadingDiseases = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tanılar yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -54,11 +90,9 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
   }
 
   Future<void> _selectDate() async {
-    DateTime initialDate = DateTime.now();
-
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: initialDate,
+      initialDate: DateTime.now(),
       firstDate: DateTime(1940),
       lastDate: DateTime.now(),
       builder: (context, child) {
@@ -85,16 +119,8 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
     }
   }
 
-  int? mapDiagnosisToId(String? value) {
-    if (value == 'MS') return 1;
-    if (value == 'Parkinson') return 2;
-    if (value == 'Diabetes') return 3;
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
-    // NeuraApp Input Style
     InputDecoration inputDecoration(String hintText, {Widget? suffixIcon}) {
       return InputDecoration(
         hintText: hintText,
@@ -130,7 +156,6 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği (alt sayfa varsayımıyla) silindi.
       body: SafeArea(
         child: Column(
           children: [
@@ -212,18 +237,25 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                         const Divider(color: kBorderColor, height: 1),
                         const SizedBox(height: 24),
 
-                        const Text('HASTALIK HİKAYESİ / İLK ŞİKAYETLER', style: labelStyle),
+                        const Text(
+                          'HASTALIK HİKAYESİ / İLK ŞİKAYETLER',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 10),
                         TextField(
                           controller: complaintHistoryController,
                           maxLines: 4,
                           style: const TextStyle(color: kTextDark),
-                          decoration: inputDecoration('Şikayet geçmişini giriniz'),
+                          decoration:
+                          inputDecoration('Şikayet geçmişini giriniz'),
                         ),
 
                         const SizedBox(height: 20),
 
-                        const Text('İLK ŞİKAYETLERİN BAŞLADIĞI TARİH', style: labelStyle),
+                        const Text(
+                          'İLK ŞİKAYETLERİN BAŞLADIĞI TARİH',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 10),
                         TextField(
                           controller: complaintDateController,
@@ -232,7 +264,11 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                           style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration(
                             'GG/AA/YYYY',
-                            suffixIcon: const Icon(Icons.calendar_today_outlined, color: kPrimary, size: 20),
+                            suffixIcon: const Icon(
+                              Icons.calendar_today_outlined,
+                              color: kPrimary,
+                              size: 20,
+                            ),
                           ),
                         ),
 
@@ -240,22 +276,64 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
 
                         const Text('TANI', style: labelStyle),
                         const SizedBox(height: 10),
-                        DropdownButtonFormField<String>(
-                          value: selectedDiagnosis,
-                          decoration: inputDecoration('Tanı seçiniz'),
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextGrey),
+                        isLoadingDiseases
+                            ? Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: kInputFill,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: kPrimary,
+                            ),
+                          ),
+                        )
+                            : DropdownButtonFormField<int>(
+                          value: selectedDiagnosisId,
+                          decoration: inputDecoration(
+                            diseases.isEmpty
+                                ? 'Tanı bulunamadı'
+                                : 'Tanı seçiniz',
+                          ),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: kTextGrey,
+                          ),
                           borderRadius: BorderRadius.circular(14),
                           dropdownColor: Colors.white,
-                          items: const [
-                            DropdownMenuItem(value: 'MS', child: Text('MS')),
-                            DropdownMenuItem(value: 'Parkinson', child: Text('Parkinson')),
-                            DropdownMenuItem(value: 'Diabetes', child: Text('Diabetes')),
-                          ],
+                          items: diseases.map((disease) {
+                            final id = disease['hastalikId'] as int;
+                            final name =
+                                disease['hastalikAdi']?.toString() ?? '';
+
+                            return DropdownMenuItem<int>(
+                              value: id,
+                              child: Text(
+                                name,
+                                style:
+                                const TextStyle(color: kTextDark),
+                              ),
+                            );
+                          }).toList(),
                           onChanged: (value) {
+                            if (value == null) return;
+
+                            final selected = diseases.firstWhere(
+                                  (disease) =>
+                              disease['hastalikId'] == value,
+                            );
+
                             setState(() {
-                              selectedDiagnosis = value;
-                              widget.formData.diagnosisId = mapDiagnosisToId(value);
+                              selectedDiagnosisId = value;
+                              selectedDiagnosis =
+                                  selected['hastalikAdi']?.toString() ??
+                                      '';
                             });
+
+                            widget.formData.diagnosisId = value;
+                            widget.formData.diagnosis =
+                                selectedDiagnosis ?? '';
                           },
                         ),
 
@@ -267,7 +345,8 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                           controller: medicationsController,
                           maxLines: 3,
                           style: const TextStyle(color: kTextDark),
-                          decoration: inputDecoration('Kullanılan ilaçları giriniz'),
+                          decoration:
+                          inputDecoration('Kullanılan ilaçları giriniz'),
                         ),
                       ],
                     ),
@@ -294,9 +373,7 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
+                          onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(54),
                             side: const BorderSide(color: kBorderColor),
@@ -306,7 +383,10 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                           ),
                           child: const Text(
                             'Geri',
-                            style: TextStyle(color: kTextGrey, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: kTextGrey,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -321,7 +401,7 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                             widget.formData.diagnosis =
                                 selectedDiagnosis ?? '';
                             widget.formData.diagnosisId =
-                                mapDiagnosisToId(selectedDiagnosis);
+                                selectedDiagnosisId;
                             widget.formData.medications =
                                 medicationsController.text.trim();
 
@@ -369,21 +449,29 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                             shape: BoxShape.circle,
                             color: isActive
                                 ? kPrimary
-                                : (isDone ? kPrimary.withOpacity(0.1) : Colors.white),
+                                : (isDone
+                                ? kPrimary.withOpacity(0.1)
+                                : Colors.white),
                             border: Border.all(
-                              color: (isActive || isDone) ? kPrimary : kBorderColor,
+                              color:
+                              (isActive || isDone) ? kPrimary : kBorderColor,
                               width: 1.5,
                             ),
                           ),
                           child: Center(
                             child: isDone
-                                ? const Icon(Icons.check, size: 16, color: kPrimary)
+                                ? const Icon(
+                              Icons.check,
+                              size: 16,
+                              color: kPrimary,
+                            )
                                 : Text(
                               '${index + 1}',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: isActive ? Colors.white : kTextHint,
+                                color:
+                                isActive ? Colors.white : kTextHint,
                               ),
                             ),
                           ),

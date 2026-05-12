@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/patient_form_data.dart';
 import 'patient_step_8_screen.dart';
+import 'package:flutter/services.dart';
 
 class PatientStep7Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -17,7 +18,7 @@ class PatientStep7Screen extends StatefulWidget {
 class _PatientStep7ScreenState extends State<PatientStep7Screen> {
   // NeuraApp Tasarım Sistemi Renkleri
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF2563EB); // HASTA SAYFASI
+  static const Color kPrimary = Color(0xFF124153); // HASTA SAYFASI
   static const Color kTextDark = Color(0xFF1E293B);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
@@ -284,9 +285,17 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
                         const SizedBox(height: 10),
                         TextField(
                           controller: emergencyPhoneController,
-                          keyboardType: TextInputType.phone,
+                          keyboardType: TextInputType.number,
+                          maxLength: 11,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           style: const TextStyle(color: kTextDark),
-                          decoration: inputDecoration('Telefon numarası giriniz'),
+                          decoration: inputDecoration(
+                            'Telefon numarası giriniz',
+                          ).copyWith(
+                            counterText: '',
+                          ),
                         ),
                       ],
                     ),

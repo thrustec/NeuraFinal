@@ -11,6 +11,7 @@ class MeetingService {
   }) async {
     try {
       print('ZOOM FUNCTION ÇAĞRILIYOR...');
+
       final response = await _supabase.functions.invoke(
         'create-zoom-meeting',
         body: {
@@ -21,9 +22,17 @@ class MeetingService {
       );
 
       final data = response.data;
+      print('ZOOM RESPONSE DATA: $data');
 
       if (data is Map && data['join_url'] != null) {
-        return data['join_url'].toString();
+        final joinUrl = data['join_url'].toString();
+        print('ZOOM JOIN URL: $joinUrl');
+        return joinUrl;
+      }
+
+      if (data is Map && data['error'] != null) {
+        print('ZOOM FUNCTION ERROR: ${data['error']}');
+        print('ZOOM FUNCTION DETAIL: ${data['detail']}');
       }
 
       return null;
@@ -51,6 +60,8 @@ class MeetingService {
       startTime: baslangicZamani,
       duration: duration <= 0 ? 60 : duration,
     );
+
+    print('DATABASEE YAZILACAK ZOOM LINK: $generatedZoomLink');
 
     final response = await _supabase
         .schema('neura')

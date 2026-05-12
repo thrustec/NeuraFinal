@@ -1,4 +1,18 @@
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
   try {
     const { topic, start_time, duration = 60 } = await req.json();
 
@@ -6,32 +20,53 @@ Deno.serve(async (req) => {
     const clientId = Deno.env.get("ZOOM_CLIENT_ID");
     const clientSecret = Deno.env.get("ZOOM_CLIENT_SECRET");
 
-    const credentials = btoa(`${clientId}:${clientSecret}`);
+    if (!accountId || !clientId || !clientSecret) {
+      return new Response(
+        JSON.stringify({ error: "Zoom secrets eksik" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const tokenResponse = await fetch(
       `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${accountId}`,
       {
         method: "POST",
         headers: {
-          Authorization: `Basic ${credentials}`,
+          Authorization: "Basic " + btoa(`${clientId}:${clientSecret}`),
         },
       }
     );
 
-    const tokenData = await tokenResponse.json();
+    const tokenText = await tokenResponse.text();
 
-    const accessToken = tokenData.access_token;
+    if (!tokenResponse.ok) {
+      return new Response(
+        JSON.stringify({
+          error: "Zoom token alınamadı",
+          detail: tokenText,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const tokenData = JSON.parse(tokenText);
 
     const meetingResponse = await fetch(
       "https://api.zoom.us/v2/users/me/meetings",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${tokenData.access_token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          topic,
+          topic: topic || "Neura Telerehabilitasyon Görüşmesi",
           type: 2,
           start_time,
           duration,
@@ -44,24 +79,43 @@ Deno.serve(async (req) => {
       }
     );
 
-    const meetingData = await meetingResponse.json();
+    const meetingText = await meetingResponse.text();
 
-    return new Response(JSON.stringify(meetingData), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      status: 200,
-    });
+    if (!meetingResponse.ok) {
+      return new Response(
+        JSON.stringify({
+          error: "Zoom meeting oluşturulamadı",
+          detail: meetingText,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const meetingData = JSON.parse(meetingText);
+
+    return new Response(
+      JSON.stringify({
+        join_url: meetingData.join_url,
+        start_url: meetingData.start_url,
+        id: meetingData.id,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   } catch (e) {
     return new Response(
       JSON.stringify({
-        error: e.toString(),
+        error: "Function exception",
+        detail: e.toString(),
       }),
       {
         status: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   }
