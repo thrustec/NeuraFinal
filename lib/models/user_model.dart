@@ -8,6 +8,7 @@ class UserModel {
   final String token;
   final String? unvan;
   final String? avatarUrl;
+  final int? klinisyenId; // klinisyenler tablosundan gelir
 
   UserModel({
     required this.id,
@@ -19,6 +20,7 @@ class UserModel {
     required this.token,
     this.unvan,
     this.avatarUrl,
+    this.klinisyenId,
   });
 
   String get fullName => '$ad $soyad'.trim();
@@ -35,29 +37,31 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id:        json['id']?.toString() ?? '',
-      ad:        json['ad'] ?? '',
-      soyad:     json['soyad'] ?? '',
-      eposta:    json['eposta'] ?? '',
-      rolId:     json['rolId'] ?? 1,
-      rolAdi:    json['rolAdi'] ?? 'Hasta',
-      token:     json['token'] ?? '',
-      unvan:     json['unvan'] as String?,
-      avatarUrl: json['avatarUrl'] as String?,
+      id:          json['id']?.toString() ?? '',
+      ad:          json['ad'] ?? '',
+      soyad:       json['soyad'] ?? '',
+      eposta:      json['eposta'] ?? '',
+      rolId:       json['rolId'] ?? 1,
+      rolAdi:      json['rolAdi'] ?? 'Hasta',
+      token:       json['token'] ?? '',
+      unvan:       json['unvan'] as String?,
+      avatarUrl:   json['avatarUrl'] as String?,
+      klinisyenId: json['klinisyenId'] as int?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id':        id,
-      'ad':        ad,
-      'soyad':     soyad,
-      'eposta':    eposta,
-      'rolId':     rolId,
-      'rolAdi':    rolAdi,
-      'token':     token,
-      'unvan':     unvan,
-      'avatarUrl': avatarUrl,
+      'id':          id,
+      'ad':          ad,
+      'soyad':       soyad,
+      'eposta':      eposta,
+      'rolId':       rolId,
+      'rolAdi':      rolAdi,
+      'token':       token,
+      'unvan':       unvan,
+      'avatarUrl':   avatarUrl,
+      'klinisyenId': klinisyenId,
     };
   }
 }
