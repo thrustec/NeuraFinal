@@ -59,8 +59,6 @@ class _NeuraAppState extends State<NeuraApp> {
         title: 'Neura',
         debugShowCheckedModeBanner: false,
         theme: NeuraTheme.lightTheme,
-        darkTheme: NeuraTheme.darkTheme,
-        themeMode: ThemeMode.system,
         initialRoute: '/',
         routes: {
           '/': (context) => const SplashScreen(),
