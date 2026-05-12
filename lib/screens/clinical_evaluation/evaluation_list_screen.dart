@@ -71,7 +71,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     int doctorId = provider.currentDoctorId;
 
     if (doctorId <= 0) {
-      doctorId = int.tryParse(auth.user?.id ?? '') ?? 0;
+      doctorId = auth.user?.klinisyenId ?? 0;
     }
 
     if (doctorId <= 0 && (auth.user?.eposta ?? '').trim().isNotEmpty) {
@@ -184,6 +184,27 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
           .toList();
     } catch (e) {
       debugPrint('Test sonuçları alınamadı: $e');
+    }
+
+    debugPrint(
+      '_toEvaluationDateWithTests: degId=${ev.degerlendirmeId} '
+      'DB rows=${testSonuclari.length}',
+    );
+
+    // Fallback: if DB returned nothing, parse from klinisyenNotlari text
+    if (testSonuclari.isEmpty) {
+      final parsed = EvaluationService().parseTestSonuclariFromKlinisyenNotlari(
+        ev.klinisyenNotlari as String?,
+      );
+      testSonuclari = parsed.map((t) => patient_model.TestResult(
+        testSonucId: t.testSonucId,
+        testId: t.testId,
+        testAdi: t.testAdi,
+        olculenDeger: t.olculenDeger,
+        maxDeger: t.maxDeger,
+        birim: t.birim,
+        isLowerBetter: t.isLowerBetter,
+      )).toList();
     }
 
     return patient_model.EvaluationDate(
