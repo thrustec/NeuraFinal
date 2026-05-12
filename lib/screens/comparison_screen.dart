@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../models/patient.dart';
 import '../services/evaluation_service.dart';
 import '../widgets/hasta_arama_widget.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 // NeuraApp Design System — Klinisyen Renk Paleti
 const Color kBackground = Color(0xFFF8F9FC);
@@ -279,6 +281,7 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
           if (_selectedPatient == null) ...[
             const SizedBox(height: 16),
             HastaAramaWidget(
+              klinisyenId: context.read<AuthProvider>().user?.klinisyenId?.toString(),
               primaryColor: kPrimary,
               onHastaSecildi: _selectHastaFromWidget,
             ),

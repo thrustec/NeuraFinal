@@ -173,7 +173,6 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
   }
   Future<void> _loadPatientExercises() async {
     try {
-      // TODO: Arkadaşın tabloyu netleştirince tablo/kolon isimlerini buraya göre değiştir.
       final data = await SupabaseService.client
           .schema('neura')
           .from('egzersizAtalari') // tablo adı değişebilir
@@ -448,7 +447,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Telerehab Talebi Oluştur',
+            'Hasta Ajandası',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
