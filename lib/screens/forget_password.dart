@@ -92,8 +92,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         headers: {
           'Content-Type': 'application/json',
           'apikey': _anonKey,
+          'X-Supabase-Auth-Flow': 'implicit',  // ← bunu ekle
         },
-        body: jsonEncode({'email': email}),
+        body: jsonEncode({
+          'email': email,
+          'redirectTo': 'http://localhost:8080/reset-password',
+        }),
       );
 
       if (!mounted) return;

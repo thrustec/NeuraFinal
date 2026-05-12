@@ -28,10 +28,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
+    print('=== URI BASE: ${Uri.base}');
+    print('=== URI PATH: ${Uri.base.path}');
+    print('=== QUERY PARAMS: ${Uri.base.queryParameters}');
+
+    final uri = Uri.base;
+    if (uri.path.contains('reset-password')) {
+      print('=== RESET PASSWORD ROUTE DETECTED');
+      final token = uri.queryParameters['token'];
+      print('=== TOKEN: $token');
+      Navigator.pushReplacementNamed(
+        context,
+        '/reset-password',
+        arguments: token != null ? {'token': token} : null,
+      );
+      return;
+    }
+
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-
-      // 🔥 timeout eklendi (takılmayı önler)
       await auth.checkSession().timeout(const Duration(seconds: 3));
 
       if (!mounted) return;

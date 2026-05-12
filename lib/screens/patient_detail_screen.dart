@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/patient_model.dart';
 import '../models/evaluation_model.dart' hide Patient;
+import '../providers/auth_provider.dart';
 import '../providers/evaluation_provider.dart';
 import '../services/patient_service.dart';
 import '../services/empatica_service.dart';
@@ -171,7 +172,9 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
-          create: (_) => EvaluationProvider(doctorId: 1),
+          create: (_) => EvaluationProvider(
+            doctorId: context.read<AuthProvider>().user?.klinisyenId ?? 0,
+          ),
           child: EvaluationListScreen(
             hastaId: _hasta.hastaId,
             hastaAdi: _hasta.tamAd,

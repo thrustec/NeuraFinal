@@ -172,7 +172,7 @@ class AuthService {
           if (list.isNotEmpty) {
             final c = list.first as Map<String, dynamic>;
             unvan       = c['unvan'] as String?;
-            klinisyenId = c['klinisyenId'] as int?; // ← klinisyenId alındı
+            klinisyenId = c['klinisyenId'] as int?;
           }
         }
       }
@@ -186,7 +186,7 @@ class AuthService {
         'rolAdi':      rolAdi,
         'token':       token,
         'unvan':       unvan,
-        'klinisyenId': klinisyenId, // ← UserModel'e geçirildi
+        'klinisyenId': klinisyenId,
       });
     } on SocketException {
       throw Exception('BAĞLANTI_HATASI');
@@ -269,6 +269,8 @@ class AuthService {
       }
 
       // ADIM 3: Klinisyen ise klinisyenler tablosuna ekle
+      // FIX: Dönen klinisyenId'yi yakala ve UserModel'e geçir
+      int? yeniKlinisyenId;
       if (rolId == _rolIdKlinisyen && kullaniciId != null) {
         final clinRes = await http
             .post(
@@ -283,6 +285,11 @@ class AuthService {
             .timeout(const Duration(seconds: 30));
 
         print('[REGISTER] klinisyenler => ${clinRes.statusCode}: ${clinRes.body}');
+
+        if (clinRes.statusCode >= 200 && clinRes.statusCode < 300) {
+          yeniKlinisyenId = _extractId(clinRes.body, 'klinisyenId');
+          print('[REGISTER] yeniKlinisyenId: $yeniKlinisyenId');
+        }
       }
 
       // ADIM 4: Hasta ise hastalar tablosuna ekle
@@ -308,14 +315,15 @@ class AuthService {
       }
 
       return UserModel.fromJson({
-        'id':    (kullaniciId ?? authData['user']?['id'] ?? '').toString(),
-        'ad':    ad,
-        'soyad': soyad,
-        'eposta': eposta,
-        'rolId':  rolId,
-        'rolAdi': rolAdi,
-        'token':  token,
-        'unvan':  unvan,
+        'id':          (kullaniciId ?? authData['user']?['id'] ?? '').toString(),
+        'ad':          ad,
+        'soyad':       soyad,
+        'eposta':      eposta,
+        'rolId':       rolId,
+        'rolAdi':      rolAdi,
+        'token':       token,
+        'unvan':       unvan,
+        'klinisyenId': yeniKlinisyenId, // FIX: artık session'a yazılıyor
       });
     } on SocketException {
       throw Exception('BAĞLANTI_HATASI');
