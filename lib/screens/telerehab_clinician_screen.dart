@@ -5,9 +5,9 @@ import '../providers/auth_provider.dart';
 import '../services/meeting_service.dart';
 
 const Color kBackground = Color(0xFFF8F9FC);
-const Color kPrimary = Color(0xFF22C55E);
-const Color kDarkGreen = Color(0xFF16A34A);
-const Color kTextDark = Color(0xFF1E293B);
+const Color kPrimary = Color(0xFF0F766E);
+const Color kDarkGreen = Color(0xFF0F766E);
+const Color kTextDark = Color(0xFF0F766E);
 const Color kTextGrey = Color(0xFF64748B);
 const Color kTextHint = Color(0xFF94A3B8);
 const Color kDanger = Color(0xFFDC2626);

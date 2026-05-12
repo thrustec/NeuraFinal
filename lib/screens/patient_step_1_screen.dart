@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/validators.dart';
 import '../models/patient_form_data.dart';
+import '../providers/auth_provider.dart';
+import '../services/meeting_service.dart';
 import 'patient_step_2_screen.dart';
 
 class PatientStep1Screen extends StatefulWidget {
@@ -11,30 +14,87 @@ class PatientStep1Screen extends StatefulWidget {
 }
 
 class _PatientStep1ScreenState extends State<PatientStep1Screen> {
-  // NeuraApp Renk Paleti
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF2563EB); // HASTA SAYFASI
-  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kPrimary = Color(0xFF125F5F);
+  static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
   static const Color kInputFill = Color(0xFFF1F5F9);
   static const Color kBorderColor = Color(0xFFE2E8F0);
 
   final PatientFormData formData = PatientFormData();
-  final TextEditingController patientController =
-  TextEditingController(text: 'patient0@example.com');
+  final MeetingService _meetingService = MeetingService();
+
+  List<Map<String, dynamic>> _patients = [];
+  Map<String, dynamic>? _selectedPatient;
+  bool _isLoadingPatients = true;
 
   @override
-  void dispose() {
-    patientController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadPatients();
+  }
+
+  Future<void> _loadPatients() async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final kullaniciId = int.tryParse(auth.user?.id ?? '');
+
+      if (kullaniciId == null) {
+        setState(() => _isLoadingPatients = false);
+        return;
+      }
+
+      final clinician = await _meetingService.getClinicianByUserId(kullaniciId);
+
+      if (clinician == null) {
+        setState(() => _isLoadingPatients = false);
+        return;
+      }
+
+      final klinisyenId = clinician['klinisyenId'] as int;
+
+      final patients = await _meetingService.getPatientsByClinician(klinisyenId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _patients = patients;
+        _isLoadingPatients = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingPatients = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hasta listesi yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _selectPatient(Map<String, dynamic>? value) {
+    if (value == null) return;
+
+    final user = value['kullanicilar'];
+
+    setState(() {
+      _selectedPatient = value;
+
+      formData.hastaId = value['hastaId'] as int?;
+      formData.kullaniciId = value['kullaniciId'] as int?;
+
+      formData.patientEmail = user?['eposta']?.toString() ?? '';
+      formData.name = user?['ad']?.toString() ?? '';
+      formData.surname = user?['soyad']?.toString() ?? '';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği (alt sayfa/gömülü sayfa varsayımıyla) kaldırıldı.
       body: SafeArea(
         child: Column(
           children: [
@@ -125,12 +185,29 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        TextField(
-                          controller: patientController,
-                          style: const TextStyle(color: kTextDark, fontSize: 15),
+
+                        _isLoadingPatients
+                            ? Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: kInputFill,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: kPrimary,
+                            ),
+                          ),
+                        )
+                            : DropdownButtonFormField<Map<String, dynamic>>(
+                          value: _selectedPatient,
+                          isExpanded: true,
                           decoration: InputDecoration(
-                            hintText: 'patient@example.com',
-                            hintStyle: const TextStyle(color: kTextHint),
+                            hintText: _patients.isEmpty
+                                ? 'Kayıtlı hasta bulunamadı'
+                                : 'Hasta e-postası seçiniz',
+                            hintStyle:
+                            const TextStyle(color: kTextHint),
                             filled: true,
                             fillColor: kInputFill,
                             contentPadding: const EdgeInsets.symmetric(
@@ -153,7 +230,29 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                               ),
                             ),
                           ),
+                          items: _patients.map((patient) {
+                            final user = patient['kullanicilar'];
+                            final email =
+                                user?['eposta']?.toString() ?? '-';
+                            final ad = user?['ad']?.toString() ?? '';
+                            final soyad =
+                                user?['soyad']?.toString() ?? '';
+
+                            return DropdownMenuItem(
+                              value: patient,
+                              child: Text(
+                                '$email  ${ad.isNotEmpty || soyad.isNotEmpty ? "($ad $soyad)" : ""}',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: kTextDark,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: _selectPatient,
                         ),
+
                         const SizedBox(height: 20),
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -172,7 +271,7 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                               SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Kayıtlı hasta kullanıcısı seçildikten sonra sonraki adıma geçilir.',
+                                  'Klinisyene kayıtlı hasta seçildiğinde, sonraki adımda ad ve soyad otomatik dolar.',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: kTextGrey,
@@ -189,6 +288,7 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                 ),
               ),
             ),
+
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -208,7 +308,7 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: null, // Logic korunuyor
+                          onPressed: null,
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(54),
                             side: const BorderSide(color: kBorderColor),
@@ -218,7 +318,10 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                           ),
                           child: const Text(
                             'Geri',
-                            style: TextStyle(color: kTextHint, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: kTextHint,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -226,8 +329,21 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            final error = PatientValidators.validateStep1(
-                              patientEmail: patientController.text,
+                            if (_selectedPatient == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Lütfen kayıtlı hasta kullanıcısı seçin.',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final error =
+                            PatientValidators.validateStep1(
+                              patientEmail: formData.patientEmail,
                             );
 
                             if (error != null) {
@@ -240,12 +356,11 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                               return;
                             }
 
-                            formData.patientEmail = patientController.text.trim();
-
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => PatientStep2Screen(formData: formData),
+                                builder: (context) =>
+                                    PatientStep2Screen(formData: formData),
                               ),
                             );
                           },
@@ -285,13 +400,15 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                               color: isActive ? kPrimary : kBorderColor,
                               width: 1.5,
                             ),
-                            boxShadow: isActive ? [
+                            boxShadow: isActive
+                                ? [
                               BoxShadow(
                                 color: kPrimary.withOpacity(0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               )
-                            ] : null,
+                            ]
+                                : null,
                           ),
                           child: Center(
                             child: Text(

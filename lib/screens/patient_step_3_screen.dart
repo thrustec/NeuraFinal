@@ -18,7 +18,7 @@ class PatientStep3Screen extends StatefulWidget {
 class _PatientStep3ScreenState extends State<PatientStep3Screen> {
   // NeuraApp Tasarım Sistemi Renkleri
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF2563EB); // HASTA SAYFASI
+  static const Color kPrimary = Color(0xFF124153); // HASTA SAYFASI
   static const Color kTextDark = Color(0xFF1E293B);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);

@@ -1,4 +1,7 @@
 class PatientFormData {
+  int? hastaId;
+  int? kullaniciId;
+
   // neura.kullanicilar
   String patientEmail;
   String name;
@@ -57,6 +60,9 @@ class PatientFormData {
   String emergencyPhone; // acilKisiTelefonu
 
   PatientFormData({
+    this.hastaId,
+    this.kullaniciId,
+
     this.patientEmail = '',
     this.name = '',
     this.surname = '',
