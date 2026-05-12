@@ -1,9 +1,37 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
-import 'notification_service.dart';
 
 class MeetingService {
   final SupabaseClient _supabase = SupabaseService.client;
+
+  Future<String?> createZoomMeeting({
+    required String topic,
+    required DateTime startTime,
+    int duration = 60,
+  }) async {
+    try {
+      print('ZOOM FUNCTION ÇAĞRILIYOR...');
+      final response = await _supabase.functions.invoke(
+        'create-zoom-meeting',
+        body: {
+          'topic': topic,
+          'start_time': startTime.toIso8601String(),
+          'duration': duration,
+        },
+      );
+
+      final data = response.data;
+
+      if (data is Map && data['join_url'] != null) {
+        return data['join_url'].toString();
+      }
+
+      return null;
+    } catch (e) {
+      print('Zoom meeting oluşturulamadı: $e');
+      return null;
+    }
+  }
 
   Future<Map<String, dynamic>> createMeeting({
     required int hastaId,
@@ -13,8 +41,17 @@ class MeetingService {
     required DateTime bitisZamani,
     String? zoomlink,
     String? notlar,
-    bool sendNotification = true,
   }) async {
+    final duration = bitisZamani.difference(baslangicZamani).inMinutes;
+
+    final generatedZoomLink = zoomlink?.trim().isNotEmpty == true
+        ? zoomlink!.trim()
+        : await createZoomMeeting(
+      topic: baslik,
+      startTime: baslangicZamani,
+      duration: duration <= 0 ? 60 : duration,
+    );
+
     final response = await _supabase
         .schema('neura')
         .from('toplantilar')
@@ -24,20 +61,12 @@ class MeetingService {
       'baslik': baslik,
       'baslangicZamani': baslangicZamani.toIso8601String(),
       'bitisZamani': bitisZamani.toIso8601String(),
-      'zoomlink': zoomlink?.trim().isEmpty == true ? null : zoomlink?.trim(),
+      'zoomlink': generatedZoomLink,
       'notlar': notlar?.trim().isEmpty == true ? null : notlar?.trim(),
       'baslatildimi': false,
     })
         .select()
         .single();
-
-    if (sendNotification) {
-      await NotificationService.createPatientNotificationByHastaId(
-        hastaId: hastaId,
-        baslik: 'Yeni toplantı oluşturuldu',
-        mesaj: 'Klinisyeniniz sizin için yeni bir telerehabilitasyon randevusu oluşturdu.',
-      );
-    }
 
     return Map<String, dynamic>.from(response);
   }
@@ -62,12 +91,6 @@ class MeetingService {
         .select()
         .single();
 
-    await NotificationService.createClinicianNotificationByKlinisyenId(
-      klinisyenId: klinisyenId,
-      baslik: 'Yeni toplantı talebi',
-      mesaj: 'Bir hasta yeni telerehabilitasyon görüşme talebi gönderdi.',
-    );
-
     return Map<String, dynamic>.from(response);
   }
 
@@ -89,7 +112,6 @@ class MeetingService {
       bitisZamani: bitisZamani,
       zoomlink: zoomlink,
       notlar: notlar,
-      sendNotification: false,
     );
 
     final int toplantiId = createdMeeting['toplantiId'] as int;
@@ -102,11 +124,6 @@ class MeetingService {
       'toplantiId': toplantiId,
     })
         .eq('toplantiIstegiId', toplantiIstegiId);
-    await NotificationService.createPatientNotificationByHastaId(
-      hastaId: hastaId,
-      baslik: 'Toplantınız onaylandı',
-      mesaj: 'Telerehabilitasyon randevunuz oluşturuldu.',
-    );
 
     return createdMeeting;
   }
@@ -171,12 +188,22 @@ class MeetingService {
     required DateTime yeniBaslangicZamani,
     required DateTime yeniBitisZamani,
   }) async {
+    final duration =
+        yeniBitisZamani.difference(yeniBaslangicZamani).inMinutes;
+
+    final newZoomLink = await createZoomMeeting(
+      topic: 'Ertelenmiş Telerehabilitasyon Randevusu',
+      startTime: yeniBaslangicZamani,
+      duration: duration <= 0 ? 60 : duration,
+    );
+
     await _supabase
         .schema('neura')
         .from('toplantilar')
         .update({
       'baslangicZamani': yeniBaslangicZamani.toIso8601String(),
       'bitisZamani': yeniBitisZamani.toIso8601String(),
+      'zoomlink': newZoomLink,
       'baslatildimi': false,
       'durum': 'Ertelendi',
       'guncellemeTarihi': DateTime.now().toIso8601String(),
@@ -302,7 +329,9 @@ class MeetingService {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Future<Map<String, dynamic>?> getAssignedClinicianForPatient(int hastaId) async {
+  Future<Map<String, dynamic>?> getAssignedClinicianForPatient(
+      int hastaId,
+      ) async {
     final patient = await _supabase
         .schema('neura')
         .from('hastalar')
