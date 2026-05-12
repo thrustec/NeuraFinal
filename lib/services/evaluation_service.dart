@@ -233,6 +233,21 @@ class EvaluationService {
           );
         }
 
+        debugPrint(
+          'getEvaluationsForPatient: degId=$degerlendirmeId '
+          'DB rows=${testSonuclari.length}',
+        );
+
+        // Fallback: parse from the klinisyenNotlari text that
+        // _composeFunctionalNote packs into the evaluation row.
+        // Covers evaluations saved before the structured write was added,
+        // and cases where the DB rejects inserts (e.g. testId NOT NULL).
+        if (testSonuclari.isEmpty) {
+          testSonuclari = parseTestSonuclariFromKlinisyenNotlari(
+            map['klinisyenNotlari'] as String?,
+          );
+        }
+
         evaluations.add(
           _parseEvaluationDate(
             map,
@@ -403,10 +418,16 @@ class EvaluationService {
   TestResult _parseTestResult(Map<String, dynamic> map, int hastaId) {
     final testlerMap = map['testler'] as Map<String, dynamic>? ?? {};
 
+    // testAdi: prefer the joined testler row; fall back to metrikAdi for rows
+    // that were saved without a matching testler FK (e.g. from the form).
+    final testAdi = testlerMap['testAdi'] as String? ??
+        map['metrikAdi'] as String? ??
+        'Test';
+
     return TestResult(
       testSonucId: map['testSonucId'] as int,
-      testId: map['testId'] as int,
-      testAdi: testlerMap['testAdi'] as String? ?? 'Test',
+      testId: (map['testId'] as int?) ?? 0,
+      testAdi: testAdi,
       olculenDeger: (map['olculenDeger'] as num? ?? 0).toDouble(),
       maxDeger: 100.0,
       birim: map['birim'] as String? ?? 'Puan',
@@ -445,6 +466,136 @@ class EvaluationService {
       debugPrint('EvaluationService.getClinicianIdByEmail error: $e');
       return null;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Test ID lookup — queries testler table once; returns lowercase-keyed map
+  // so callers can do a case-insensitive match against their own label strings.
+  // Returns empty map on any error so callers can proceed without testId.
+  // ---------------------------------------------------------------------------
+  Future<Map<String, int>> getTestIdMap() async {
+    try {
+      final data = await _client.get(
+        '${ApiConstants.testler}?select=testId,testAdi,testKodu',
+      );
+      final result = <String, int>{};
+      for (final item in data) {
+        final m = item as Map<String, dynamic>;
+        final id = m['testId'];
+        if (id == null) continue;
+        final parsedId = id is int ? id : int.tryParse(id.toString());
+        if (parsedId == null) continue;
+        final adi = (m['testAdi'] ?? '').toString().trim();
+        final kodu = (m['testKodu'] ?? '').toString().trim();
+        if (adi.isNotEmpty) result[adi.toLowerCase()] = parsedId;
+        if (kodu.isNotEmpty) result[kodu.toLowerCase()] = parsedId;
+      }
+      return result;
+    } catch (e) {
+      debugPrint('EvaluationService.getTestIdMap error (non-fatal): $e');
+      return {};
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Persist structured test rows for an evaluation.
+  // Strategy: delete stale rows for (degerlendirmeId, hastaId) then insert.
+  // Each insert failure is logged but does NOT abort the rest — a partial
+  // save is better than losing all test data.
+  // ---------------------------------------------------------------------------
+  Future<void> upsertTestSonuclari({
+    required int degerlendirmeId,
+    required int hastaId,
+    required List<Map<String, dynamic>> rows,
+  }) async {
+    if (rows.isEmpty) return;
+
+    try {
+      await _client.delete(
+        '${ApiConstants.degerlendirmeTestSonuclari}'
+            '?degerlendirmeId=eq.$degerlendirmeId'
+            '&hastaId=eq.$hastaId',
+      );
+    } catch (e) {
+      debugPrint(
+        'EvaluationService.upsertTestSonuclari delete error (non-fatal): $e',
+      );
+    }
+
+    for (final row in rows) {
+      try {
+        await _client.post(ApiConstants.degerlendirmeTestSonuclari, row);
+      } catch (e) {
+        debugPrint(
+          'EvaluationService.upsertTestSonuclari insert error (non-fatal): '
+          '$e  row=$row',
+        );
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Text-based test score parser — fallback when degerlendirmeTestSonuclari
+  // has no rows (e.g. testId NOT NULL blocks inserts, or pre-fix evaluations).
+  // Parses the inline "Label: value" lines written by _composeFunctionalNote.
+  // Public so EvaluationListScreen can also call it with ev.klinisyenNotlari.
+  // ---------------------------------------------------------------------------
+  List<TestResult> parseTestSonuclariFromKlinisyenNotlari(String? text) {
+    if (text == null || text.trim().isEmpty) return const [];
+
+    final results = <TestResult>[];
+
+    void extract(String label, String birim, bool isLowerBetter) {
+      final raw = _extractTextValue(text, label);
+      if (raw.isEmpty) return;
+      final v = double.tryParse(raw.replaceAll(',', '.'));
+      if (v == null) return;
+      results.add(TestResult(
+        testSonucId: label.hashCode.abs(),
+        testId: 0,
+        testAdi: label,
+        olculenDeger: v,
+        maxDeger: 100.0,
+        birim: birim,
+        isLowerBetter: isLowerBetter,
+      ));
+    }
+
+    extract('Mini Mental Test Score',           'Puan',   false);
+    extract('UPDRS Engine Score',               'Puan',   false);
+    extract('ALSFRS-R Score',                   'Puan',   false);
+    extract('Total Number of Attacks',          'Atak',   false);
+    extract('SARA Score',                       'Puan',   false);
+    extract('30-sec Chair Stand Test (Reps)',   'Tekrar', false);
+    extract('Timed Up & Go Test (Sec)',         'Saniye', true);
+    extract('9-Hole Peg – Right Hand (Sec)',    'Saniye', true);
+    extract('9-Hole Peg – Left Hand (Sec)',     'Saniye', true);
+    extract('Eyes Open – Firm Surface (Sec)',   'Saniye', false);
+    extract('Eyes Closed – Firm Surface (Sec)', 'Saniye', false);
+    extract('Eyes Open – Soft Surface (Sec)',   'Saniye', false);
+    extract('Eyes Closed – Soft Surface (Sec)', 'Saniye', false);
+    extract('Anterior – Posterior',             'mm',     false);
+    extract('Medial – Lateral',                 'mm',     false);
+    extract('Overall Score',                    'Puan',   false);
+    extract('Part A (Sec)',                     'Saniye', true);
+    extract('Part B (Sec)',                     'Saniye', true);
+    extract('Stroop',                           'Saniye', true);
+
+    debugPrint(
+      'parseTestSonuclariFromKlinisyenNotlari: '
+      'found ${results.length} tests from text',
+    );
+    return results;
+  }
+
+  String _extractTextValue(String source, String label) {
+    final pattern = RegExp(
+      '^${RegExp.escape(label)}\\s*:[ \\t]*(.*)\$',
+      caseSensitive: false,
+      multiLine: true,
+    );
+    final match = pattern.firstMatch(source);
+    return match != null ? (match.group(1) ?? '').trim() : '';
   }
 
   // ---------------------------------------------------------------------------

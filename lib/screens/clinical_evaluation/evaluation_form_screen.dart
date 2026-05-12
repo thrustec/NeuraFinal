@@ -1237,6 +1237,57 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return sections.join('\n\n');
   }
 
+  // Builds the list of structured test rows to persist in
+  // degerlendirmeTestSonuclari.  Each non-empty controller becomes one row.
+  // testIdMap is keyed by lowercase testAdi/testKodu from the testler table;
+  // if a name doesn't match we omit testId and rely on metrikAdi for
+  // comparison matching (see _parseTestResult fallback in evaluation_service).
+  List<Map<String, dynamic>> _collectTestRows({
+    required int degerlendirmeId,
+    required int hastaId,
+    required Map<String, int> testIdMap,
+  }) {
+    final rows = <Map<String, dynamic>>[];
+
+    void add(TextEditingController ctrl, String metrikAdi, String birim) {
+      final raw = ctrl.text.trim().replaceAll(',', '.');
+      if (raw.isEmpty) return;
+      final value = double.tryParse(raw);
+      if (value == null) return;
+      final testId = testIdMap[metrikAdi.toLowerCase()];
+      rows.add({
+        'degerlendirmeId': degerlendirmeId,
+        'hastaId': hastaId,
+        if (testId != null) 'testId': testId,
+        'metrikAdi': metrikAdi,
+        'olculenDeger': value,
+        'birim': birim,
+      });
+    }
+
+    add(_miniMentalScoreCtrl,     'Mini Mental Test Score',           'Puan');
+    add(_updrsEngineScoreCtrl,    'UPDRS Engine Score',               'Puan');
+    add(_alsfrsScoreCtrl,         'ALSFRS-R Score',                   'Puan');
+    add(_totalAttackCountCtrl,    'Total Number of Attacks',          'Atak');
+    add(_saraScoreCtrl,           'SARA Score',                       'Puan');
+    add(_chairStandCtrl,          '30-sec Chair Stand Test (Reps)',   'Tekrar');
+    add(_timedUpGoCtrl,           'Timed Up & Go Test (Sec)',         'Saniye');
+    add(_pegRightCtrl,            '9-Hole Peg – Right Hand (Sec)',    'Saniye');
+    add(_pegLeftCtrl,             '9-Hole Peg – Left Hand (Sec)',     'Saniye');
+    add(_ctsibFirmOpenCtrl,       'Eyes Open – Firm Surface (Sec)',   'Saniye');
+    add(_ctsibFirmClosedCtrl,     'Eyes Closed – Firm Surface (Sec)', 'Saniye');
+    add(_ctsibSoftOpenCtrl,       'Eyes Open – Soft Surface (Sec)',   'Saniye');
+    add(_ctsibSoftClosedCtrl,     'Eyes Closed – Soft Surface (Sec)','Saniye');
+    add(_pstAnteriorPosteriorCtrl,'Anterior – Posterior',             'mm');
+    add(_pstMedialLateralCtrl,    'Medial – Lateral',                 'mm');
+    add(_pstOverallCtrl,          'Overall Score',                    'Puan');
+    add(_trailPartACtrl,          'Part A (Sec)',                     'Saniye');
+    add(_trailPartBCtrl,          'Part B (Sec)',                     'Saniye');
+    add(_stroopCtrl,              'Stroop',                           'Saniye');
+
+    return rows;
+  }
+
   Future<int> _resolveCurrentDoctorId() async {
     final provider = context.read<EvaluationProvider>();
     final auth = context.read<AuthProvider>();
@@ -1244,7 +1295,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final providerDoctorId = provider.currentDoctorId;
     if (providerDoctorId > 0) return providerDoctorId;
 
-    final authDoctorId = int.tryParse(auth.user?.id ?? '') ?? 0;
+    final authDoctorId = auth.user?.klinisyenId ?? 0;
     if (authDoctorId > 0) {
       provider.setDoctorId(authDoctorId);
       debugPrint(
@@ -1399,6 +1450,29 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if (!mounted) return;
 
     if (success) {
+      // After the evaluation row is persisted, also write structured test rows
+      // to degerlendirmeTestSonuclari so the comparison screen can read them.
+      // provider.selected is set to the saved Evaluation by create/update.
+      final savedId = provider.selected?.id ?? provider.selected?.degerlendirmeId;
+      if (savedId != null && savedId > 0) {
+        try {
+          final svc = EvaluationService();
+          final testIdMap = await svc.getTestIdMap();
+          final testRows = _collectTestRows(
+            degerlendirmeId: savedId,
+            hastaId: effectiveHastaId,
+            testIdMap: testIdMap,
+          );
+          await svc.upsertTestSonuclari(
+            degerlendirmeId: savedId,
+            hastaId: effectiveHastaId,
+            rows: testRows,
+          );
+        } catch (e) {
+          debugPrint('_saveEvaluation: test sonuçları kaydedilemedi: $e');
+        }
+      }
+      if (!mounted) return;
       _showSnack(
         widget.isEdit
             ? 'Değerlendirme güncellendi.'
