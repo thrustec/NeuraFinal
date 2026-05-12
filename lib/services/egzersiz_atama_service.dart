@@ -1,6 +1,7 @@
 // lib/services/egzersiz_atama_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'notification_service.dart';
 
 const String _baseUrl = 'https://griteunvazwekosffmjo.supabase.co/rest/v1';
 const String _anonKey =
@@ -83,6 +84,11 @@ class EgzersizAtamaService {
     if (res.statusCode != 201) {
       throw Exception('Atama başarısız (${res.statusCode}): ${res.body}');
     }
+    await NotificationService.createPatientNotificationByHastaId(
+      hastaId: hastaId,
+      baslik: 'Yeni egzersiz atandı',
+      mesaj: 'Klinisyeniniz size yeni bir egzersiz atadı: $egzersizAdi',
+    );
   }
 
   /// Klinisyenin sorumlu olduğu hastaları listele.
