@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import 'notification_service.dart';
 
 class MeetingService {
   final SupabaseClient _supabase = SupabaseService.client;
@@ -12,6 +13,7 @@ class MeetingService {
     required DateTime bitisZamani,
     String? zoomlink,
     String? notlar,
+    bool sendNotification = true,
   }) async {
     final response = await _supabase
         .schema('neura')
@@ -28,6 +30,14 @@ class MeetingService {
     })
         .select()
         .single();
+
+    if (sendNotification) {
+      await NotificationService.createPatientNotificationByHastaId(
+        hastaId: hastaId,
+        baslik: 'Yeni toplantı oluşturuldu',
+        mesaj: 'Klinisyeniniz sizin için yeni bir telerehabilitasyon randevusu oluşturdu.',
+      );
+    }
 
     return Map<String, dynamic>.from(response);
   }
@@ -52,6 +62,12 @@ class MeetingService {
         .select()
         .single();
 
+    await NotificationService.createClinicianNotificationByKlinisyenId(
+      klinisyenId: klinisyenId,
+      baslik: 'Yeni toplantı talebi',
+      mesaj: 'Bir hasta yeni telerehabilitasyon görüşme talebi gönderdi.',
+    );
+
     return Map<String, dynamic>.from(response);
   }
 
@@ -73,6 +89,7 @@ class MeetingService {
       bitisZamani: bitisZamani,
       zoomlink: zoomlink,
       notlar: notlar,
+      sendNotification: false,
     );
 
     final int toplantiId = createdMeeting['toplantiId'] as int;
@@ -85,6 +102,11 @@ class MeetingService {
       'toplantiId': toplantiId,
     })
         .eq('toplantiIstegiId', toplantiIstegiId);
+    await NotificationService.createPatientNotificationByHastaId(
+      hastaId: hastaId,
+      baslik: 'Toplantınız onaylandı',
+      mesaj: 'Telerehabilitasyon randevunuz oluşturuldu.',
+    );
 
     return createdMeeting;
   }

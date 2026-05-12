@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/meeting_service.dart';
+import '../widgets/hasta_arama_widget.dart'; // ← bunu ekle, dosya yolunu projeye göre ayarla
 
 class ClinicianAgenda extends StatefulWidget {
   const ClinicianAgenda({super.key});
@@ -11,30 +12,29 @@ class ClinicianAgenda extends StatefulWidget {
 }
 
 class _ClinicianAgendaState extends State<ClinicianAgenda> {
-  static const Color _green = Color(0xFF22C55E);
-  static const Color _darkGreen = Color(0xFF16A34A);
+  static const Color _green = Color(0xFF0F766E);
+  static const Color _darkGreen = Color(0xFF0F766E);
   static const Color _background = Color(0xFFF8F9FC);
 
   final MeetingService _meetingService = MeetingService();
-  final TextEditingController _searchController = TextEditingController();
 
-  List<Map<String, dynamic>> _patients = [];
-  List<Map<String, dynamic>> _filteredPatients = [];
   List<Map<String, dynamic>> _meetings = [];
   List<Map<String, dynamic>> _pendingRequests = [];
 
-  String? _selectedPatientId;
+  // HastaAramaWidget'tan seçilen hasta
+  HastaAramaSonucu? _secilenHasta;
+
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String _repeat = 'Tek Sefer';
 
   bool _isLoading = true;
   int? _currentClinicianId;
+  String? _currentClinicianIdStr;
 
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
       final kullaniciId = int.tryParse(auth.user?.id ?? '');
@@ -46,7 +46,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       }
 
       try {
-        final clinician = await _meetingService.getClinicianByUserId(kullaniciId);
+        final clinician =
+        await _meetingService.getClinicianByUserId(kullaniciId);
 
         if (clinician == null) {
           _showMessage('Bu kullanıcıya ait klinisyen kaydı bulunamadı.');
@@ -55,18 +56,13 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         }
 
         _currentClinicianId = clinician['klinisyenId'] as int;
+        _currentClinicianIdStr = _currentClinicianId.toString();
         await _loadData();
       } catch (e) {
         _showMessage('Klinisyen bilgisi yüklenemedi: $e');
         setState(() => _isLoading = false);
       }
     });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -78,57 +74,19 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
     setState(() => _isLoading = true);
 
     await Future.wait([
-      _loadPatients(),
       _loadMeetings(),
       _loadPendingRequests(),
     ]);
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadPatients() async {
-    try {
-      final patients = await _meetingService.getPatientsByClinician(
-        _currentClinicianId!,
-      );
-
-      final mappedPatients = patients.map<Map<String, dynamic>>((p) {
-        final user = p['kullanicilar'];
-
-        final name = user != null
-            ? '${user['ad'] ?? ''} ${user['soyad'] ?? ''}'.trim()
-            : 'Hasta ${p['hastaId']}';
-
-        return {
-          'id': p['hastaId'].toString(),
-          'name': name.isEmpty ? 'Hasta ${p['hastaId']}' : name,
-        };
-      }).toList();
-
-      if (!mounted) return;
-
-      setState(() {
-        _patients = mappedPatients;
-        _filteredPatients = mappedPatients;
-      });
-    } catch (e) {
-      _showMessage('Hastalar yüklenemedi: $e');
-    }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _loadMeetings() async {
     try {
-      final meetings = await _meetingService.getMeetingsByClinician(
-        _currentClinicianId!,
-      );
-
+      final meetings =
+      await _meetingService.getMeetingsByClinician(_currentClinicianId!);
       if (!mounted) return;
-
-      setState(() {
-        _meetings = meetings;
-      });
+      setState(() => _meetings = meetings);
     } catch (e) {
       _showMessage('Randevular yüklenemedi: $e');
     }
@@ -136,15 +94,10 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
 
   Future<void> _loadPendingRequests() async {
     try {
-      final requests = await _meetingService.getPendingRequestsByClinician(
-        _currentClinicianId!,
-      );
-
+      final requests = await _meetingService
+          .getPendingRequestsByClinician(_currentClinicianId!);
       if (!mounted) return;
-
-      setState(() {
-        _pendingRequests = requests;
-      });
+      setState(() => _pendingRequests = requests);
     } catch (e) {
       _showMessage('Talepler yüklenemedi: $e');
     }
@@ -156,38 +109,26 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime(2030),
-      builder: (ctx, child) {
-        return Theme(
-          data: Theme.of(ctx).copyWith(
-            colorScheme: const ColorScheme.light(primary: _green),
-          ),
-          child: child!,
-        );
-      },
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx)
+            .copyWith(colorScheme: const ColorScheme.light(primary: _green)),
+        child: child!,
+      ),
     );
-
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
-      builder: (ctx, child) {
-        return Theme(
-          data: Theme.of(ctx).copyWith(
-            colorScheme: const ColorScheme.light(primary: _green),
-          ),
-          child: child!,
-        );
-      },
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx)
+            .copyWith(colorScheme: const ColorScheme.light(primary: _green)),
+        child: child!,
+      ),
     );
-
-    if (picked != null) {
-      setState(() => _selectedTime = picked);
-    }
+    if (picked != null) setState(() => _selectedTime = picked);
   }
 
   Future<void> _createMeeting() async {
@@ -195,8 +136,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       _showMessage('Klinisyen bilgisi bulunamadı.');
       return;
     }
-
-    if (_selectedPatientId == null ||
+    if (_secilenHasta == null ||
         _selectedDate == null ||
         _selectedTime == null) {
       _showMessage('Lütfen hasta, tarih ve saat seçin.');
@@ -210,12 +150,11 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       _selectedTime!.hour,
       _selectedTime!.minute,
     );
-
     final endTime = startTime.add(const Duration(hours: 1));
 
     try {
       await _meetingService.createMeeting(
-        hastaId: int.parse(_selectedPatientId!),
+        hastaId: _secilenHasta!.hastaId,
         klinisyenId: _currentClinicianId!,
         baslik: 'Telerehabilitasyon Randevusu',
         baslangicZamani: startTime,
@@ -226,12 +165,10 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       _showMessage('Randevu başarıyla oluşturuldu.', success: true);
 
       setState(() {
-        _selectedPatientId = null;
+        _secilenHasta = null;
         _selectedDate = null;
         _selectedTime = null;
         _repeat = 'Tek Sefer';
-        _searchController.clear();
-        _filteredPatients = _patients;
       });
 
       await _loadMeetings();
@@ -258,11 +195,9 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                   const SizedBox(height: 16),
                   ListTile(
                     leading: const Icon(Icons.calendar_today),
-                    title: Text(
-                      selectedDate == null
-                          ? 'Tarih seç'
-                          : _formatDate(selectedDate!.toIso8601String()),
-                    ),
+                    title: Text(selectedDate == null
+                        ? 'Tarih seç'
+                        : _formatDate(selectedDate!.toIso8601String())),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
@@ -270,7 +205,6 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                         firstDate: DateTime.now(),
                         lastDate: DateTime(2030),
                       );
-
                       if (picked != null) {
                         setDialogState(() => selectedDate = picked);
                       }
@@ -278,17 +212,14 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                   ),
                   ListTile(
                     leading: const Icon(Icons.access_time),
-                    title: Text(
-                      selectedTime == null
-                          ? 'Saat seç'
-                          : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
-                    ),
+                    title: Text(selectedTime == null
+                        ? 'Saat seç'
+                        : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'),
                     onTap: () async {
                       final picked = await showTimePicker(
                         context: context,
                         initialTime: TimeOfDay.now(),
                       );
-
                       if (picked != null) {
                         setDialogState(() => selectedTime = picked);
                       }
@@ -328,7 +259,6 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       selectedTime!.hour,
       selectedTime!.minute,
     );
-
     final endTime = startTime.add(const Duration(hours: 1));
 
     try {
@@ -341,9 +271,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         bitisZamani: endTime,
         notlar: request['talep']?.toString(),
       );
-
       _showMessage('Talep onaylandı ve randevu oluşturuldu.', success: true);
-
       await _loadData();
     } catch (e) {
       _showMessage('Talep onaylanamadı: $e');
@@ -355,9 +283,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       await _meetingService.rejectMeetingRequest(
         toplantiIstegiId: request['toplantiIstegiId'] as int,
       );
-
       _showMessage('Talep reddedildi.', success: true);
-
       await _loadPendingRequests();
     } catch (e) {
       _showMessage('Talep reddedilemedi: $e');
@@ -366,7 +292,6 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
 
   void _showMessage(String message, {bool success = false}) {
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -383,20 +308,14 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B),
-            size: 18,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: Color(0xFF1E293B), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Klinisyen Ajandası',
           style: TextStyle(
-            color: _green,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+              color: _green, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
       ),
@@ -435,24 +354,51 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         children: [
           _sectionTitle(Icons.add_task, 'Yeni Plan Oluştur'),
           const SizedBox(height: 18),
-          _label(Icons.person, 'Hasta'),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _searchController,
-            onChanged: (value) {
-              setState(() {
-                _filteredPatients = _patients.where((p) {
-                  final name = p['name'].toString().toLowerCase();
-                  final id = p['id'].toString();
-                  final query = value.toLowerCase();
-                  return name.contains(query) || id.contains(query);
-                }).toList();
-              });
+
+          // ── HastaAramaWidget ──────────────────────────────
+          HastaAramaWidget(
+            klinisyenId: _currentClinicianIdStr,
+            primaryColor: _green,
+            onHastaSecildi: (hasta) {
+              setState(() => _secilenHasta = hasta);
             },
-            decoration: _inputDecoration('Hasta adı veya ID yazın...'),
           ),
-          const SizedBox(height: 8),
-          _patientDropdown(),
+
+          // Seçilen hasta göstergesi
+          if (_secilenHasta != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: _green.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _green.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline,
+                      color: _green, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${_secilenHasta!.tamAd} seçildi',
+                      style: const TextStyle(
+                          color: _green,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _secilenHasta = null),
+                    child: const Icon(Icons.close,
+                        color: _green, size: 18),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 18),
           Row(
             children: [
@@ -466,6 +412,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
           const SizedBox(height: 8),
           _repeatDropdown(),
           const SizedBox(height: 22),
+
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -475,48 +422,17 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
               label: const Text(
                 'Plan Oluştur',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+                    color: Colors.white, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _green,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                    borderRadius: BorderRadius.circular(14)),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _patientDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: _inputBoxDecoration(),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedPatientId,
-          hint: const Text(
-            'Bir hasta seçin',
-            style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-          ),
-          isExpanded: true,
-          items: _filteredPatients.map((p) {
-            return DropdownMenuItem<String>(
-              value: p['id'].toString(),
-              child: Text(p['name'].toString()),
-            );
-          }).toList(),
-          onChanged: (val) {
-            setState(() {
-              _selectedPatientId = val;
-            });
-          },
-        ),
       ),
     );
   }
@@ -532,7 +448,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
           items: ['Tek Sefer', 'Haftalık', 'Aylık']
               .map((r) => DropdownMenuItem(value: r, child: Text(r)))
               .toList(),
-          onChanged: (val) => setState(() => _repeat = val ?? 'Tek Sefer'),
+          onChanged: (val) =>
+              setState(() => _repeat = val ?? 'Tek Sefer'),
         ),
       ),
     );
@@ -608,7 +525,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
 
   Widget _requestCard(Map<String, dynamic> request) {
     final patientName = _getPatientName(request);
-    final talep = request['talep']?.toString() ?? 'Talep nedeni belirtilmedi.';
+    final talep =
+        request['talep']?.toString() ?? 'Talep nedeni belirtilmedi.';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -619,13 +537,9 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         children: [
           _cardHeader(patientName, 'Beklemede', Colors.orange),
           const SizedBox(height: 10),
-          Text(
-            talep,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-            ),
-          ),
+          Text(talep,
+              style: const TextStyle(
+                  color: Color(0xFF64748B), fontSize: 13)),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -633,14 +547,10 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                 child: ElevatedButton.icon(
                   onPressed: () => _approveRequest(request),
                   icon: const Icon(Icons.check, color: Colors.white),
-                  label: const Text(
-                    'Onayla',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  label: const Text('Onayla',
+                      style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _green,
-                    elevation: 0,
-                  ),
+                      backgroundColor: _green, elevation: 0),
                 ),
               ),
               const SizedBox(width: 10),
@@ -648,14 +558,10 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
                 child: ElevatedButton.icon(
                   onPressed: () => _rejectRequest(request),
                   icon: const Icon(Icons.close, color: Colors.white),
-                  label: const Text(
-                    'Reddet',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  label: const Text('Reddet',
+                      style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    elevation: 0,
-                  ),
+                      backgroundColor: Colors.red, elevation: 0),
                 ),
               ),
             ],
@@ -680,34 +586,27 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         children: [
           _cardHeader(patientName, durum, _green),
           const SizedBox(height: 10),
-          Text(
-            baslik,
-            style: const TextStyle(
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
+          Text(baslik,
+              style: const TextStyle(
+                  color: Color(0xFF1E293B),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
           const SizedBox(height: 8),
           Row(
             children: [
               const Icon(Icons.calendar_today,
                   size: 14, color: Color(0xFF94A3B8)),
               const SizedBox(width: 6),
-              Text(
-                start == null ? '-' : _formatDate(start),
-                style:
-                const TextStyle(color: Color(0xFF64748B), fontSize: 13),
-              ),
+              Text(start == null ? '-' : _formatDate(start),
+                  style: const TextStyle(
+                      color: Color(0xFF64748B), fontSize: 13)),
               const SizedBox(width: 14),
               const Icon(Icons.access_time,
                   size: 14, color: Color(0xFF94A3B8)),
               const SizedBox(width: 6),
-              Text(
-                start == null ? '-' : _formatTime(start),
-                style:
-                const TextStyle(color: Color(0xFF64748B), fontSize: 13),
-              ),
+              Text(start == null ? '-' : _formatTime(start),
+                  style: const TextStyle(
+                      color: Color(0xFF64748B), fontSize: 13)),
             ],
           ),
         ],
@@ -725,29 +624,24 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-              color: Color(0xFF1E293B),
-            ),
-          ),
+          child: Text(title,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Color(0xFF1E293B))),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding:
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: color.withOpacity(0.10),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(
-            status,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: Text(status,
+              style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -758,14 +652,11 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       children: [
         Icon(icon, color: _green, size: 18),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            color: _darkGreen,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(title,
+            style: const TextStyle(
+                color: _darkGreen,
+                fontSize: 15,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -775,23 +666,19 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       children: [
         Icon(icon, size: 14, color: const Color(0xFF94A3B8)),
         const SizedBox(width: 6),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        Text(text,
+            style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w600)),
       ],
     );
   }
 
-  Widget _pickerBox({
-    required IconData icon,
-    required String text,
-    required bool selected,
-  }) {
+  Widget _pickerBox(
+      {required IconData icon,
+        required String text,
+        required bool selected}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: _inputBoxDecoration(),
@@ -804,10 +691,12 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
               text,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color:
-                selected ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
+                color: selected
+                    ? const Color(0xFF1E293B)
+                    : const Color(0xFF94A3B8),
                 fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                fontWeight:
+                selected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ),
@@ -822,10 +711,8 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       padding: const EdgeInsets.all(28),
       decoration: _cardDecoration(),
       child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(color: Color(0xFF94A3B8)),
-        ),
+        child: Text(text,
+            style: const TextStyle(color: Color(0xFF94A3B8))),
       ),
     );
   }
@@ -833,44 +720,25 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
   String _getPatientName(Map<String, dynamic> data) {
     final hasta = data['hastalar'];
     final user = hasta is Map ? hasta['kullanicilar'] : null;
-
     if (user is Map) {
       final ad = user['ad']?.toString() ?? '';
       final soyad = user['soyad']?.toString() ?? '';
       final fullName = '$ad $soyad'.trim();
-
       if (fullName.isNotEmpty) return fullName;
     }
-
     return 'Hasta';
   }
 
   String _formatDate(String raw) {
     final d = DateTime.tryParse(raw);
     if (d == null) return '-';
-
     return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
   }
 
   String _formatTime(String raw) {
     final d = DateTime.tryParse(raw);
     if (d == null) return '-';
-
     return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-      filled: true,
-      fillColor: const Color(0xFFEFF6FF),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    );
   }
 
   BoxDecoration _inputBoxDecoration() {
@@ -887,9 +755,7 @@ class _ClinicianAgendaState extends State<ClinicianAgenda> {
       border: Border.all(color: const Color(0xFFE2E8F0)),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.02),
-          blurRadius: 10,
-        ),
+            color: Colors.black.withOpacity(0.02), blurRadius: 10),
       ],
     );
   }

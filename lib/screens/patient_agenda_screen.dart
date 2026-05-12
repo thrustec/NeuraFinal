@@ -31,6 +31,8 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
   DateTime _selectedDay = DateTime.now();
 
   List<Map<String, dynamic>> _requests = [];
+  List<Map<String, dynamic>> _exercises = [];
+  List<Map<String, dynamic>> _approvedMeetings = [];
 
   static const Color kPrimary = Color(0xFF2563EB);
   static const Color kBackground = Color(0xFFF8F9FC);
@@ -103,6 +105,8 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
       await Future.wait([
         _loadAssignedClinician(),
         _loadPatientRequests(),
+        _loadPatientExercises(),
+        _loadApprovedMeetings(),
       ]);
 
       if (mounted) setState(() => _isLoading = false);
@@ -167,6 +171,40 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
       _showMessage('Talepler yüklenemedi: $e');
     }
   }
+  Future<void> _loadPatientExercises() async {
+    try {
+      final data = await SupabaseService.client
+          .schema('neura')
+          .from('egzersizAtalari') // tablo adı değişebilir
+          .select('hastaId,egzersizAdi,notlar,atamaTarihi')
+          .eq('hastaId', _realHastaId!)
+          .order('atamaTarihi', ascending: false); // kolon adı değişebilir
+
+      if (!mounted) return;
+
+      setState(() {
+        _exercises = List<Map<String, dynamic>>.from(data);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Egzersizler yüklenemedi: $e');
+    }
+  }
+  Future<void> _loadApprovedMeetings() async {
+    try {
+      final meetings =
+      await _meetingService.getMeetingsByPatient(_realHastaId!);
+
+      if (!mounted) return;
+
+      setState(() {
+        _approvedMeetings = meetings;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Onaylanan görüşmeler yüklenemedi: $e');
+    }
+  }
 
   Future<void> _sendRequest() async {
     if (_realHastaId == null) {
@@ -224,6 +262,62 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
           created.day == day.day;
     }).toList();
   }
+  List<Map<String, dynamic>> _exercisesForDay(DateTime day) {
+    return _exercises.where((exercise) {
+      final created = DateTime.tryParse(
+        exercise['atamaTarihi']?.toString() ?? '',
+      );
+
+      if (created == null) return false;
+
+      return created.year == day.year &&
+          created.month == day.month &&
+          created.day == day.day;
+    }).toList();
+  }
+  List<Map<String, dynamic>> _approvedMeetingsForDay(DateTime day) {
+    return _approvedMeetings.where((meeting) {
+      final created = DateTime.tryParse(
+        meeting['baslangicZamani']?.toString() ?? '',
+      );
+
+      if (created == null) return false;
+
+      return created.year == day.year &&
+          created.month == day.month &&
+          created.day == day.day;
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _eventsForDay(DateTime day) {
+    final requestEvents = _requestsForDay(day).map((item) {
+      return {
+        ...item,
+        'eventType': 'meeting_request',
+      };
+    }).toList();
+
+    final exerciseEvents = _exercisesForDay(day).map((item) {
+      return {
+        ...item,
+        'eventType': 'exercise',
+      };
+    }).toList();
+
+    final approvedMeetingEvents =
+    _approvedMeetingsForDay(day).map((item) {
+      return {
+        ...item,
+        'eventType': 'approved_meeting',
+      };
+    }).toList();
+
+    return [
+      ...requestEvents,
+      ...exerciseEvents,
+      ...approvedMeetingEvents,
+    ];
+  }
 
   void _showMessage(String message, {bool success = false}) {
     if (!mounted) return;
@@ -267,7 +361,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentRequests = _requestsForDay(_selectedDay);
+    final currentEvents = _eventsForDay(_selectedDay);
 
     return Scaffold(
       backgroundColor: kBackground,
@@ -312,15 +406,15 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
                     const SizedBox(height: 22),
                     _sectionTitle(
                       Icons.list_alt_outlined,
-                      'Seçili Gün Taleplerim',
+                      'Seçili Gün Etkinlikleri',
                     ),
                     const SizedBox(height: 12),
-                    if (currentRequests.isEmpty)
+                    if (currentEvents.isEmpty)
                       _emptyCard(
                         'Bu gün için gönderilmiş telerehab talebiniz yok.',
                       )
                     else
-                      ...currentRequests.map(_requestCard),
+                      ...currentEvents.map(_eventCard),
                   ],
                 ),
               ),
@@ -353,7 +447,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Telerehab Talebi Oluştur',
+            'Hasta Ajandası',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -383,7 +477,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
         lastDay: DateTime.utc(2030, 12, 31),
         focusedDay: _focusedDay,
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        eventLoader: _requestsForDay,
+        eventLoader: _eventsForDay,
         startingDayOfWeek: StartingDayOfWeek.monday,
         calendarFormat: CalendarFormat.month,
         availableCalendarFormats: const {
@@ -419,6 +513,62 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
           ),
           weekendTextStyle: const TextStyle(color: kDanger),
           outsideTextStyle: const TextStyle(color: kTextHint),
+        ),
+        calendarBuilders: CalendarBuilders<Map<String, dynamic>>(
+          markerBuilder: (context, day, events) {
+            if (events.isEmpty) return null;
+
+            final hasMeetingRequest =
+            events.any((e) => e['eventType'] == 'meeting_request');
+
+            final hasApprovedMeeting =
+            events.any((e) => e['eventType'] == 'approved_meeting');
+
+            final hasExercise =
+            events.any((e) => e['eventType'] == 'exercise');
+
+
+            return Positioned(
+              bottom: 4,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasMeetingRequest)
+                    Container(
+                      width: 7,
+                      height: 7,
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: const BoxDecoration(
+                        color: kWarning,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+
+                  if (hasApprovedMeeting)
+                    Container(
+                      width: 7,
+                      height: 7,
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: const BoxDecoration(
+                        color: kSuccess,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+
+                  if (hasExercise)
+                    Container(
+                      width: 7,
+                      height: 7,
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF8B5CF6),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -495,6 +645,19 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
       ),
     );
   }
+  Widget _eventCard(Map<String, dynamic> event) {
+    final type = event['eventType'];
+
+    if (type == 'exercise') {
+      return _exerciseCard(event);
+    }
+
+    if (type == 'approved_meeting') {
+      return _approvedMeetingCard(event);
+    }
+
+    return _requestCard(event);
+  }
 
   Widget _requestCard(Map<String, dynamic> request) {
     final status = request['durum']?.toString() ?? 'Beklemede';
@@ -555,6 +718,182 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
               Text(
                 _formatTime(request['olusturmaTarihi']?.toString() ?? ''),
                 style: const TextStyle(color: kTextGrey, fontSize: 13),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _exerciseCard(Map<String, dynamic> exercise) {
+    final title = exercise['egzersizAdi']?.toString() ??
+        exercise['baslik']?.toString() ??
+        'Egzersiz Ataması';
+
+    final note = exercise['notlar']?.toString() ??
+        exercise['aciklama']?.toString() ??
+        'Egzersiz programı atanmış.';
+
+    final rawDate = exercise['atamaTarihi']?.toString() ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 17,
+                backgroundColor:
+                const Color(0xFF8B5CF6).withOpacity(0.12),
+                child: const Icon(
+                  Icons.fitness_center_outlined,
+                  color: Color(0xFF8B5CF6),
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: kTextDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              _badge('EGZERSİZ', const Color(0xFF8B5CF6)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            note,
+            style: const TextStyle(
+              color: kTextGrey,
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: kTextHint,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatDate(rawDate),
+                style: const TextStyle(
+                  color: kTextGrey,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Icon(
+                Icons.access_time_outlined,
+                size: 14,
+                color: kTextHint,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatTime(rawDate),
+                style: const TextStyle(
+                  color: kTextGrey,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _approvedMeetingCard(Map<String, dynamic> meeting) {
+    final title =
+        meeting['baslik']?.toString() ?? 'Onaylanmış Görüşme';
+
+    final note =
+        meeting['notlar']?.toString() ?? 'Görüşme planlandı.';
+
+    final rawDate =
+        meeting['baslangicZamani']?.toString() ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 17,
+                backgroundColor: kSuccess.withOpacity(0.12),
+                child: const Icon(
+                  Icons.video_call_outlined,
+                  color: kSuccess,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: kTextDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              _badge('ONAYLANDI', kSuccess),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            note,
+            style: const TextStyle(
+              color: kTextGrey,
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: kTextHint,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatDate(rawDate),
+                style: const TextStyle(
+                  color: kTextGrey,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Icon(
+                Icons.access_time_outlined,
+                size: 14,
+                color: kTextHint,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatTime(rawDate),
+                style: const TextStyle(
+                  color: kTextGrey,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),

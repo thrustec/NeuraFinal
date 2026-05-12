@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart';
-import '../models/exercise_video_model.dart';
+import 'package:flutter/material.dart';import '../models/exercise_video_model.dart';
 import '../services/exercise_video_service.dart';
 import 'exercise_video_detail_screen.dart';
 import 'video_upload_screen.dart';
@@ -78,6 +77,23 @@ class _ExerciseVideoLibraryScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: Color(0xFF1E293B), size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Egzersiz Kütüphanesi',
+            style: TextStyle(
+                color: Color(0xFF1E293B),
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(color: const Color(0xFFE2E8F0), height: 1)),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final yuklendi = await Navigator.push<bool>(
@@ -90,7 +106,7 @@ class _ExerciseVideoLibraryScreenState
         icon: const Icon(Icons.upload, color: Colors.white),
         label: const Text('Video Yükle',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),// AppBar ve BottomNavigationBar silindi, MainScreen bunları zaten veriyor.
+      ),
       body: Column(
         children: [
           _ustPanel(),
@@ -132,7 +148,7 @@ class _ExerciseVideoLibraryScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Egzersiz Kütüphanesi',
+                  Text('Egzersiz Listesi',
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -500,22 +516,22 @@ class _VideoKarti extends StatelessWidget {
 
   Color _kategoriRenk(String kisaAd) {
     switch (kisaAd) {
-      case 'Denge':     return const Color(0xFF0891B2);
-      case 'Guc':       return const Color(0xFFDC2626);
+      case 'Denge':     return const Color(0xFF0D9488);
+      case 'Guc':       return const Color(0xFF2563EB);
       case 'Esneklik':  return const Color(0xFF9333EA);
-      case 'Solunum':   return const Color(0xFF0F766E);
-      case 'Kognitif':  return const Color(0xFF2563EB);
-      default:          return const Color(0xFF64748B);
+      case 'Solunum':   return const Color(0xFFEA580C);
+      case 'Kognitif':  return const Color(0xFFDB2777);
+      default:          return const Color(0xFF475569);
     }
   }
 
   Color _kategoriArkaplan(String kisaAd) {
     switch (kisaAd) {
-      case 'Denge':     return const Color(0xFFECFEFF);
-      case 'Guc':       return const Color(0xFFFFF1F2);
+      case 'Denge':     return const Color(0xFFF0FDFA);
+      case 'Guc':       return const Color(0xFFEFF6FF);
       case 'Esneklik':  return const Color(0xFFFAF5FF);
-      case 'Solunum':   return const Color(0xFFF0FDFA);
-      case 'Kognitif':  return const Color(0xFFEFF6FF);
+      case 'Solunum':   return const Color(0xFFFFF7ED);
+      case 'Kognitif':  return const Color(0xFFFDF2F8);
       default:          return const Color(0xFFF8FAFC);
     }
   }
