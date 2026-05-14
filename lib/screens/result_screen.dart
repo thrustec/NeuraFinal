@@ -10,6 +10,10 @@ import '../models/patient.dart';
 import '../models/comparison_result.dart';
 import '../models/comparison_report.dart';
 import '../services/report_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import 'package:flutter/foundation.dart';
+import 'package:universal_html/html.dart' as html;
 
 
 
@@ -497,25 +501,69 @@ class ResultsScreen extends StatelessWidget {
         ),
       );
 
-      final directory = await getApplicationDocumentsDirectory();
+      final pdfBytes = await pdf.save();
+
       final fileName =
           'comparison_report_${patient.hastaId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final file = File('${directory.path}/$fileName');
 
-      await file.writeAsBytes(await pdf.save());
+      String? savedPath;
+
+      if (kIsWeb) {
+        final blob = html.Blob([pdfBytes], 'application/pdf');
+
+        final url = html.Url.createObjectUrlFromBlob(blob);
+
+        html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..click();
+
+        html.Url.revokeObjectUrl(url);
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+
+        final file = File('${directory.path}/$fileName');
+
+        await file.writeAsBytes(pdfBytes);
+
+        savedPath = file.path;
+      }
+      if (!context.mounted) return;
+
+      final kullaniciId = int.tryParse(
+        context.read<AuthProvider>().user?.id ?? '',
+      );
+
+      if (kullaniciId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Kullanıcı bilgisi bulunamadı.")),
+        );
+        return;
+      }
+
+      final klinisyenId =
+      await ReportService.getClinicianIdByUserId(kullaniciId);
+      if (!context.mounted) return;
+
+      if (klinisyenId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Klinisyen bilgisi bulunamadı.")),
+        );
+        return;
+      }
 
       final report = ComparisonReport(
         id: DateTime.now().millisecondsSinceEpoch,
+        klinisyenId: klinisyenId,
         hastaId: patient.hastaId,
         hastaAdi: patient.tamAd,
         baslangicTarihi: startDate.tarih,
         bitisTarihi: endDate.tarih,
         olusturmaTarihi: DateTime.now(),
         raporBasligi: "${patient.tamAd} Karşılaştırma Raporu",
-        filePath: file.path,
+        filePath: savedPath,
       );
 
-      ReportService.addReport(report);
+      await ReportService.addReport(report);
 
       if (!context.mounted) return;
 
@@ -536,7 +584,30 @@ class ResultsScreen extends StatelessWidget {
   }
 
   Future<void> _shareLatestPdfReport(BuildContext context) async {
-    final reports = ReportService.getReports();
+    final kullaniciId = int.tryParse(
+      context.read<AuthProvider>().user?.id ?? '',
+    );
+
+    if (kullaniciId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Kullanıcı bilgisi bulunamadı.")),
+      );
+      return;
+    }
+
+    final klinisyenId =
+    await ReportService.getClinicianIdByUserId(kullaniciId);
+    if (!context.mounted) return;
+
+    if (klinisyenId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Klinisyen bilgisi bulunamadı.")),
+      );
+      return;
+    }
+
+    final reports = await ReportService.getReportsByClinician(klinisyenId);
+    if (!context.mounted) return;
 
     if (reports.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

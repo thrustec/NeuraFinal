@@ -174,7 +174,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           color: isUnread ? const Color(0xFFEFF6FF) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isUnread ? kPrimary.withOpacity(0.25) : kDivider,
+            color: isUnread ? kPrimary.withValues(alpha:0.25) : kDivider,
           ),
         ),
         child: Row(
@@ -183,7 +183,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor:
-              isUnread ? kPrimary.withOpacity(0.12) : const Color(0xFFF1F5F9),
+              isUnread ? kPrimary.withValues(alpha:0.12) : const Color(0xFFF1F5F9),
               child: Icon(
                 Icons.notifications_outlined,
                 color: isUnread ? kPrimary : kTextGrey,
