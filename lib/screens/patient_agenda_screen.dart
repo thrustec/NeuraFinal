@@ -437,7 +437,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: kPrimary.withOpacity(0.3),
+            color: kPrimary.withValues(alpha:0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -459,7 +459,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
             widget.patient.tamAd,
             style: TextStyle(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.82),
+              color: Colors.white.withValues(alpha:0.82),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -500,7 +500,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
         ),
         calendarStyle: CalendarStyle(
           todayDecoration: BoxDecoration(
-            color: kPrimary.withOpacity(0.25),
+            color: kPrimary.withValues(alpha:0.25),
             shape: BoxShape.circle,
           ),
           selectedDecoration: const BoxDecoration(
@@ -675,7 +675,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
             children: [
               CircleAvatar(
                 radius: 17,
-                backgroundColor: color.withOpacity(0.12),
+                backgroundColor: color.withValues(alpha:0.12),
                 child: Icon(Icons.video_call_outlined, color: color, size: 17),
               ),
               const SizedBox(width: 10),
@@ -748,7 +748,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
               CircleAvatar(
                 radius: 17,
                 backgroundColor:
-                const Color(0xFF8B5CF6).withOpacity(0.12),
+                const Color(0xFF8B5CF6).withValues(alpha:0.12),
                 child: const Icon(
                   Icons.fitness_center_outlined,
                   color: Color(0xFF8B5CF6),
@@ -835,7 +835,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
             children: [
               CircleAvatar(
                 radius: 17,
-                backgroundColor: kSuccess.withOpacity(0.12),
+                backgroundColor: kSuccess.withValues(alpha:0.12),
                 child: const Icon(
                   Icons.video_call_outlined,
                   color: kSuccess,
@@ -985,7 +985,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withValues(alpha:0.10),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -1007,7 +1007,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
       border: Border.all(color: kDivider),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.02),
+          color: Colors.black.withValues(alpha:0.02),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),

@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import '../services/report_service.dart';
-import '../models/comparison_report.dart';
+import 'package:provider/provider.dart';
 
-// NeuraApp Design System — Klinisyen Renk Paleti
+import '../models/comparison_report.dart';
+import '../providers/auth_provider.dart';
+import '../services/report_service.dart';
+
 const Color kBackground = Color(0xFFF8F9FC);
 const Color kPrimary = Color(0xFF0F766E);
 const Color kTextDark = Color(0xFF1E293B);
@@ -12,18 +14,70 @@ const Color kTextGrey = Color(0xFF64748B);
 const Color kTextHint = Color(0xFF94A3B8);
 const Color kInputFill = Color(0xFFF1F5F9);
 
-class ReportsScreen extends StatelessWidget {
+class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
+  @override
+  State<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends State<ReportsScreen> {
+  bool _isLoading = true;
+  String? _error;
+  List<ComparisonReport> _reports = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReports();
+  }
+
+  Future<void> _loadReports() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final userId = int.tryParse(
+        context.read<AuthProvider>().user?.id ?? '',
+      );
+
+      if (userId == null) {
+        throw Exception("Kullanıcı bilgisi bulunamadı.");
+      }
+
+      final klinisyenId = await ReportService.getClinicianIdByUserId(userId);
+
+      if (klinisyenId == null) {
+        throw Exception("Klinisyen bilgisi bulunamadı.");
+      }
+
+      final reports = await ReportService.getReportsByClinician(klinisyenId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _reports = reports;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _downloadReport(
-    BuildContext context,
-    ComparisonReport report,
-  ) async {
+      BuildContext context,
+      ComparisonReport report,
+      ) async {
     if (report.filePath == null || report.filePath!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Bu rapor için PDF dosyası bulunamadı."),
-        ),
+        const SnackBar(content: Text("Bu rapor için PDF dosyası bulunamadı.")),
       );
       return;
     }
@@ -33,9 +87,7 @@ class ReportsScreen extends StatelessWidget {
     if (!await sourceFile.exists()) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("PDF dosyası cihazda bulunamadı."),
-        ),
+        const SnackBar(content: Text("PDF dosyası cihazda bulunamadı.")),
       );
       return;
     }
@@ -57,58 +109,73 @@ class ReportsScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("PDF indirildi: ${targetFile.path}"),
-      ),
+      SnackBar(content: Text("PDF indirildi: ${targetFile.path}")),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<ComparisonReport> reports =
-    ReportService.getReports();
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: kBackground,
       body: Column(
         children: [
           _buildHeader(),
-
-          Expanded(
-            child: reports.isEmpty
-                ? const Center(
-              child: Text(
-                "Henüz oluşturulmuş rapor yok.",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-            )
-                : ListView.builder(
-              itemCount: reports.length,
-              itemBuilder: (context, index) {
-                final report = reports[index];
-
-                return _buildReportCard(context, report);
-              },
-            ),
-          ),
+          Expanded(child: _buildBody()),
         ],
       ),
     );
   }
 
-  // HEADER
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: kPrimary),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            "Raporlar yüklenemedi:\n$_error",
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      );
+    }
+
+    if (_reports.isEmpty) {
+      return const Center(
+        child: Text(
+          "Henüz oluşturulmuş rapor yok.",
+          style: TextStyle(fontSize: 14, color: Colors.grey),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadReports,
+      color: kPrimary,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 20),
+        itemCount: _reports.length,
+        itemBuilder: (context, index) {
+          final report = _reports[index];
+          return _buildReportCard(context, report);
+        },
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom:
-          BorderSide(color: Color(0xFFE2E8F0)),
+          bottom: BorderSide(color: Color(0xFFE2E8F0)),
         ),
       ),
       child: Row(
@@ -118,9 +185,8 @@ class ReportsScreen extends StatelessWidget {
             height: 36,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: kPrimary.withValues(alpha:0.1),
-              borderRadius:
-              BorderRadius.circular(10),
+              color: kPrimary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.bar_chart,
@@ -138,27 +204,29 @@ class ReportsScreen extends StatelessWidget {
               ),
             ),
           ),
+          IconButton(
+            onPressed: _loadReports,
+            icon: const Icon(
+              Icons.refresh,
+              color: kPrimary,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // RAPOR KARTI
   Widget _buildReportCard(
-    BuildContext context,
-    ComparisonReport report,
-  ) {
+      BuildContext context,
+      ComparisonReport report,
+      ) {
     return Container(
-      margin: const EdgeInsets.symmetric(
-          horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-        BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFE2E8F0),
-        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: [
@@ -166,9 +234,8 @@ class ReportsScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha:0.1),
-              borderRadius:
-              BorderRadius.circular(10),
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.picture_as_pdf,
@@ -176,26 +243,20 @@ class ReportsScreen extends StatelessWidget {
               size: 20,
             ),
           ),
-
           const SizedBox(width: 12),
-
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   report.raporBasligi,
                   style: const TextStyle(
-                    fontWeight:
-                    FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                     fontSize: 14,
                     color: kTextDark,
                   ),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   "${report.baslangicTarihi} - ${report.bitisTarihi}",
                   style: const TextStyle(
@@ -206,28 +267,23 @@ class ReportsScreen extends StatelessWidget {
               ],
             ),
           ),
-
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding:
-                const EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                  kPrimary.withValues(alpha:0.1),
-                  borderRadius:
-                  BorderRadius.circular(8),
+                  color: kPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   report.durum,
                   style: const TextStyle(
                     fontSize: 11,
-                    fontWeight:
-                    FontWeight.w600,
+                    fontWeight: FontWeight.w600,
                     color: kPrimary,
                   ),
                 ),
