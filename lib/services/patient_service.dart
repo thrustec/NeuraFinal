@@ -39,12 +39,59 @@ class PatientService {
   }) async {
     try {
       final basicPatients = await _fetchPatientsBasic(klinisyenId: klinisyenId);
-      return _filterPatients(basicPatients, aramaMetni);
+      final patients = klinisyenId == null
+          ? basicPatients
+          : await _appendLegacyPatients(basicPatients, klinisyenId);
+      return _filterPatients(patients, aramaMetni);
     } catch (e) {
       debugPrint('PatientService.getHastalar basic fetch failed: $e');
       final detailedPatients = await _fetchPatientsDetailed(klinisyenId: klinisyenId);
-      return _filterPatients(detailedPatients, aramaMetni);
+      final patients = klinisyenId == null
+          ? detailedPatients
+          : await _appendLegacyPatients(detailedPatients, klinisyenId);
+      return _filterPatients(patients, aramaMetni);
     }
+  }
+
+  static Future<bool> isPatientOwnedByClinician(
+    int hastaId,
+    int klinisyenId,
+  ) async {
+    if (hastaId <= 0 || klinisyenId <= 0) return false;
+
+    final directUrl = '$SUPABASE_URL/hastalar'
+        '?select=hastaId'
+        '&hastaId=eq.$hastaId'
+        '&klinisyenId=eq.$klinisyenId'
+        '&limit=1';
+    final directResponse = await http
+        .get(Uri.parse(directUrl), headers: _headers())
+        .timeout(const Duration(seconds: 5));
+    if (directResponse.statusCode == 200) {
+      final List<dynamic> direct = json.decode(directResponse.body);
+      if (direct.isNotEmpty) return true;
+    } else {
+      throw Exception(
+        'Hasta sahipliği kontrol edilemedi. Kod: ${directResponse.statusCode}',
+      );
+    }
+
+    final legacyUrl = '$SUPABASE_URL/degerlendirmeler'
+        '?select=hastaId'
+        '&hastaId=eq.$hastaId'
+        '&klinisyenId=eq.$klinisyenId'
+        '&limit=1';
+    final legacyResponse = await http
+        .get(Uri.parse(legacyUrl), headers: _headers())
+        .timeout(const Duration(seconds: 5));
+    if (legacyResponse.statusCode == 200) {
+      final List<dynamic> legacy = json.decode(legacyResponse.body);
+      return legacy.isNotEmpty;
+    }
+
+    throw Exception(
+      'Eski hasta sahipliği kontrol edilemedi. Kod: ${legacyResponse.statusCode}',
+    );
   }
 
   static Future<List<Patient>> _fetchPatientsDetailed({int? klinisyenId}) async {
@@ -108,6 +155,79 @@ class PatientService {
     );
   }
 
+  static Future<List<Patient>> _appendLegacyPatients(
+    List<Patient> patients,
+    int klinisyenId,
+  ) async {
+    final legacyIds = await _fetchLegacyPatientIdsForClinician(klinisyenId);
+    if (legacyIds.isEmpty) return patients;
+
+    final existingIds = patients.map((patient) => patient.hastaId).toSet();
+    final missingIds = legacyIds.where((id) => !existingIds.contains(id)).toList();
+    if (missingIds.isEmpty) return patients;
+
+    final legacyPatients = await _fetchPatientsBasicByIds(missingIds);
+    return [...patients, ...legacyPatients]
+      ..sort((a, b) => a.hastaId.compareTo(b.hastaId));
+  }
+
+  static Future<List<int>> _fetchLegacyPatientIdsForClinician(
+    int klinisyenId,
+  ) async {
+    final url = '$SUPABASE_URL/degerlendirmeler'
+        '?select=hastaId'
+        '&klinisyenId=eq.$klinisyenId';
+
+    final response = await http
+        .get(Uri.parse(url), headers: _headers())
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> liste = json.decode(response.body);
+      return liste
+          .map((j) => (j as Map<String, dynamic>)['hastaId'])
+          .whereType<num>()
+          .map((id) => id.toInt())
+          .toSet()
+          .toList()
+        ..sort();
+    }
+
+    throw Exception(
+      'Eski klinisyen-hasta eşleşmeleri yüklenemedi. Kod: ${response.statusCode}',
+    );
+  }
+
+  static Future<List<Patient>> _fetchPatientsBasicByIds(List<int> hastaIds) async {
+    if (hastaIds.isEmpty) return [];
+
+    final select = Uri.encodeComponent(
+      'hastaId,kullaniciId,notlar,dogumTarihi,telefonNo,boy,kilo,'
+      'kullanicilar(ad,soyad,eposta)',
+    );
+    final ids = hastaIds.join(',');
+    final url = '$SUPABASE_URL/hastalar'
+        '?select=$select'
+        '&hastaId=in.($ids)'
+        '&order=hastaId.asc';
+
+    final response = await http
+        .get(Uri.parse(url), headers: _headers())
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> liste = json.decode(response.body);
+      return liste.map((j) {
+        final map = j as Map<String, dynamic>;
+        return Patient.fromJson(_flattenHasta(map));
+      }).toList();
+    }
+
+    throw Exception(
+      'Eski hastalar yüklenemedi. Kod: ${response.statusCode}',
+    );
+  }
+
   static List<Patient> _filterPatients(List<Patient> patients, String? aramaMetni) {
     final q = aramaMetni?.trim().toLowerCase() ?? '';
     if (q.isEmpty) return patients;
@@ -121,8 +241,13 @@ class PatientService {
   }
 
   /// Tek hasta detayı
-  static Future<Patient> getHastaById(int hastaId) async {
+  static Future<Patient> getHastaById(int hastaId, {int? klinisyenId}) async {
     try {
+      if (klinisyenId != null &&
+          !await isPatientOwnedByClinician(hastaId, klinisyenId)) {
+        throw Exception('Hasta bu klinisyene atanmış değil.');
+      }
+
       final select = Uri.encodeComponent(
         '*, '
         'kullanicilar(ad,soyad,eposta), '
@@ -130,9 +255,12 @@ class PatientService {
         'medeniDurumlar(medeniDurumAdi), '
         'egitimDurumlari(egitimDurumAdi), '
         'meslekler(meslekAdi), '
-        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
+        'degerlendirmeler(klinisyenId,hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
       );
-      final url = '$SUPABASE_URL/hastalar?select=$select&hastaId=eq.$hastaId';
+      var url = '$SUPABASE_URL/hastalar?select=$select&hastaId=eq.$hastaId';
+      if (klinisyenId != null) {
+        url += '&degerlendirmeler.klinisyenId=eq.$klinisyenId';
+      }
 
       final response = await http
           .get(Uri.parse(url), headers: _headers())
@@ -145,7 +273,7 @@ class PatientService {
             _flattenHasta(liste.first as Map<String, dynamic>));
       }
 
-      final basicList = await _fetchPatientsBasic();
+      final basicList = await _fetchPatientsBasic(klinisyenId: klinisyenId);
       final matches = basicList.where((p) => p.hastaId == hastaId).toList();
       if (matches.isNotEmpty) return matches.first;
 

@@ -370,7 +370,13 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             arkaplan: kPrimary.withOpacity(0.05),
             onTap: () {
               final provider = context.read<EvaluationProvider>();
+              final doctorId =
+                  context.read<AuthProvider>().user?.klinisyenId ?? 0;
+              if (doctorId > 0) {
+                provider.setDoctorId(doctorId);
+              }
               provider.clearSelection();
+              provider.setFilterHastaId(_hasta.hastaId);
 
               Navigator.push(
                 context,

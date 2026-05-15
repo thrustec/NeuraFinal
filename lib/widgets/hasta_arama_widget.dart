@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/patient_service.dart';
 
 class HastaAramaSonucu {
   final int hastaId;
@@ -114,44 +115,50 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
     setState(() { _loading = true; _hata = null; });
 
     try {
-      var sorgu = Supabase.instance.client
-          .schema('neura')
-          .from('v_hasta_listesi')
-          .select('hastaId, ad, soyad, tamAd, sonTani, sonHastalikId, klinisyenId');
+      final klinisyenId = int.tryParse(widget.klinisyenId?.trim() ?? '');
+      if (klinisyenId == null || klinisyenId <= 0) {
+        setState(() {
+          _sonuclar = [];
+          _loading = false;
+          _searched = true;
+        });
+        return;
+      }
+      var patients = await PatientService.getHastalar(
+        klinisyenId: klinisyenId,
+      );
 
-      // Klinisyene özel filtre
-      if (widget.klinisyenId != null) {
-        sorgu = sorgu.eq('klinisyenId',
-            int.tryParse(widget.klinisyenId!) ?? 0);
+      final idText = _idCtrl.text.trim();
+      final nameText = _adCtrl.text.trim().toLowerCase();
+
+      if (idText.isNotEmpty) {
+        final id = int.tryParse(idText);
+        patients = id == null
+            ? []
+            : patients.where((patient) => patient.hastaId == id).toList();
       }
 
-      // ID filtresi
-      if (_idCtrl.text.isNotEmpty) {
-        final id = int.tryParse(_idCtrl.text.trim());
-        if (id != null) sorgu = sorgu.eq('hastaId', id);
+      if (nameText.isNotEmpty) {
+        patients = patients.where((patient) {
+          return patient.tamAd.toLowerCase().contains(nameText) ||
+              patient.ad.toLowerCase().contains(nameText) ||
+              patient.soyad.toLowerCase().contains(nameText);
+        }).toList();
       }
 
-      // Ad/soyad filtresi
-      if (_adCtrl.text.isNotEmpty) {
-        final q = _adCtrl.text.trim();
-        sorgu = sorgu.or('ad.ilike.%$q%,soyad.ilike.%$q%');
-      }
-
-      // FIX 1: hastalikId ile kesin eşleşme (text ilike değil)
       if (_seciliTani != null) {
-        sorgu = sorgu.eq('sonHastalikId', _seciliTani!.hastalikId);
+        final selectedDiagnosis = _seciliTani!.hastalikAdi.toLowerCase();
+        patients = patients.where((patient) {
+          return (patient.hastalikAdi ?? '').toLowerCase() == selectedDiagnosis;
+        }).toList();
       }
 
-      final data = await sorgu
-          .order('ad', ascending: true)
-          .limit(20);
-
-      final liste = (data as List).map((row) {
+      final liste = patients.take(20).map((patient) {
         return HastaAramaSonucu(
-          hastaId: row['hastaId'] ?? 0,
-          ad:      row['ad'] ?? '',
-          soyad:   row['soyad'] ?? '',
-          tani:    row['sonTani'],
+          hastaId: patient.hastaId,
+          ad: patient.ad,
+          soyad: patient.soyad,
+          tani: patient.hastalikAdi,
         );
       }).toList();
 
@@ -254,6 +261,26 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
                   ),
                 ),
               ]),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: _loading ? null : _ara,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.search, size: 18),
+                  label: const Text(
+                    'Ara',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
 
               // FIX 2: Tanı Dropdown — beyaz arka plan, açık tema
@@ -474,6 +501,8 @@ class _HastaAramaWidgetState extends State<HastaAramaWidget> {
         TextField(
           controller: ctrl,
           keyboardType: klavye,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _ara(),
           style: const TextStyle(fontSize: 14, color: kTextDark),
           decoration: InputDecoration(
             hintText: hint,

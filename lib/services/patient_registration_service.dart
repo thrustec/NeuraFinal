@@ -32,6 +32,7 @@ class PatientService {
       // 2) hastalar
       createdPatient = await _supabase.schema('neura').from('hastalar').insert({
         'kullaniciId': kullaniciId,
+        'klinisyenId': klinisyenId,
         'cinsiyetId': formData.genderId,
         'medeniDurumId': formData.maritalStatusId,
         'egitimDurumId': formData.educationId,

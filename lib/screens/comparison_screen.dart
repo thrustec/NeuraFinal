@@ -61,8 +61,12 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
       _isLoadingEvaluations = true;
     });
     try {
+      final clinicianId = context.read<AuthProvider>().user?.klinisyenId;
       final evaluations =
-      await _evaluationService.getEvaluationsForPatient(patient.hastaId);
+      await _evaluationService.getEvaluationsForPatient(
+        patient.hastaId,
+        klinisyenId: clinicianId,
+      );
       if (!mounted) return;
       setState(() {
         _patientEvaluations = evaluations;
@@ -281,7 +285,8 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
           if (_selectedPatient == null) ...[
             const SizedBox(height: 16),
             HastaAramaWidget(
-              klinisyenId: context.read<AuthProvider>().user?.klinisyenId?.toString(),
+              klinisyenId:
+                  context.watch<AuthProvider>().user?.klinisyenId?.toString(),
               primaryColor: kPrimary,
               onHastaSecildi: _selectHastaFromWidget,
             ),

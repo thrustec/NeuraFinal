@@ -200,15 +200,21 @@ class EvaluationService {
   // ---------------------------------------------------------------------------
   // Bir hastanın değerlendirmelerini getir
   // ---------------------------------------------------------------------------
-  Future<List<EvaluationDate>> getEvaluationsForPatient(int hastaId) async {
+  Future<List<EvaluationDate>> getEvaluationsForPatient(
+    int hastaId, {
+    int? klinisyenId,
+  }) async {
     try {
-      final path = '${ApiConstants.degerlendirmeler}'
+      var path = '${ApiConstants.degerlendirmeler}'
           '?select=degerlendirmeId,hastaId,klinisyenId,degerlendirmeTarihi,'
           'notlar,hikaye,baslangicTarihi,kullanilanIlaclar,sporAliskanligi,'
           'yardimciCihaz,bakiciKisi,klinisyenNotlari,hastalikId,'
           'hastaliklar(hastalikAdi)'
-          '&hastaId=eq.$hastaId'
-          '&order=degerlendirmeTarihi.desc';
+          '&hastaId=eq.$hastaId';
+      if (klinisyenId != null && klinisyenId > 0) {
+        path += '&klinisyenId=eq.$klinisyenId';
+      }
+      path += '&order=degerlendirmeTarihi.desc';
 
       final data = await _client.get(path);
 
@@ -635,13 +641,16 @@ class EvaluationService {
     }
   }
 
-  Future<List<Evaluation>> getByPatient(int hastaId) async {
+  Future<List<Evaluation>> getByPatient(int hastaId, {int? klinisyenId}) async {
     try {
-      final path =
+      var path =
           '${ApiConstants.degerlendirmeler}'
           '?select=$_clinicalEvaluationSelect'
-          '&hastaId=eq.$hastaId'
-          '&order=degerlendirmeTarihi.desc';
+          '&hastaId=eq.$hastaId';
+      if (klinisyenId != null && klinisyenId > 0) {
+        path += '&klinisyenId=eq.$klinisyenId';
+      }
+      path += '&order=degerlendirmeTarihi.desc';
 
       final data = await _client.get(path);
 

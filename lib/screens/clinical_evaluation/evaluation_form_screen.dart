@@ -214,23 +214,36 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
   Future<void> _loadDbPatients() async {
     try {
-      final hastalar = await PatientService.getHastalar();
-      debugPrint('DB hasta sayısı: ${hastalar.length}');
+      final provider = context.read<EvaluationProvider>();
+      final targetHastaId =
+          provider.selected?.hastaId ?? provider.filterHastaId ?? _hastaId;
+
+      final clinicianId = await _resolveCurrentDoctorId();
+      if (!mounted) return;
+      if (clinicianId <= 0) {
+        setState(() {
+          _dbPatients = [];
+        });
+        return;
+      }
+
+      final hastalar = await PatientService.getHastalar(
+        klinisyenId: clinicianId,
+      );
       if (!mounted) return;
 
       setState(() {
         _dbPatients = hastalar;
       });
 
-      final provider = context.read<EvaluationProvider>();
-      final targetHastaId =
-          provider.selected?.hastaId ?? provider.filterHastaId ?? _hastaId;
-
       if (targetHastaId != null) {
         final listPatient = _findDbPatientById(targetHastaId);
         patient_model.Patient? dbPatient = listPatient;
         try {
-          dbPatient = await PatientService.getHastaById(targetHastaId);
+          dbPatient = await PatientService.getHastaById(
+            targetHastaId,
+            klinisyenId: clinicianId,
+          );
         } catch (e) {
           debugPrint('Patient detail could not be loaded during preload: $e');
         }
@@ -795,7 +808,11 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   Future<void> _fillPatientProfile(patient_model.Patient patient) async {
     patient_model.Patient resolvedPatient = patient;
     try {
-      resolvedPatient = await PatientService.getHastaById(patient.hastaId);
+      final clinicianId = await _resolveCurrentDoctorId();
+      resolvedPatient = await PatientService.getHastaById(
+        patient.hastaId,
+        klinisyenId: clinicianId > 0 ? clinicianId : null,
+      );
     } catch (e) {
       debugPrint('Patient detail could not be loaded, using list row: $e');
     }
@@ -1350,6 +1367,19 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
     if (effectiveHastaId == null) {
       _showSnack('Lütfen bir hasta seçin.', isError: true);
+      return;
+    }
+
+    final ownsPatient = await PatientService.isPatientOwnedByClinician(
+      effectiveHastaId,
+      currentDoctorId,
+    );
+    if (!mounted) return;
+    if (!ownsPatient) {
+      _showSnack(
+        'Bu hasta giriş yapan klinisyene atanmış değil.',
+        isError: true,
+      );
       return;
     }
 

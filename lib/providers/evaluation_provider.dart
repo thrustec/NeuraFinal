@@ -106,7 +106,10 @@ class EvaluationProvider extends ChangeNotifier {
       }
 
       final items = filterHastaId != null
-          ? await _service.getByPatient(filterHastaId!)
+          ? await _service.getByPatient(
+              filterHastaId!,
+              klinisyenId: _currentDoctorId > 0 ? _currentDoctorId : null,
+            )
           : await _service.getAll(klinisyenId: _currentDoctorId);
 
       _store
