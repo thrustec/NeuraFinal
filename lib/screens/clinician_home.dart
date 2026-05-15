@@ -8,6 +8,7 @@ import 'comparison_screen.dart';
 import 'patient_step_1_screen.dart';
 import 'telerehab_clinician_screen.dart';
 import 'clinical_evaluation/evaluation_list_screen.dart';
+import '../providers/evaluation_provider.dart';
 import '../services/patient_service.dart';
 import '../services/auth_service.dart';
 
@@ -301,7 +302,10 @@ class _ClinicianHomeState extends State<ClinicianHome> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const EvaluationListScreen(),
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => EvaluationProvider(doctorId: 0),
+                  child: const EvaluationListScreen(),
+                ),
               ),
             ),
           ),
