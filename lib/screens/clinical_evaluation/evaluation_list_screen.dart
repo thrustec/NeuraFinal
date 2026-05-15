@@ -71,7 +71,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     int doctorId = provider.currentDoctorId;
 
     if (doctorId <= 0) {
-      doctorId = auth.user?.klinisyenId ?? 0;
+      // degerlendirmeler.klinisyenId stores kullaniciId, not klinisyenId
+      doctorId = auth.kullaniciId;
     }
 
     if (doctorId <= 0 && (auth.user?.eposta ?? '').trim().isNotEmpty) {

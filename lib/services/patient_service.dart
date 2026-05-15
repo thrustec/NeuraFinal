@@ -55,7 +55,7 @@ class PatientService {
       'medeniDurumlar(medeniDurumAdi), '
       'egitimDurumlari(egitimDurumAdi), '
       'meslekler(meslekAdi), '
-      'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
+      'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari,baslangicTarihi,bakiciKisi)',
     );
 
     String url = '$SUPABASE_URL/hastalar?select=$select&order=hastaId.asc';
@@ -130,7 +130,7 @@ class PatientService {
         'medeniDurumlar(medeniDurumAdi), '
         'egitimDurumlari(egitimDurumAdi), '
         'meslekler(meslekAdi), '
-        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari)',
+        'degerlendirmeler(hastalikId,hastaliklar(hastalikAdi),klinisyenNotlari,baslangicTarihi,bakiciKisi)',
       );
       final url = '$SUPABASE_URL/hastalar?select=$select&hastaId=eq.$hastaId';
 
@@ -180,6 +180,27 @@ class PatientService {
     }
   }
 
+  /// hastalar.klinisyenId = klinisyenler.klinisyenId eşleşmesi ile hasta sahipliğini doğrular.
+  static Future<bool> isPatientOwnedByClinician(
+      int hastaId, int klinisyenId) async {
+    try {
+      final url = '$SUPABASE_URL/hastalar'
+          '?hastaId=eq.$hastaId'
+          '&klinisyenId=eq.$klinisyenId'
+          '&select=hastaId';
+      final response = await http
+          .get(Uri.parse(url), headers: _headers())
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final list = json.decode(response.body) as List;
+        return list.isNotEmpty;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Supabase'den gelen iç içe JSON'u Patient.fromJson'un
   /// beklediği düz yapıya çevirir.
   static Map<String, dynamic> _flattenHasta(Map<String, dynamic> raw) {
@@ -213,6 +234,8 @@ class PatientService {
       final h = son['hastaliklar'];
       if (h is Map) flat['hastalikAdi'] = h['hastalikAdi'];
       flat['klinisyenNotlari'] = son['klinisyenNotlari'];
+      flat['baslangicTarihi'] = son['baslangicTarihi'];
+      flat['bakiciKisi'] = son['bakiciKisi'];
     }
 
     // İç içe nesneleri temizle

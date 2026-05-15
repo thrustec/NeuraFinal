@@ -7,7 +7,8 @@ class PatientService {
 
   Future<Map<String, dynamic>> registerPatient(
     PatientFormData formData, {
-    required int klinisyenId,
+    required int klinisyenId,   // klinisyenler.klinisyenId → hastalar.klinisyenId
+    required int kullaniciId,   // kullanicilar.kullaniciId → degerlendirmeler.klinisyenId
   }) async {
     Map<String, dynamic>? createdUser;
     Map<String, dynamic>? createdPatient;
@@ -32,6 +33,7 @@ class PatientService {
       // 2) hastalar
       createdPatient = await _supabase.schema('neura').from('hastalar').insert({
         'kullaniciId': kullaniciId,
+        'klinisyenId': klinisyenId,
         'cinsiyetId': formData.genderId,
         'medeniDurumId': formData.maritalStatusId,
         'egitimDurumId': formData.educationId,
@@ -67,7 +69,7 @@ class PatientService {
       createdEvaluation =
           await _supabase.schema('neura').from('degerlendirmeler').insert({
         'hastaId': hastaId,
-        'klinisyenId': klinisyenId,
+        'klinisyenId': kullaniciId,
         'sigaraDurumId': formData.smokingStatusId,
         'hikaye': formData.complaintHistory.trim().isEmpty
             ? null
