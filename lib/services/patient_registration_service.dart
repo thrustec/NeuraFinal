@@ -6,32 +6,44 @@ class PatientService {
   final SupabaseClient _supabase = SupabaseService.client;
 
   Future<Map<String, dynamic>> registerPatient(
-    PatientFormData formData, {
-    required int klinisyenId,
-  }) async {
-    Map<String, dynamic>? createdUser;
-    Map<String, dynamic>? createdPatient;
+      PatientFormData formData, {
+        required int klinisyenId,
+      }) async {
+    Map<String, dynamic>? existingUser;
+    Map<String, dynamic>? updatedPatient;
     Map<String, dynamic>? createdEmpatica;
     Map<String, dynamic>? createdEvaluation;
 
     try {
-      // 1) kullanicilar
-      createdUser = await _supabase.schema('neura').from('kullanicilar').insert({
-        'rolId': formData.rolId,
+      existingUser = await _supabase
+          .schema('neura')
+          .from('kullanicilar')
+          .select()
+          .eq('eposta', formData.patientEmail.trim())
+          .single();
+
+      final int kullaniciId = existingUser['kullaniciId'] as int;
+
+      await _supabase.schema('neura').from('kullanicilar').update({
         'ad': formData.name.trim(),
         'soyad': formData.surname.trim(),
-        'eposta': formData.patientEmail.trim(),
-        'sifreHash': formData.sifreHash.trim().isEmpty
-            ? 'temp_hash_123'
-            : formData.sifreHash.trim(),
         'aktifMi': formData.aktifMi,
-      }).select().single();
+      }).eq('kullaniciId', kullaniciId);
 
-      final int kullaniciId = createdUser['kullaniciId'] as int;
+      final existingPatient = await _supabase
+          .schema('neura')
+          .from('hastalar')
+          .select()
+          .eq('kullaniciId', kullaniciId)
+          .single();
 
-      // 2) hastalar
-      createdPatient = await _supabase.schema('neura').from('hastalar').insert({
-        'kullaniciId': kullaniciId,
+      final int hastaId = existingPatient['hastaId'] as int;
+
+      updatedPatient = await _supabase
+          .schema('neura')
+          .from('hastalar')
+          .update({
+        'klinisyenId': klinisyenId,
         'cinsiyetId': formData.genderId,
         'medeniDurumId': formData.maritalStatusId,
         'egitimDurumId': formData.educationId,
@@ -45,16 +57,41 @@ class PatientService {
         'acilKisiTelefonu': formData.emergencyPhone.trim(),
         'boy': formData.heightValue,
         'kilo': formData.weightValue,
-      }).select().single();
+        'hastalikId': formData.diagnosisId,
+      })
+          .eq('hastaId', hastaId)
+          .select()
+          .single();
 
-      final int hastaId = createdPatient['hastaId'] as int;
-
-      // 3) empatica (opsiyonel)
       if (formData.empeticaId.trim().isNotEmpty) {
-        createdEmpatica = await _supabase.schema('neura').from('empatica').insert({
-          'hastaId': hastaId,
-          'cihazKimlik': formData.empeticaId.trim(),
-        }).select().single();
+        final existingEmpatica = await _supabase
+            .schema('neura')
+            .from('empatica')
+            .select()
+            .eq('hastaId', hastaId)
+            .maybeSingle();
+
+        if (existingEmpatica != null) {
+          createdEmpatica = await _supabase
+              .schema('neura')
+              .from('empatica')
+              .update({
+            'cihazKimlik': formData.empeticaId.trim(),
+          })
+              .eq('hastaId', hastaId)
+              .select()
+              .single();
+        } else {
+          createdEmpatica = await _supabase
+              .schema('neura')
+              .from('empatica')
+              .insert({
+            'hastaId': hastaId,
+            'cihazKimlik': formData.empeticaId.trim(),
+          })
+              .select()
+              .single();
+        }
 
         final int empaticaId = createdEmpatica['empaticaId'] as int;
 
@@ -63,9 +100,10 @@ class PatientService {
         }).eq('hastaId', hastaId);
       }
 
-      // 4) degerlendirmeler
-      createdEvaluation =
-          await _supabase.schema('neura').from('degerlendirmeler').insert({
+      createdEvaluation = await _supabase
+          .schema('neura')
+          .from('degerlendirmeler')
+          .insert({
         'hastaId': hastaId,
         'klinisyenId': klinisyenId,
         'sigaraDurumId': formData.smokingStatusId,
@@ -89,57 +127,17 @@ class PatientService {
         'klinisyenNotlari': formData.clinicianNotes.trim().isEmpty
             ? null
             : formData.clinicianNotes.trim(),
-      }).select().single();
+      })
+          .select()
+          .single();
 
       return {
-        'user': createdUser,
-        'patient': createdPatient,
+        'user': existingUser,
+        'patient': updatedPatient,
         'empatica': createdEmpatica,
         'evaluation': createdEvaluation,
       };
     } catch (e) {
-      try {
-        if (createdPatient != null) {
-          await _supabase
-              .schema('neura')
-              .from('degerlendirmeler')
-              .delete()
-              .eq(
-            'hastaId',
-            createdPatient['hastaId'] as int,
-          );
-
-          await _supabase
-              .schema('neura')
-              .from('empatica')
-              .delete()
-              .eq(
-            'hastaId',
-            createdPatient['hastaId'] as int,
-          );
-
-          await _supabase
-              .schema('neura')
-              .from('hastalar')
-              .delete()
-              .eq(
-            'hastaId',
-            createdPatient['hastaId'] as int,
-          );
-        }
-
-        if (createdUser != null) {
-          await _supabase
-              .schema('neura')
-              .from('kullanicilar')
-              .delete()
-              .eq(
-            'kullaniciId',
-            createdUser['kullaniciId'] as int,
-          );
-        }
-      } catch (_) {}
-
       rethrow;
     }
   }
@@ -149,15 +147,13 @@ class PatientService {
 
     try {
       final parts = rawDate.split('/');
-
       if (parts.length != 3) return null;
 
       final day = int.parse(parts[0]);
       final month = int.parse(parts[1]);
       final year = int.parse(parts[2]);
 
-      final date = DateTime(year, month, day);
-      return date.toIso8601String();
+      return DateTime(year, month, day).toIso8601String();
     } catch (_) {
       return null;
     }
