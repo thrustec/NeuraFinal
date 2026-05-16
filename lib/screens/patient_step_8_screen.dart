@@ -54,10 +54,10 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
       widget.formData.clinicianNotes = clinicianNotesController.text.trim();
 
       final auth = context.read<AuthProvider>();
-      final userIdStr = auth.user?.id ?? '';
-      final klinisyenId = int.tryParse(userIdStr);
+      final klinisyenId = auth.user?.klinisyenId;          // klinisyenler.klinisyenId → hastalar
+      final kullaniciId = int.tryParse(auth.user?.id ?? ''); // kullanicilar.kullaniciId → degerlendirmeler
 
-      if (klinisyenId == null || !auth.isClinician) {
+      if (klinisyenId == null || klinisyenId <= 0 || !auth.isClinician) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -71,6 +71,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
       final result = await patientService.registerPatient(
         widget.formData,
         klinisyenId: klinisyenId,
+        kullaniciId: kullaniciId ?? 0,
       );
 
       if (!mounted) return;

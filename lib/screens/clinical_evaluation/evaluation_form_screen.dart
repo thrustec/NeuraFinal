@@ -214,7 +214,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
   Future<void> _loadDbPatients() async {
     try {
-      final hastalar = await PatientService.getHastalar();
+      final auth = context.read<AuthProvider>();
+      final hastalar = await PatientService.getHastalar(
+        klinisyenId: auth.user?.klinisyenId,
+      );
       debugPrint('DB hasta sayısı: ${hastalar.length}');
       if (!mounted) return;
 
@@ -1295,30 +1298,23 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final providerDoctorId = provider.currentDoctorId;
     if (providerDoctorId > 0) return providerDoctorId;
 
-    final authDoctorId = auth.user?.klinisyenId ?? 0;
-    if (authDoctorId > 0) {
-      provider.setDoctorId(authDoctorId);
-      debugPrint(
-        'EvaluationFormScreen doctorId set from auth before save: $authDoctorId, roleId: ${auth.user?.rolId}, rolAdi: ${auth.user?.rolAdi}',
-      );
-      return authDoctorId;
+    // degerlendirmeler.klinisyenId stores kullaniciId (from kullanicilar), not klinisyenId
+    final kullaniciId = auth.kullaniciId;
+    if (kullaniciId > 0) {
+      provider.setDoctorId(kullaniciId);
+      return kullaniciId;
     }
 
+    // Last resort: email lookup returns kullaniciId from kullanicilar table
     final email = auth.user?.eposta.trim() ?? '';
     if (email.isNotEmpty) {
-      final serviceDoctorId = await EvaluationService().getClinicianIdByEmail(email) ?? 0;
-      if (serviceDoctorId > 0) {
-        provider.setDoctorId(serviceDoctorId);
-        debugPrint(
-          'EvaluationFormScreen doctorId resolved by email before save: $serviceDoctorId, email: $email',
-        );
-        return serviceDoctorId;
+      final serviceId = await EvaluationService().getClinicianIdByEmail(email) ?? 0;
+      if (serviceId > 0) {
+        provider.setDoctorId(serviceId);
+        return serviceId;
       }
     }
 
-    debugPrint(
-      'EvaluationFormScreen doctorId could not be resolved. provider=$providerDoctorId, auth.user.id=${auth.user?.id}, email=$email',
-    );
     return 0;
   }
 
@@ -1327,6 +1323,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<EvaluationProvider>();
+    // Capture klinisyenId before any await (hastalar.klinisyenId ownership check)
+    final clinicianKlinisyenId = context.read<AuthProvider>().user?.klinisyenId ?? 0;
 
     final currentDoctorId = await _resolveCurrentDoctorId();
     if (currentDoctorId <= 0) {
@@ -1354,6 +1352,19 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     }
 
     _hastaId = effectiveHastaId;
+
+    // Validate: patient must belong to this doctor (hastalar.klinisyenId = klinisyenler.klinisyenId)
+    if (clinicianKlinisyenId > 0) {
+      final isOwned = await PatientService.isPatientOwnedByClinician(
+          effectiveHastaId, clinicianKlinisyenId);
+      if (!isOwned) {
+        _showSnack(
+          'Bu hasta size kayıtlı olmadığı için değerlendirme oluşturulamaz.',
+          isError: true,
+        );
+        return;
+      }
+    }
 
     final patient = _selectedDbPatient;
 

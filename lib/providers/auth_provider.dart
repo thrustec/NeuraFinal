@@ -35,6 +35,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _user != null;
   bool get isPatient => _user?.isPatient ?? false;
   bool get isClinician => _user?.isClinician ?? false;
+  // kullanicilar.kullaniciId — used for degerlendirmeler.klinisyenId writes/queries
+  int get kullaniciId => int.tryParse(_user?.id ?? '') ?? 0;
 
   // ── Session Kontrolü ─────────────────────────────────────
   Future<void> checkSession() async {
