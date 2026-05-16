@@ -15,7 +15,10 @@ const Color kTextHint = Color(0xFF94A3B8);
 const Color kInputFill = Color(0xFFF1F5F9);
 
 class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key});
+  // Alt bardan açıldığında false, clinician_home'dan açıldığında true
+  final bool showBackButton;
+
+  const ReportsScreen({super.key, this.showBackButton = false});
 
   @override
   State<ReportsScreen> createState() => _ReportsScreenState();
@@ -171,7 +174,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.only(
+        // Geri buton varsa üst padding'i biraz artır (status bar + padding)
+        top: widget.showBackButton
+            ? MediaQuery.of(context).padding.top + 12
+            : 14,
+        bottom: 14,
+        left: 16,
+        right: 16,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -180,20 +191,43 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: kPrimary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+          // Geri butonu — yalnızca showBackButton true ise gösterilir
+          // (clinician_home'dan Navigator.push ile açıldığında)
+          if (widget.showBackButton) ...[
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 36,
+                height: 36,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: kPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: kPrimary,
+                  size: 16,
+                ),
+              ),
             ),
-            child: const Icon(
-              Icons.bar_chart,
-              color: kPrimary,
-              size: 20,
+          ] else ...[
+            // Alt bardan açıldığında geri butonu yerine ikon
+            Container(
+              width: 36,
+              height: 36,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: kPrimary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.bar_chart,
+                color: kPrimary,
+                size: 20,
+              ),
             ),
-          ),
+          ],
           const Expanded(
             child: Text(
               "Karşılaştırma Raporları",
@@ -206,10 +240,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
           IconButton(
             onPressed: _loadReports,
-            icon: const Icon(
-              Icons.refresh,
-              color: kPrimary,
-            ),
+            icon: const Icon(Icons.refresh, color: kPrimary),
           ),
         ],
       ),
@@ -290,10 +321,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               IconButton(
                 onPressed: () => _downloadReport(context, report),
-                icon: const Icon(
-                  Icons.download_rounded,
-                  color: kPrimary,
-                ),
+                icon: const Icon(Icons.download_rounded, color: kPrimary),
               ),
             ],
           ),
