@@ -11,6 +11,8 @@ import 'clinical_evaluation/evaluation_list_screen.dart';
 import '../providers/evaluation_provider.dart';
 import '../services/patient_service.dart';
 import '../services/auth_service.dart';
+import '../services/report_service.dart'; // ← eklendi
+import 'reports_screen.dart';             // ← eklendi
 
 class ClinicianHome extends StatefulWidget {
   const ClinicianHome({super.key});
@@ -21,7 +23,9 @@ class ClinicianHome extends StatefulWidget {
 
 class _ClinicianHomeState extends State<ClinicianHome> {
   static const Color _primaryTeal = Color(0xFF0F766E);
+
   String _activePatientCount = '...';
+  String _reportCount = '...'; // ← eklendi: raporlar sayısı
   int? _klinisyenId;
 
   @override
@@ -32,10 +36,14 @@ class _ClinicianHomeState extends State<ClinicianHome> {
 
   Future<void> _loadData() async {
     await _resolveKlinisyenId();
-    await _loadPatientCount();
+    // İki yüklemeyi paralel çalıştır
+    await Future.wait([
+      _loadPatientCount(),
+      _loadReportCount(), // ← eklendi
+    ]);
   }
 
-  /// Giriş yapan kullanıcının klinisyenler.klinisyenId'sini çeker.
+  /// Giriş yapan kullanıcının klinisyenId'sini çeker.
   Future<void> _resolveKlinisyenId() async {
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
@@ -58,6 +66,23 @@ class _ClinicianHomeState extends State<ClinicianHome> {
       }
     } catch (e) {
       if (mounted) setState(() => _activePatientCount = '0');
+    }
+  }
+
+  /// Klinisyene ait rapor sayısını çeker.
+  Future<void> _loadReportCount() async {
+    if (_klinisyenId == null) {
+      if (mounted) setState(() => _reportCount = '0');
+      return;
+    }
+    try {
+      final reports =
+      await ReportService.getReportsByClinician(_klinisyenId!);
+      if (mounted) {
+        setState(() => _reportCount = reports.length.toString());
+      }
+    } catch (e) {
+      if (mounted) setState(() => _reportCount = '0');
     }
   }
 
@@ -103,6 +128,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           const SizedBox(height: 12),
           Row(
             children: [
+              // Aktif Hastalar
               Expanded(
                 child: _buildStatCard(
                   context,
@@ -113,22 +139,27 @@ class _ClinicianHomeState extends State<ClinicianHome> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => PatientListScreen(
-                        klinisyenId: _klinisyenId,
-                      ),
+                      builder: (_) =>
+                          PatientListScreen(klinisyenId: _klinisyenId),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
+              // Hazır Raporlar — ReportsScreen'e yönlendirir, sayı API'dan gelir
               Expanded(
                 child: _buildStatCard(
                   context,
-                  'Bekleyen Rapor',
-                  '3',
+                  'Hazır Raporlar',      // ← "Bekleyen Rapor" → "Hazır Raporlar"
+                  _reportCount,          // ← sabit '3' → API'dan gelen sayı
                   Icons.assessment_outlined,
                   Colors.orange,
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ReportsScreen(showBackButton: true), // ← yönlendirme eklendi
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -323,13 +354,13 @@ class _ClinicianHomeState extends State<ClinicianHome> {
   }
 
   Widget _buildStatCard(
-    BuildContext context,
-    String title,
-    String count,
-    IconData icon,
-    Color color, {
-    VoidCallback? onTap,
-  }) {
+      BuildContext context,
+      String title,
+      String count,
+      IconData icon,
+      Color color, {
+        VoidCallback? onTap,
+      }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
