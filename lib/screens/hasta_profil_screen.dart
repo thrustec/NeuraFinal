@@ -11,7 +11,7 @@ class HastaProfilScreen extends StatefulWidget {
 }
 
 class _HastaProfilScreenState extends State<HastaProfilScreen> {
-  static const Color kPrimary    = Color(0xFF0F766E);
+  static const Color kPrimary    = Color(0xFF2563EB);
   static const Color kBackground = Color(0xFFF8F9FC);
   static const Color kTextDark   = Color(0xFF1E293B);
   static const Color kTextGrey   = Color(0xFF64748B);

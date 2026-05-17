@@ -197,17 +197,27 @@ class _MainScreenState extends State<MainScreen> {
                     decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle),
-                    child: CircleAvatar(
-                      radius: 32,
-                      backgroundColor: Colors.white,
-                      child: u?.ad.isNotEmpty == true
-                          ? Text(u!.ad[0].toUpperCase(),
-                          style: TextStyle(fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor))
-                          : const Icon(Icons.person, size: 36,
-                          color: kTextGrey),
-                    ),
+                    child: () {
+                      final avatarUrl = auth.user?.avatarUrl;
+                      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+                        return CircleAvatar(
+                          radius: 32,
+                          backgroundImage: NetworkImage(avatarUrl),
+                          backgroundColor: Colors.white,
+                        );
+                      }
+                      return CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Colors.white,
+                        child: u?.ad.isNotEmpty == true
+                            ? Text(u!.ad[0].toUpperCase(),
+                            style: TextStyle(fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: primaryColor))
+                            : const Icon(Icons.person, size: 36,
+                            color: kTextGrey),
+                      );
+                    }(),
                   ),
                   const SizedBox(height: 16),
                   Text(

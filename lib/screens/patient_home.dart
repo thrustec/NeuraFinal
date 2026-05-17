@@ -21,8 +21,10 @@ class PatientHome extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── 1. HOŞGELDİN KARTI ────────────────────────────────────
-          _buildWelcomeCard(auth.user?.fullName ?? 'Değerli Hastamız'),
-
+          _buildWelcomeCard(
+            auth.user?.fullName ?? 'Değerli Hastamız',
+            auth.user?.avatarUrl,
+          ),
           const SizedBox(height: 28),
 
           // ── 2. SIRADAKİ RANDEVUM (Aksiyon Kartı) ──────────────────
@@ -50,13 +52,13 @@ class PatientHome extends StatelessWidget {
 
   // ─── YARDIMCI WIDGET'LAR VE MODÜLLER ──────────────────────────────────────
 
-  Widget _buildWelcomeCard(String userName) {
+  Widget _buildWelcomeCard(String userName, String? avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [_primaryBlue, Color(0xFF1D4ED8)], // Hafif bir mavi geçişi
+          colors: [_primaryBlue, Color(0xFF1D4ED8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -69,37 +71,71 @@ class PatientHome extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'Hoşgeldin 👋',
-            style: TextStyle(color: Colors.white70, fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            userName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+          // ── Sol: mevcut metin içeriği ──────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.monitor_heart, color: Colors.white, size: 14),
-                SizedBox(width: 6),
-                Text('Hasta', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Hoşgeldin 👋',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  userName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.monitor_heart, color: Colors.white, size: 14),
+                      SizedBox(width: 6),
+                      Text('Hasta', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
               ],
+            ),
+          ),
+          // ── Sağ: profil fotoğrafı ───────────────────────
+          const SizedBox(width: 16),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+            ),
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? CircleAvatar(
+              radius: 36,
+              backgroundImage: NetworkImage(avatarUrl),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+            )
+                : CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              child: Text(
+                userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],

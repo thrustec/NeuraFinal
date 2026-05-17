@@ -97,7 +97,10 @@ class _ClinicianHomeState extends State<ClinicianHome> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildWelcomeCard(displayName),
+      _buildWelcomeCard(
+      auth.user?.displayName ?? 'Klinisyen',
+        auth.user?.avatarUrl,
+      ),
 
           const SizedBox(height: 28),
 
@@ -169,7 +172,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
     );
   }
 
-  Widget _buildWelcomeCard(String displayName) {
+  Widget _buildWelcomeCard(String displayName, String? avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -188,42 +191,76 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'İyi çalışmalar 👋',
-            style: TextStyle(color: Colors.white70, fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            displayName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+          // ── Sol: mevcut metin içeriği ──────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.medical_services_outlined,
-                    color: Colors.white, size: 14),
-                SizedBox(width: 6),
-                Text('Klinisyen',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
+                const Text(
+                  'İyi çalışmalar 👋',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.medical_services_outlined,
+                          color: Colors.white, size: 14),
+                      SizedBox(width: 6),
+                      Text('Klinisyen',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
               ],
+            ),
+          ),
+          // ── Sağ: profil fotoğrafı ───────────────────────
+          const SizedBox(width: 16),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+            ),
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? CircleAvatar(
+              radius: 36,
+              backgroundImage: NetworkImage(avatarUrl),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+            )
+                : CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              child: Text(
+                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],
