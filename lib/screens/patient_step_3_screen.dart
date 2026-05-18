@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/patient_form_data.dart';
 import '../utils/validators.dart';
 import 'patient_step_4_screen.dart';
+import 'main_screen.dart';
 
 class PatientStep3Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -16,10 +18,9 @@ class PatientStep3Screen extends StatefulWidget {
 }
 
 class _PatientStep3ScreenState extends State<PatientStep3Screen> {
-  // NeuraApp Tasarım Sistemi Renkleri
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF124153); // HASTA SAYFASI
-  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kPrimary = Color(0xFF124153);
+  static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
   static const Color kInputFill = Color(0xFFF1F5F9);
@@ -42,14 +43,54 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
     super.dispose();
   }
 
+  Future<void> _showExitDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
+  }
+
   double? parseNumber(String value) {
-    final cleaned = value.replaceAll(',', '.').trim();
-    return double.tryParse(cleaned);
+    return double.tryParse(value.trim());
   }
 
   @override
   Widget build(BuildContext context) {
-    // NeuraApp Input Dekorasyonu
     InputDecoration inputDecoration(String hintText, {Widget? suffix}) {
       return InputDecoration(
         hintText: hintText,
@@ -76,7 +117,6 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
       );
     }
 
-    // Etiket Stili
     const labelStyle = TextStyle(
       color: kTextGrey,
       fontSize: 12,
@@ -86,7 +126,15 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği (alt sayfa varsayımıyla) kaldırıldı.
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: kTextDark),
+          onPressed: _showExitDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -141,8 +189,8 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                                       letterSpacing: 0.8,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  const Text(
+                                  SizedBox(height: 4),
+                                  Text(
                                     '3. Adım',
                                     style: TextStyle(
                                       color: kPrimary,
@@ -150,8 +198,8 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  const Text(
+                                  SizedBox(height: 6),
+                                  Text(
                                     'Fiziksel Özellikler',
                                     style: TextStyle(
                                       color: kTextDark,
@@ -172,15 +220,25 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                         const SizedBox(height: 10),
                         TextField(
                           controller: heightController,
-                          style: const TextStyle(color: kTextDark, fontWeight: FontWeight.w500),
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                          style: const TextStyle(
+                            color: kTextDark,
+                            fontWeight: FontWeight.w500,
                           ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           decoration: inputDecoration(
                             'Örn: 170',
                             suffix: const Padding(
                               padding: EdgeInsets.only(right: 12, top: 14),
-                              child: Text('cm', style: TextStyle(color: kTextHint, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                'cm',
+                                style: TextStyle(
+                                  color: kTextHint,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -191,15 +249,25 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                         const SizedBox(height: 10),
                         TextField(
                           controller: weightController,
-                          style: const TextStyle(color: kTextDark, fontWeight: FontWeight.w500),
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                          style: const TextStyle(
+                            color: kTextDark,
+                            fontWeight: FontWeight.w500,
                           ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           decoration: inputDecoration(
                             'Örn: 70',
                             suffix: const Padding(
                               padding: EdgeInsets.only(right: 12, top: 14),
-                              child: Text('kg', style: TextStyle(color: kTextHint, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                'kg',
+                                style: TextStyle(
+                                  color: kTextHint,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -210,6 +278,7 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                 ),
               ),
             ),
+
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -229,9 +298,7 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
+                          onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(54),
                             side: const BorderSide(color: kBorderColor),
@@ -241,7 +308,10 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                           ),
                           child: const Text(
                             'Geri',
-                            style: TextStyle(color: kTextGrey, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: kTextGrey,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -268,7 +338,6 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                                 heightController.text.trim();
                             widget.formData.weight =
                                 weightController.text.trim();
-
                             widget.formData.heightValue =
                                 parseNumber(heightController.text);
                             widget.formData.weightValue =
@@ -318,7 +387,9 @@ class _PatientStep3ScreenState extends State<PatientStep3Screen> {
                             shape: BoxShape.circle,
                             color: isActive
                                 ? kPrimary
-                                : (isDone ? kPrimary.withOpacity(0.1) : Colors.white),
+                                : (isDone
+                                ? kPrimary.withOpacity(0.1)
+                                : Colors.white),
                             border: Border.all(
                               color: (isActive || isDone)
                                   ? kPrimary

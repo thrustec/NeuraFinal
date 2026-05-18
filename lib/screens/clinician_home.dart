@@ -8,9 +8,12 @@ import 'comparison_screen.dart';
 import 'patient_step_1_screen.dart';
 import 'telerehab_clinician_screen.dart';
 import 'clinical_evaluation/evaluation_list_screen.dart';
+import 'reports_screen.dart';
 import '../providers/evaluation_provider.dart';
 import '../services/patient_service.dart';
 import '../services/auth_service.dart';
+import '../services/supabase_service.dart';
+import '../services/report_service.dart';
 
 class ClinicianHome extends StatefulWidget {
   const ClinicianHome({super.key});
@@ -21,8 +24,13 @@ class ClinicianHome extends StatefulWidget {
 
 class _ClinicianHomeState extends State<ClinicianHome> {
   static const Color _primaryTeal = Color(0xFF0F766E);
+
   String _activePatientCount = '...';
+  String _createdReportCount = '...';
   int? _klinisyenId;
+
+  bool _isLoadingTodayMeetings = true;
+  List<Map<String, dynamic>> _todayMeetings = [];
 
   @override
   void initState() {
@@ -33,18 +41,27 @@ class _ClinicianHomeState extends State<ClinicianHome> {
   Future<void> _loadData() async {
     await _resolveKlinisyenId();
     await _loadPatientCount();
+    await _loadCreatedReportCount();
+    await _loadTodayMeetings();
   }
 
   /// Giriş yapan kullanıcının klinisyenler.klinisyenId'sini çeker.
   Future<void> _resolveKlinisyenId() async {
     if (!mounted) return;
+
     final auth = context.read<AuthProvider>();
     final kullaniciId = int.tryParse(auth.user?.id ?? '');
+
     if (kullaniciId == null) return;
 
     try {
       final id = await AuthService.getKlinisyenIdByKullaniciId(kullaniciId);
-      if (mounted) setState(() => _klinisyenId = id);
+
+      if (mounted) {
+        setState(() {
+          _klinisyenId = id;
+        });
+      }
     } catch (_) {}
   }
 
@@ -53,11 +70,98 @@ class _ClinicianHomeState extends State<ClinicianHome> {
       final patients = await PatientService.getHastalar(
         klinisyenId: _klinisyenId,
       );
+
       if (mounted) {
-        setState(() => _activePatientCount = patients.length.toString());
+        setState(() {
+          _activePatientCount = patients.length.toString();
+        });
       }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _activePatientCount = '0';
+        });
+      }
+    }
+  }
+
+  Future<void> _loadCreatedReportCount() async {
+    try {
+      if (_klinisyenId == null) {
+        if (!mounted) return;
+
+        setState(() {
+          _createdReportCount = '0';
+        });
+        return;
+      }
+
+      final reports = await ReportService.getReportsByClinician(
+        _klinisyenId!,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _createdReportCount = reports.length.toString();
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _createdReportCount = '0';
+      });
+    }
+  }
+
+  Future<void> _loadTodayMeetings() async {
+    try {
+      if (_klinisyenId == null) {
+        if (!mounted) return;
+
+        setState(() {
+          _isLoadingTodayMeetings = false;
+          _todayMeetings = [];
+        });
+        return;
+      }
+
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final tomorrowStart = todayStart.add(const Duration(days: 1));
+
+      final response = await SupabaseService.client
+          .schema('neura')
+          .from('toplantilar')
+          .select(
+        'toplantiId, klinisyenId, baslik, baslangicZamani, bitisZamani, durum',
+      )
+          .eq('klinisyenId', _klinisyenId!)
+          .gte('baslangicZamani', todayStart.toIso8601String())
+          .lt('baslangicZamani', tomorrowStart.toIso8601String())
+          .neq('durum', 'İptal Edildi')
+          .order('baslangicZamani', ascending: true);
+
+      if (!mounted) return;
+
+      setState(() {
+        _todayMeetings = List<Map<String, dynamic>>.from(response);
+        _isLoadingTodayMeetings = false;
+      });
     } catch (e) {
-      if (mounted) setState(() => _activePatientCount = '0');
+      if (!mounted) return;
+
+      setState(() {
+        _todayMeetings = [];
+        _isLoadingTodayMeetings = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Bugünkü toplantılar yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -79,17 +183,25 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSectionHeader('Bugünkü Randevular'),
+              _buildSectionHeader('Bugünkü Toplantılarım'),
               TextButton(
-                onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const ClinicianAgenda())),
-                child: const Text('Tümünü Gör',
-                    style: TextStyle(
-                        color: _primaryTeal, fontWeight: FontWeight.w600)),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ClinicianAgenda(),
+                  ),
+                ),
+                child: const Text(
+                  'Tümünü Gör',
+                  style: TextStyle(
+                    color: _primaryTeal,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
-          _buildNextPatientCard(context),
+          _buildTodayMeetingsCard(context),
 
           const SizedBox(height: 24),
 
@@ -124,11 +236,16 @@ class _ClinicianHomeState extends State<ClinicianHome> {
               Expanded(
                 child: _buildStatCard(
                   context,
-                  'Bekleyen Rapor',
-                  '3',
+                  'Oluşturulan Raporlar',
+                  _createdReportCount,
                   Icons.assessment_outlined,
                   Colors.orange,
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ReportsScreen(),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -184,14 +301,20 @@ class _ClinicianHomeState extends State<ClinicianHome> {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.medical_services_outlined,
-                    color: Colors.white, size: 14),
+                Icon(
+                  Icons.medical_services_outlined,
+                  color: Colors.white,
+                  size: 14,
+                ),
                 SizedBox(width: 6),
-                Text('Klinisyen',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  'Klinisyen',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -211,10 +334,14 @@ class _ClinicianHomeState extends State<ClinicianHome> {
     );
   }
 
-  Widget _buildNextPatientCard(BuildContext context) {
+  Widget _buildTodayMeetingsCard(BuildContext context) {
     return InkWell(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const ClinicianAgenda())),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const TelerehabClinicianScreen(),
+        ),
+      ),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -224,6 +351,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(12),
@@ -231,30 +359,89 @@ class _ClinicianHomeState extends State<ClinicianHome> {
                 color: const Color(0xFFF0FDFA),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.access_time_filled,
-                  color: _primaryTeal, size: 28),
+              child: const Icon(
+                Icons.video_camera_front_outlined,
+                color: _primaryTeal,
+                size: 28,
+              ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
+            Expanded(
+              child: _isLoadingTodayMeetings
+                  ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Toplantılar yükleniyor...',
+                  style: TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 13,
+                  ),
+                ),
+              )
+                  : _todayMeetings.isEmpty
+                  ? const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Sıradaki Hasta',
-                      style: TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500)),
+                  Text(
+                    'Telerehab Toplantıları',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
                   SizedBox(height: 4),
-                  Text('14:30 - Klinik Değerlendirme',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: Color(0xFF1E293B))),
+                  Text(
+                    'Mevcut toplantı yok',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              )
+                  : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Telerehab Toplantıları',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ..._todayMeetings.map((meeting) {
+                    final startTime = DateTime.tryParse(
+                      meeting['baslangicZamani']?.toString() ?? '',
+                    );
+
+                    final String hourText = startTime == null
+                        ? '--:--'
+                        : '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        '• $hourText',
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios,
-                color: Color(0xFFCBD5E1), size: 16),
+            const SizedBox(width: 10),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Color(0xFFCBD5E1),
+              size: 16,
+            ),
           ],
         ),
       ),
@@ -271,8 +458,12 @@ class _ClinicianHomeState extends State<ClinicianHome> {
             icon: Icons.person_add_outlined,
             label: 'Yeni Kayıt',
             color: Colors.orange,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const PatientStep1Screen())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const PatientStep1Screen(),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           _QuickActionTile(
@@ -280,9 +471,11 @@ class _ClinicianHomeState extends State<ClinicianHome> {
             label: 'Egzersizler',
             color: Colors.red,
             onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const ExerciseVideoLibraryScreen())),
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ExerciseVideoLibraryScreen(),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           _QuickActionTile(
@@ -290,9 +483,11 @@ class _ClinicianHomeState extends State<ClinicianHome> {
             label: 'Telerehab',
             color: Colors.pink,
             onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const TelerehabClinicianScreen())),
+              context,
+              MaterialPageRoute(
+                builder: (_) => const TelerehabClinicianScreen(),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           _QuickActionTile(
@@ -314,8 +509,12 @@ class _ClinicianHomeState extends State<ClinicianHome> {
             icon: Icons.compare_arrows_outlined,
             label: 'Karşılaştırma',
             color: Colors.indigo,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ComparisonScreen())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ComparisonScreen(),
+              ),
+            ),
           ),
         ],
       ),
@@ -323,13 +522,13 @@ class _ClinicianHomeState extends State<ClinicianHome> {
   }
 
   Widget _buildStatCard(
-    BuildContext context,
-    String title,
-    String count,
-    IconData icon,
-    Color color, {
-    VoidCallback? onTap,
-  }) {
+      BuildContext context,
+      String title,
+      String count,
+      IconData icon,
+      Color color, {
+        VoidCallback? onTap,
+      }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -345,17 +544,23 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           children: [
             Icon(icon, color: color, size: 28),
             const SizedBox(height: 12),
-            Text(count,
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B))),
+            Text(
+              count,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1E293B),
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(title,
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w500)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
@@ -394,14 +599,16 @@ class _QuickActionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                        color: color.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4))
-                  ]),
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 12),
@@ -411,9 +618,10 @@ class _QuickActionTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                  color: Color(0xFF1E293B),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12),
+                color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

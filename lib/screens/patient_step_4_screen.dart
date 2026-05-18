@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/patient_form_data.dart';
 import 'patient_step_5_screen.dart';
-import '../utils/validators.dart';
+import 'main_screen.dart';
+import '../services/supabase_service.dart';
 
 class PatientStep4Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -16,22 +17,32 @@ class PatientStep4Screen extends StatefulWidget {
 }
 
 class _PatientStep4ScreenState extends State<PatientStep4Screen> {
-  // NeuraApp Tasarım Sistemi Renkleri
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF124153); // HASTA SAYFASI
-  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kPrimary = Color(0xFF124153);
+  static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
   static const Color kInputFill = Color(0xFFF1F5F9);
   static const Color kBorderColor = Color(0xFFE2E8F0);
 
+  List<Map<String, dynamic>> educationOptions = [];
+  List<Map<String, dynamic>> maritalStatusOptions = [];
+  List<Map<String, dynamic>> occupationOptions = [];
+
   String? selectedEducation;
   String? selectedMaritalStatus;
   String? selectedOccupation;
 
+  int? selectedEducationId;
+  int? selectedMaritalStatusId;
+  int? selectedOccupationId;
+
+  bool isLoadingOptions = true;
+
   @override
   void initState() {
     super.initState();
+
     selectedEducation =
     widget.formData.education.isEmpty ? null : widget.formData.education;
     selectedMaritalStatus = widget.formData.maritalStatus.isEmpty
@@ -39,40 +50,154 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
         : widget.formData.maritalStatus;
     selectedOccupation =
     widget.formData.occupation.isEmpty ? null : widget.formData.occupation;
+
+    selectedEducationId = widget.formData.educationId;
+    selectedMaritalStatusId = widget.formData.maritalStatusId;
+    selectedOccupationId = widget.formData.occupationId;
+
+    _loadOptions();
   }
 
-  int? mapEducationToId(String? value) {
-    if (value == 'Yok') return 1;
-    if (value == 'İlköğretim') return 2;
-    if (value == 'Ortaöğretim') return 3;
-    if (value == 'Lise') return 4;
-    if (value == 'Önlisans') return 5;
-    if (value == 'Lisans') return 6;
-    if (value == 'Lisansüstü') return 7;
-    return null;
+  Future<void> _loadOptions() async {
+    try {
+      final educationResponse = await SupabaseService.client
+          .schema('neura')
+          .from('egitimDurumlari')
+          .select('egitimDurumId, egitimDurumAdi')
+          .order('egitimDurumId', ascending: true);
+
+      final maritalStatusResponse = await SupabaseService.client
+          .schema('neura')
+          .from('medeniDurumlar')
+          .select('medeniDurumId, medeniDurumAdi')
+          .order('medeniDurumId', ascending: true);
+
+      final occupationResponse = await SupabaseService.client
+          .schema('neura')
+          .from('meslekler')
+          .select('meslekId, meslekAdi')
+          .order('meslekId', ascending: true);
+
+      if (!mounted) return;
+
+      final loadedEducationOptions =
+      List<Map<String, dynamic>>.from(educationResponse);
+      final loadedMaritalStatusOptions =
+      List<Map<String, dynamic>>.from(maritalStatusResponse);
+      final loadedOccupationOptions =
+      List<Map<String, dynamic>>.from(occupationResponse);
+
+      String? loadedSelectedEducation = selectedEducation;
+      String? loadedSelectedMaritalStatus = selectedMaritalStatus;
+      String? loadedSelectedOccupation = selectedOccupation;
+
+      if (selectedEducationId != null && loadedSelectedEducation == null) {
+        final match = loadedEducationOptions.where(
+              (item) => item['egitimDurumId'] == selectedEducationId,
+        );
+
+        if (match.isNotEmpty) {
+          loadedSelectedEducation =
+              match.first['egitimDurumAdi']?.toString();
+        }
+      }
+
+      if (selectedMaritalStatusId != null &&
+          loadedSelectedMaritalStatus == null) {
+        final match = loadedMaritalStatusOptions.where(
+              (item) => item['medeniDurumId'] == selectedMaritalStatusId,
+        );
+
+        if (match.isNotEmpty) {
+          loadedSelectedMaritalStatus =
+              match.first['medeniDurumAdi']?.toString();
+        }
+      }
+
+      if (selectedOccupationId != null && loadedSelectedOccupation == null) {
+        final match = loadedOccupationOptions.where(
+              (item) => item['meslekId'] == selectedOccupationId,
+        );
+
+        if (match.isNotEmpty) {
+          loadedSelectedOccupation = match.first['meslekAdi']?.toString();
+        }
+      }
+
+      setState(() {
+        educationOptions = loadedEducationOptions;
+        maritalStatusOptions = loadedMaritalStatusOptions;
+        occupationOptions = loadedOccupationOptions;
+
+        selectedEducation = loadedSelectedEducation;
+        selectedMaritalStatus = loadedSelectedMaritalStatus;
+        selectedOccupation = loadedSelectedOccupation;
+
+        isLoadingOptions = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoadingOptions = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Seçenekler yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
-  int? mapMaritalStatusToId(String? value) {
-    if (value == 'Evli') return 1;
-    if (value == 'Bekar') return 2;
-    return null;
+  Future<void> _showExitDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
   }
 
-  int? mapOccupationToId(String? value) {
-    if (value == 'Ücretli Çalışan') return 1;
-    if (value == 'Ev Hanımı') return 2;
-    if (value == 'Emekli') return 3;
-    if (value == 'Öğrenci') return 4;
-    if (value == 'Çalışmıyor') return 5;
-    return null;
-  }
-
-  // NeuraApp Seçim Kutucuğu (Chip/Radio Alternatifi)
   Widget selectionTile({
     required String title,
-    required String value,
-    required String? groupValue,
-    required ValueChanged<String?> onChanged,
+    required int value,
+    required int? groupValue,
+    required ValueChanged<int?> onChanged,
     bool fullWidth = false,
   }) {
     final bool isSelected = value == groupValue;
@@ -83,7 +208,10 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: fullWidth ? double.infinity : null,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? kPrimary : Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -116,13 +244,29 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği silindi.
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: kTextDark,
+          ),
+          onPressed: _showExitDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  24,
+                  20,
+                  20,
+                ),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -195,75 +339,127 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const Divider(color: kBorderColor, height: 1),
+                        const Divider(
+                          color: kBorderColor,
+                          height: 1,
+                        ),
                         const SizedBox(height: 24),
 
-                        const Text('EĞİTİM DURUMU', style: labelStyle),
+                        const Text(
+                          'EĞİTİM DURUMU',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 12),
-                        Wrap(
+                        isLoadingOptions
+                            ? _loadingBox()
+                            : Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children: [
-                            'Yok', 'İlköğretim', 'Ortaöğretim', 'Lise',
-                            'Önlisans', 'Lisans', 'Lisansüstü'
-                          ].map((edu) => selectionTile(
-                            title: edu,
-                            value: edu,
-                            groupValue: selectedEducation,
-                            onChanged: (value) {
-                              setState(() {
-                                selectedEducation = value;
-                                widget.formData.educationId = mapEducationToId(value);
-                              });
-                            },
-                          )).toList(),
-                        ),
+                          children: educationOptions.map((education) {
+                            final int id =
+                            education['egitimDurumId'] as int;
+                            final String name =
+                                education['egitimDurumAdi']
+                                    ?.toString() ??
+                                    '';
 
-                        const SizedBox(height: 32),
-
-                        const Text('MEDENİ DURUM', style: labelStyle),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            'Evli', 'Bekar'
-                          ].map((stat) => selectionTile(
-                            title: stat,
-                            value: stat,
-                            groupValue: selectedMaritalStatus,
-                            onChanged: (value) {
-                              setState(() {
-                                selectedMaritalStatus = value;
-                                widget.formData.maritalStatusId = mapMaritalStatusToId(value);
-                              });
-                            },
-                          )).toList(),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        const Text('MESLEK', style: labelStyle),
-                        const SizedBox(height: 12),
-                        Column(
-                          children: [
-                            'Ücretli Çalışan', 'Ev Hanımı', 'Emekli',
-                            'Öğrenci', 'Çalışmıyor'
-                          ].map((occ) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: selectionTile(
-                              title: occ,
-                              value: occ,
-                              groupValue: selectedOccupation,
-                              fullWidth: true,
+                            return selectionTile(
+                              title: name,
+                              value: id,
+                              groupValue: selectedEducationId,
                               onChanged: (value) {
+                                if (value == null) return;
+
                                 setState(() {
-                                  selectedOccupation = value;
-                                  widget.formData.occupationId = mapOccupationToId(value);
+                                  selectedEducationId = value;
+                                  selectedEducation = name;
                                 });
+
+                                widget.formData.educationId = value;
+                                widget.formData.education = name;
                               },
-                            ),
-                          )).toList(),
+                            );
+                          }).toList(),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        const Text(
+                          'MEDENİ DURUM',
+                          style: labelStyle,
+                        ),
+                        const SizedBox(height: 12),
+                        isLoadingOptions
+                            ? _loadingBox()
+                            : Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children:
+                          maritalStatusOptions.map((maritalStatus) {
+                            final int id =
+                            maritalStatus['medeniDurumId'] as int;
+                            final String name =
+                                maritalStatus['medeniDurumAdi']
+                                    ?.toString() ??
+                                    '';
+
+                            return selectionTile(
+                              title: name,
+                              value: id,
+                              groupValue: selectedMaritalStatusId,
+                              onChanged: (value) {
+                                if (value == null) return;
+
+                                setState(() {
+                                  selectedMaritalStatusId = value;
+                                  selectedMaritalStatus = name;
+                                });
+
+                                widget.formData.maritalStatusId = value;
+                                widget.formData.maritalStatus = name;
+                              },
+                            );
+                          }).toList(),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        const Text(
+                          'MESLEK',
+                          style: labelStyle,
+                        ),
+                        const SizedBox(height: 12),
+                        isLoadingOptions
+                            ? _loadingBox()
+                            : Column(
+                          children: occupationOptions.map((occupation) {
+                            final int id = occupation['meslekId'] as int;
+                            final String name =
+                                occupation['meslekAdi']?.toString() ?? '';
+
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: 10,
+                              ),
+                              child: selectionTile(
+                                title: name,
+                                value: id,
+                                groupValue: selectedOccupationId,
+                                fullWidth: true,
+                                onChanged: (value) {
+                                  if (value == null) return;
+
+                                  setState(() {
+                                    selectedOccupationId = value;
+                                    selectedOccupation = name;
+                                  });
+
+                                  widget.formData.occupationId = value;
+                                  widget.formData.occupation = name;
+                                },
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ],
                     ),
@@ -282,7 +478,12 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                   ),
                 ],
               ),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                24,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -295,14 +496,19 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                           },
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(54),
-                            side: const BorderSide(color: kBorderColor),
+                            side: const BorderSide(
+                              color: kBorderColor,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: const Text(
                             'Geri',
-                            style: TextStyle(color: kTextGrey, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: kTextGrey,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -310,17 +516,27 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            widget.formData.education = selectedEducation ?? '';
-                            widget.formData.educationId = mapEducationToId(selectedEducation);
-                            widget.formData.maritalStatus = selectedMaritalStatus ?? '';
-                            widget.formData.maritalStatusId = mapMaritalStatusToId(selectedMaritalStatus);
-                            widget.formData.occupation = selectedOccupation ?? '';
-                            widget.formData.occupationId = mapOccupationToId(selectedOccupation);
+                            widget.formData.education =
+                                selectedEducation ?? '';
+                            widget.formData.educationId =
+                                selectedEducationId;
+
+                            widget.formData.maritalStatus =
+                                selectedMaritalStatus ?? '';
+                            widget.formData.maritalStatusId =
+                                selectedMaritalStatusId;
+
+                            widget.formData.occupation =
+                                selectedOccupation ?? '';
+                            widget.formData.occupationId =
+                                selectedOccupationId;
 
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => PatientStep5Screen(formData: widget.formData),
+                                builder: (context) => PatientStep5Screen(
+                                  formData: widget.formData,
+                                ),
                               ),
                             );
                           },
@@ -342,49 +558,25 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(8, (index) {
-                        final bool isActive = index == 3;
-                        final bool isDone = index < 3;
-
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isActive
-                                ? kPrimary
-                                : (isDone ? kPrimary.withOpacity(0.1) : Colors.white),
-                            border: Border.all(
-                              color: (isActive || isDone) ? kPrimary : kBorderColor,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Center(
-                            child: isDone
-                                ? const Icon(Icons.check, size: 16, color: kPrimary)
-                                : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isActive ? Colors.white : kTextHint,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _loadingBox() {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: kInputFill,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: kPrimary,
         ),
       ),
     );

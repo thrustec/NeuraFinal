@@ -5,6 +5,7 @@ import '../models/patient_form_data.dart';
 import '../providers/auth_provider.dart';
 import '../services/meeting_service.dart';
 import 'patient_step_2_screen.dart';
+import 'main_screen.dart';
 
 class PatientStep1Screen extends StatefulWidget {
   const PatientStep1Screen({super.key});
@@ -15,7 +16,7 @@ class PatientStep1Screen extends StatefulWidget {
 
 class _PatientStep1ScreenState extends State<PatientStep1Screen> {
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF125F5F);
+  static const Color kPrimary = Color(0xFF124153);
   static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
@@ -45,7 +46,8 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
         return;
       }
 
-      final clinician = await _meetingService.getClinicianByUserId(kullaniciId);
+      final clinician =
+      await _meetingService.getClinicianByUserId(kullaniciId);
 
       if (clinician == null) {
         setState(() => _isLoadingPatients = false);
@@ -53,8 +55,8 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
       }
 
       final klinisyenId = clinician['klinisyenId'] as int;
-
-      final patients = await _meetingService.getPatientsByClinician(klinisyenId);
+      final patients =
+      await _meetingService.getPatientsByClinician(klinisyenId);
 
       if (!mounted) return;
 
@@ -64,7 +66,9 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() => _isLoadingPatients = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Hasta listesi yüklenemedi: $e'),
@@ -84,17 +88,67 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
 
       formData.hastaId = value['hastaId'] as int?;
       formData.kullaniciId = value['kullaniciId'] as int?;
-
       formData.patientEmail = user?['eposta']?.toString() ?? '';
       formData.name = user?['ad']?.toString() ?? '';
       formData.surname = user?['soyad']?.toString() ?? '';
     });
   }
 
+  Future<void> _showExitDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: kTextDark),
+          onPressed: _showExitDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -185,7 +239,6 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-
                         _isLoadingPatients
                             ? Container(
                           height: 56,
@@ -210,7 +263,8 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                             const TextStyle(color: kTextHint),
                             filled: true,
                             fillColor: kInputFill,
-                            contentPadding: const EdgeInsets.symmetric(
+                            contentPadding:
+                            const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 18,
                             ),
@@ -252,7 +306,6 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                           }).toList(),
                           onChanged: _selectPatient,
                         ),
-
                         const SizedBox(height: 20),
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -288,7 +341,6 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                 ),
               ),
             ),
-
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -341,8 +393,7 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                               return;
                             }
 
-                            final error =
-                            PatientValidators.validateStep1(
+                            final error = PatientValidators.validateStep1(
                               patientEmail: formData.patientEmail,
                             );
 
@@ -416,7 +467,8 @@ class _PatientStep1ScreenState extends State<PatientStep1Screen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: isActive ? Colors.white : kTextHint,
+                                color:
+                                isActive ? Colors.white : kTextHint,
                               ),
                             ),
                           ),

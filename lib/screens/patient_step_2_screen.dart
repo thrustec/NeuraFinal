@@ -3,6 +3,8 @@ import '../models/patient_form_data.dart';
 import '../utils/validators.dart';
 import 'patient_step_3_screen.dart';
 import 'package:flutter/services.dart';
+import 'main_screen.dart';
+import '../services/supabase_service.dart';
 
 class PatientStep2Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -20,7 +22,7 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
   // NeuraApp Renk Paleti
   static const Color kBackground = Color(0xFFF8F9FC);
   static const Color kPrimary = Color(0xFF124153); // HASTA SAYFASI
-  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
   static const Color kInputFill = Color(0xFFF1F5F9);
@@ -33,8 +35,16 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
   final TextEditingController cityController = TextEditingController();
   final TextEditingController empeticaController = TextEditingController();
 
+  List<Map<String, dynamic>> genderOptions = [];
+  List<Map<String, dynamic>> dominantSideOptions = [];
+
+  int? selectedGenderId;
+  int? selectedDominantSideId;
+
   String? selectedGender;
   String? selectedDominantSide;
+
+  bool isLoadingOptions = true;
 
   @override
   void initState() {
@@ -47,12 +57,88 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
     cityController.text = widget.formData.city;
     empeticaController.text = widget.formData.empeticaId;
 
+    selectedGenderId = widget.formData.genderId;
+    selectedDominantSideId = widget.formData.dominantSideId;
+
     selectedGender =
     widget.formData.gender.isEmpty ? null : widget.formData.gender;
 
     selectedDominantSide = widget.formData.dominantSide.isEmpty
         ? null
         : widget.formData.dominantSide;
+
+    _loadDropdownOptions();
+  }
+
+  Future<void> _loadDropdownOptions() async {
+    try {
+      final gendersResponse = await SupabaseService.client
+          .schema('neura')
+          .from('cinsiyetler')
+          .select('cinsiyetId, cinsiyetAdi')
+          .order('cinsiyetId', ascending: true);
+
+      final dominantSidesResponse = await SupabaseService.client
+          .schema('neura')
+          .from('baskin')
+          .select('baskinId, elAdi')
+          .order('baskinId', ascending: true);
+
+      if (!mounted) return;
+
+      final loadedGenders =
+      List<Map<String, dynamic>>.from(gendersResponse);
+
+      final loadedDominantSides =
+      List<Map<String, dynamic>>.from(dominantSidesResponse);
+
+      String? loadedSelectedGender = selectedGender;
+      String? loadedSelectedDominantSide = selectedDominantSide;
+
+      if (selectedGenderId != null && loadedSelectedGender == null) {
+        final matchedGender = loadedGenders.where(
+              (gender) => gender['cinsiyetId'] == selectedGenderId,
+        );
+
+        if (matchedGender.isNotEmpty) {
+          loadedSelectedGender =
+              matchedGender.first['cinsiyetAdi']?.toString();
+        }
+      }
+
+      if (selectedDominantSideId != null &&
+          loadedSelectedDominantSide == null) {
+        final matchedDominantSide = loadedDominantSides.where(
+              (side) => side['baskinId'] == selectedDominantSideId,
+        );
+
+        if (matchedDominantSide.isNotEmpty) {
+          loadedSelectedDominantSide =
+              matchedDominantSide.first['elAdi']?.toString();
+        }
+      }
+
+      setState(() {
+        genderOptions = loadedGenders;
+        dominantSideOptions = loadedDominantSides;
+        selectedGender = loadedSelectedGender;
+        selectedDominantSide = loadedSelectedDominantSide;
+        isLoadingOptions = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoadingOptions = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cinsiyet ve dominant taraf seçenekleri yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -66,8 +152,51 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
     super.dispose();
   }
 
+  Future<void> _showExitFormDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
+  }
+
   Future<void> _selectDate() async {
     DateTime initialDate = DateTime(2000, 1, 1);
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -95,19 +224,6 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
             "${picked.year}";
       });
     }
-  }
-
-  int? mapGenderToId(String? value) {
-    if (value == 'Kadın') return 1;
-    if (value == 'Erkek') return 2;
-    return null;
-  }
-
-  int? mapDominantSideToId(String? value) {
-    if (value == 'Sağ') return 1;
-    if (value == 'Sol') return 2;
-    if (value == 'Her ikisi') return 3;
-    return null;
   }
 
   @override
@@ -149,7 +265,18 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği silindi (Sayfa ana menüye gömüleceği için).
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: kTextDark,
+          ),
+          onPressed: _showExitFormDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -251,21 +378,63 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
 
                         const Text('CİNSİYET', style: labelStyle),
                         const SizedBox(height: 10),
-                        DropdownButtonFormField<String>(
-                          value: selectedGender,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextGrey),
-                          decoration: inputDecoration('Cinsiyet seçiniz'),
+                        isLoadingOptions
+                            ? Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: kInputFill,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: kPrimary,
+                            ),
+                          ),
+                        )
+                            : DropdownButtonFormField<int>(
+                          value: selectedGenderId,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: kTextGrey,
+                          ),
+                          decoration:
+                          inputDecoration('Cinsiyet seçiniz'),
                           dropdownColor: Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          items: const [
-                            DropdownMenuItem(value: 'Kadın', child: Text('Kadın', style: TextStyle(color: kTextDark))),
-                            DropdownMenuItem(value: 'Erkek', child: Text('Erkek', style: TextStyle(color: kTextDark))),
-                          ],
+                          items: genderOptions.map((gender) {
+                            final int id =
+                            gender['cinsiyetId'] as int;
+                            final String name =
+                                gender['cinsiyetAdi']?.toString() ?? '';
+
+                            return DropdownMenuItem<int>(
+                              value: id,
+                              child: Text(
+                                name,
+                                style: const TextStyle(
+                                  color: kTextDark,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                           onChanged: (value) {
+                            if (value == null) return;
+
+                            final selected = genderOptions.firstWhere(
+                                  (gender) =>
+                              gender['cinsiyetId'] == value,
+                            );
+
                             setState(() {
-                              selectedGender = value;
-                              widget.formData.genderId = mapGenderToId(value);
+                              selectedGenderId = value;
+                              selectedGender =
+                                  selected['cinsiyetAdi']?.toString() ??
+                                      '';
                             });
+
+                            widget.formData.genderId = value;
+                            widget.formData.gender =
+                                selectedGender ?? '';
                           },
                         ),
                         const SizedBox(height: 20),
@@ -279,7 +448,11 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                           style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration(
                             'GG/AA/YYYY',
-                            suffixIcon: const Icon(Icons.calendar_today_outlined, color: kPrimary, size: 20),
+                            suffixIcon: const Icon(
+                              Icons.calendar_today_outlined,
+                              color: kPrimary,
+                              size: 20,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -307,28 +480,68 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                         TextField(
                           controller: cityController,
                           style: const TextStyle(color: kTextDark),
-                          decoration: inputDecoration('Şehir / ilçe giriniz'),
+                          decoration:
+                          inputDecoration('Şehir / ilçe giriniz'),
                         ),
                         const SizedBox(height: 20),
 
                         const Text('DOMİNANT TARAF', style: labelStyle),
                         const SizedBox(height: 10),
-                        DropdownButtonFormField<String>(
-                          value: selectedDominantSide,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextGrey),
-                          decoration: inputDecoration('Dominant taraf seçiniz'),
+                        isLoadingOptions
+                            ? Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: kInputFill,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: kPrimary,
+                            ),
+                          ),
+                        )
+                            : DropdownButtonFormField<int>(
+                          value: selectedDominantSideId,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: kTextGrey,
+                          ),
+                          decoration:
+                          inputDecoration('Dominant taraf seçiniz'),
                           dropdownColor: Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          items: const [
-                            DropdownMenuItem(value: 'Sağ', child: Text('Sağ', style: TextStyle(color: kTextDark))),
-                            DropdownMenuItem(value: 'Sol', child: Text('Sol', style: TextStyle(color: kTextDark))),
-                            DropdownMenuItem(value: 'Her ikisi', child: Text('Her ikisi', style: TextStyle(color: kTextDark))),
-                          ],
+                          items: dominantSideOptions.map((side) {
+                            final int id = side['baskinId'] as int;
+                            final String name =
+                                side['elAdi']?.toString() ?? '';
+
+                            return DropdownMenuItem<int>(
+                              value: id,
+                              child: Text(
+                                name,
+                                style: const TextStyle(
+                                  color: kTextDark,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                           onChanged: (value) {
+                            if (value == null) return;
+
+                            final selected =
+                            dominantSideOptions.firstWhere(
+                                  (side) => side['baskinId'] == value,
+                            );
+
                             setState(() {
-                              selectedDominantSide = value;
-                              widget.formData.dominantSideId = mapDominantSideToId(value);
+                              selectedDominantSideId = value;
+                              selectedDominantSide =
+                                  selected['elAdi']?.toString() ?? '';
                             });
+
+                            widget.formData.dominantSideId = value;
+                            widget.formData.dominantSide =
+                                selectedDominantSide ?? '';
                           },
                         ),
                         const SizedBox(height: 20),
@@ -375,7 +588,13 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: const Text('Geri', style: TextStyle(color: kTextGrey, fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'Geri',
+                            style: TextStyle(
+                              color: kTextGrey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -404,21 +623,30 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                             }
 
                             widget.formData.name = nameController.text.trim();
-                            widget.formData.surname = surnameController.text.trim();
+                            widget.formData.surname =
+                                surnameController.text.trim();
                             widget.formData.gender = selectedGender ?? '';
-                            widget.formData.genderId = mapGenderToId(selectedGender);
-                            widget.formData.birthDate = birthDateController.text.trim();
-                            widget.formData.phone = phoneController.text.trim();
+                            widget.formData.genderId = selectedGenderId;
+                            widget.formData.birthDate =
+                                birthDateController.text.trim();
+                            widget.formData.phone =
+                                phoneController.text.trim();
                             widget.formData.city = cityController.text.trim();
-                            widget.formData.dominantSide = selectedDominantSide ?? '';
-                            widget.formData.dominantSideId = mapDominantSideToId(selectedDominantSide);
-                            widget.formData.empeticaId = empeticaController.text.trim();
-                            widget.formData.empaticaId = int.tryParse(empeticaController.text.trim());
+                            widget.formData.dominantSide =
+                                selectedDominantSide ?? '';
+                            widget.formData.dominantSideId =
+                                selectedDominantSideId;
+                            widget.formData.empeticaId =
+                                empeticaController.text.trim();
+                            widget.formData.empaticaId =
+                                int.tryParse(empeticaController.text.trim());
 
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => PatientStep3Screen(formData: widget.formData),
+                                builder: (context) => PatientStep3Screen(
+                                  formData: widget.formData,
+                                ),
                               ),
                             );
                           },
@@ -430,7 +658,10 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           child: const Text('Devam'),
                         ),
@@ -452,21 +683,33 @@ class _PatientStep2ScreenState extends State<PatientStep2Screen> {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isActive ? kPrimary : (isDone ? kPrimary.withOpacity(0.1) : Colors.white),
+                            color: isActive
+                                ? kPrimary
+                                : (isDone
+                                ? kPrimary.withOpacity(0.1)
+                                : Colors.white),
                             border: Border.all(
-                              color: (isActive || isDone) ? kPrimary : kBorderColor,
+                              color: (isActive || isDone)
+                                  ? kPrimary
+                                  : kBorderColor,
                               width: 1.5,
                             ),
                           ),
                           child: Center(
                             child: isDone
-                                ? const Icon(Icons.check, size: 16, color: kPrimary)
+                                ? const Icon(
+                              Icons.check,
+                              size: 16,
+                              color: kPrimary,
+                            )
                                 : Text(
                               '${index + 1}',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: isActive ? Colors.white : kTextHint,
+                                color: isActive
+                                    ? Colors.white
+                                    : kTextHint,
                               ),
                             ),
                           ),

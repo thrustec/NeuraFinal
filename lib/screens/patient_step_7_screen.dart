@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/patient_form_data.dart';
 import 'patient_step_8_screen.dart';
 import 'package:flutter/services.dart';
+import 'main_screen.dart';
 
 class PatientStep7Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -16,10 +17,9 @@ class PatientStep7Screen extends StatefulWidget {
 }
 
 class _PatientStep7ScreenState extends State<PatientStep7Screen> {
-  // NeuraApp Tasarım Sistemi Renkleri
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF124153); // HASTA SAYFASI
-  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kPrimary = Color(0xFF124153);
+  static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
   static const Color kInputFill = Color(0xFFF1F5F9);
@@ -45,7 +45,8 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
         ? null
         : widget.formData.caregiverStatus;
 
-    emergencyContactNameController.text = widget.formData.emergencyContactName;
+    emergencyContactNameController.text =
+        widget.formData.emergencyContactName;
     emergencyPhoneController.text = widget.formData.emergencyPhone;
   }
 
@@ -56,7 +57,48 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
     super.dispose();
   }
 
-  // NeuraApp Seçim Kutucuğu
+  Future<void> _showExitDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
+  }
+
   Widget selectionTile({
     required String title,
     required String value,
@@ -102,7 +144,6 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
 
   @override
   Widget build(BuildContext context) {
-    // NeuraApp Input Dekorasyonu
     InputDecoration inputDecoration(String hintText) {
       return InputDecoration(
         hintText: hintText,
@@ -137,7 +178,15 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği silindi.
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: kTextDark),
+          onPressed: _showExitDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -218,8 +267,10 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
                         const SizedBox(height: 24),
                         const Divider(color: kBorderColor, height: 1),
                         const SizedBox(height: 24),
-
-                        const Text('YARDIMCI CİHAZ KULLANIMI', style: labelStyle),
+                        const Text(
+                          'YARDIMCI CİHAZ KULLANIMI',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 12,
@@ -242,10 +293,11 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 32),
-
-                        const Text('BAKIM VEREN KİŞİ VAR MI?', style: labelStyle),
+                        const Text(
+                          'BAKIM VEREN KİŞİ VAR MI?',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 12,
@@ -268,19 +320,18 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 32),
-
-                        const Text('ACİL DURUMDA ULAŞILACAK KİŞİ', style: labelStyle),
+                        const Text(
+                          'ACİL DURUMDA ULAŞILACAK KİŞİ',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 10),
                         TextField(
                           controller: emergencyContactNameController,
                           style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration('Ad soyad giriniz'),
                         ),
-
                         const SizedBox(height: 20),
-
                         const Text('TELEFON NUMARASI', style: labelStyle),
                         const SizedBox(height: 10),
                         TextField(
@@ -293,9 +344,7 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
                           style: const TextStyle(color: kTextDark),
                           decoration: inputDecoration(
                             'Telefon numarası giriniz',
-                          ).copyWith(
-                            counterText: '',
-                          ),
+                          ).copyWith(counterText: ''),
                         ),
                       ],
                     ),
@@ -345,14 +394,28 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
+                            final emergencyPhone =
+                            emergencyPhoneController.text.trim();
+
+                            if (emergencyPhone.length != 11) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Acil durum telefon numarası 11 haneli olmalıdır.',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
+
                             widget.formData.assistiveDeviceStatus =
                                 assistiveDeviceStatus ?? '';
                             widget.formData.caregiverStatus =
                                 caregiverStatus ?? '';
                             widget.formData.emergencyContactName =
                                 emergencyContactNameController.text.trim();
-                            widget.formData.emergencyPhone =
-                                emergencyPhoneController.text.trim();
+                            widget.formData.emergencyPhone = emergencyPhone;
 
                             Navigator.push(
                               context,
@@ -380,54 +443,6 @@ class _PatientStep7ScreenState extends State<PatientStep7Screen> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(8, (index) {
-                        final bool isActive = index == 6;
-                        final bool isDone = index < 6;
-
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isActive
-                                ? kPrimary
-                                : (isDone
-                                ? kPrimary.withOpacity(0.1)
-                                : Colors.white),
-                            border: Border.all(
-                              color: (isActive || isDone)
-                                  ? kPrimary
-                                  : kBorderColor,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Center(
-                            child: isDone
-                                ? const Icon(
-                              Icons.check,
-                              size: 16,
-                              color: kPrimary,
-                            )
-                                : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color:
-                                isActive ? Colors.white : kTextHint,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
                   ),
                 ],
               ),
