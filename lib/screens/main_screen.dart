@@ -266,22 +266,46 @@ class _MainScreenState extends State<MainScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.event_note_outlined, color: kTextDark),
-            onPressed: () {
+            onPressed: () async { // ── async yaptık ──
               if (widget.isClinician) {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => const ClinicianAgenda()));
               } else {
+                // ── YENİ: Gerçek hastaId'yi asenkron çekiyoruz ──
+                final kullaniciId = int.tryParse(u?.id ?? '0') ?? 0;
+                int realHastaId = 0;
+
+                try {
+                  final res = await http.get(
+                    Uri.parse('https://griteunvazwekosffmjo.supabase.co/rest/v1/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
+                    headers: {
+                      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU',
+                      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU',
+                      'Accept-Profile': 'neura',
+                    },
+                  );
+
+                  if (res.statusCode == 200) {
+                    final list = jsonDecode(res.body) as List;
+                    if (list.isNotEmpty) {
+                      realHastaId = (list.first as Map<String, dynamic>)['hastaId'] as int;
+                    }
+                  }
+                } catch (e) {
+                  debugPrint('Ajanda için hastaId çekilemedi: $e');
+                }
+
+                if (!context.mounted) return;
+
                 Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => PatientAgendaScreen(
                           patient: sila.Patient(
-                            hastaId:
-                            int.tryParse(u?.id ?? '0') ?? 0,
-                            kullaniciId:
-                            int.tryParse(u?.id ?? '0') ?? 0,
+                            hastaId: realHastaId, // Artık veritabanından gelen 30 gidiyor!
+                            kullaniciId: kullaniciId,
                             ad: u?.ad ?? '',
                             soyad: u?.soyad ?? '',
                             tani: '',
