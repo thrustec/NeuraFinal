@@ -1,14 +1,34 @@
+// lib/screens/patient_home.dart
+
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/patient_model.dart';
 import 'patient_agenda_screen.dart';
 import 'telerehab_patient_screen.dart';
+import 'notifications_screen.dart';
+import 'hasta_egzersiz_screen.dart';
+import 'empatica_screen.dart';
 import '../models/patient.dart' as sila;
+
+const String _kSbUrl = 'https://griteunvazwekosffmjo.supabase.co/rest/v1';
+const String _kSbKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+    'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwi'
+    'cm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.'
+    'q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU';
+
+Map<String, String> _sbHeaders() => {
+  'apikey': _kSbKey,
+  'Authorization': 'Bearer $_kSbKey',
+  'Accept-Profile': 'neura',
+};
 
 class PatientHome extends StatelessWidget {
   const PatientHome({super.key});
 
-  // Hasta teması için belirlediğimiz modern Royal Mavi
   static const Color _primaryBlue = Color(0xFF2563EB);
 
   @override
@@ -25,32 +45,33 @@ class PatientHome extends StatelessWidget {
             auth.user?.fullName ?? 'Değerli Hastamız',
             auth.user?.avatarUrl,
           ),
+
           const SizedBox(height: 28),
 
-          // ── 2. SIRADAKİ RANDEVUM (Aksiyon Kartı) ──────────────────
+          // ── 2. YAKLAŞAN PLANLARIM ──────────────────────────────────
           _buildSectionHeader('Yaklaşan Planlarım'),
           const SizedBox(height: 12),
           _buildNextAppointmentCard(context, auth),
 
           const SizedBox(height: 24),
 
-          // ── 3. GÜNÜN EGZERSİZİ (Aksiyon Kartı) ────────────────────
+          // ── 3. BUGÜNKÜ GÖREVLERİM ─────────────────────────────────
           _buildSectionHeader('Bugünkü Görevlerim'),
           const SizedBox(height: 12),
           _buildDailyExerciseCard(context),
 
           const SizedBox(height: 28),
 
-          // ── 4. HIZLI İŞLEMLER (Yatay Kaydırılabilir Menü) ─────────
+          // ── 4. HIZLI İŞLEMLER (Grid) ──────────────────────────────
           _buildSectionHeader('Hızlı İşlemler'),
           const SizedBox(height: 12),
-          _buildQuickActionsRow(context),
+          _buildQuickActionsGrid(context, auth),
         ],
       ),
     );
   }
 
-  // ─── YARDIMCI WIDGET'LAR VE MODÜLLER ──────────────────────────────────────
+  // ── HOŞGELDİN KARTI ───────────────────────────────────────────────────────
 
   Widget _buildWelcomeCard(String userName, String? avatarUrl) {
     return Container(
@@ -74,7 +95,7 @@ class PatientHome extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Sol: mevcut metin içeriği ──────────────────
+          // Sol: metin
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,7 +116,8 @@ class PatientHome extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -103,21 +125,27 @@ class PatientHome extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.monitor_heart, color: Colors.white, size: 14),
+                      Icon(Icons.monitor_heart,
+                          color: Colors.white, size: 14),
                       SizedBox(width: 6),
-                      Text('Hasta', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text('Hasta',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          // ── Sağ: profil fotoğrafı ───────────────────────
+          // Sağ: avatar
           const SizedBox(width: 16),
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.5), width: 2),
             ),
             child: avatarUrl != null && avatarUrl.isNotEmpty
                 ? CircleAvatar(
@@ -129,7 +157,9 @@ class PatientHome extends StatelessWidget {
               radius: 36,
               backgroundColor: Colors.white.withValues(alpha: 0.2),
               child: Text(
-                userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                userName.isNotEmpty
+                    ? userName[0].toUpperCase()
+                    : '?',
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -143,6 +173,8 @@ class PatientHome extends StatelessWidget {
     );
   }
 
+  // ── BÖLÜM BAŞLIĞI ─────────────────────────────────────────────────────────
+
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
@@ -154,22 +186,29 @@ class PatientHome extends StatelessWidget {
     );
   }
 
-  Widget _buildNextAppointmentCard(BuildContext context, AuthProvider auth) {
+  // ── YAKLAŞAN RANDEVU KARTI ────────────────────────────────────────────────
+
+  Widget _buildNextAppointmentCard(
+      BuildContext context, AuthProvider auth) {
     return InkWell(
       onTap: () {
         final u = auth.user;
         if (u != null) {
-          Navigator.push(context, MaterialPageRoute(
-            builder: (_) => PatientAgendaScreen(
-              patient: sila.Patient(
-                hastaId: int.tryParse(u.id) ?? 0,
-                kullaniciId: int.tryParse(u.id) ?? 0,
-                ad: u.ad, soyad: u.soyad,
-                tani: '', durum: 'Aktif Hasta',
-                degerlendirmeler: [],
-              ),
-            ),
-          ));
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PatientAgendaScreen(
+                  patient: sila.Patient(
+                    hastaId: int.tryParse(u.id) ?? 0,
+                    kullaniciId: int.tryParse(u.id) ?? 0,
+                    ad: u.ad,
+                    soyad: u.soyad,
+                    tani: '',
+                    durum: 'Aktif Hasta',
+                    degerlendirmeler: [],
+                  ),
+                ),
+              ));
         }
       },
       borderRadius: BorderRadius.circular(16),
@@ -185,137 +224,300 @@ class PatientHome extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF7ED), // Hafif turuncu arka plan
+                color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.calendar_month, color: Color(0xFFEA580C), size: 28),
+              child: const Icon(Icons.calendar_month_outlined,
+                  color: _primaryBlue, size: 28),
             ),
             const SizedBox(width: 16),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Klinik Değerlendirme', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Color(0xFF1E293B))),
+                  Text('Klinik Değerlendirme',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Color(0xFF1E293B))),
                   SizedBox(height: 4),
-                  Text('Yarın, 14:30 - Dr. Akhan', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                  Text('Yarın, 14:30 - Dr. Akhan',
+                      style: TextStyle(
+                          color: Color(0xFF64748B), fontSize: 13)),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Color(0xFFCBD5E1), size: 16),
+            const Icon(Icons.arrow_forward_ios,
+                color: Color(0xFFCBD5E1), size: 16),
           ],
         ),
       ),
     );
   }
+
+  // ── GÜNLÜK GÖREV KARTI ────────────────────────────────────────────────────
 
   Widget _buildDailyExerciseCard(BuildContext context) {
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TelerehabPatientScreen())),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4), // Hafif yeşil arka plan
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.fitness_center, color: Color(0xFF16A34A), size: 28),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Günlük Telerehabilitasyon', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Color(0xFF1E293B))),
-                  SizedBox(height: 4),
-                  Text('Henüz tamamlanmadı (0/3)', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(color: _primaryBlue, shape: BoxShape.circle),
-              child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-    );
-  }
-
-  Widget _buildQuickActionsRow(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
       child: Row(
         children: [
-
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.video_camera_front_outlined,
-            label: 'Toplantılar',
-            color: Colors.purple,
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TelerehabPatientScreen())),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.swap_calls_outlined,
+                color: Color(0xFF16A34A), size: 28),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Günlük Telerehabilisasyon',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Color(0xFF1E293B))),
+                SizedBox(height: 4),
+                Text('Henüz tamamlanmadı (0/3)',
+                    style: TextStyle(
+                        color: Color(0xFF64748B), fontSize: 13)),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const TelerehabPatientScreen())),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                  color: _primaryBlue, shape: BoxShape.circle),
+              child: const Icon(Icons.play_arrow,
+                  color: Colors.white, size: 20),
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bu modül yakında eklenecek!'), duration: Duration(seconds: 2)),
+  // ── HIZLI İŞLEMLER — 3 KOLONLU GRİD ──────────────────────────────────────
+
+  Widget _buildQuickActionsGrid(BuildContext context, AuthProvider auth) {
+    final items = [
+      _QuickActionItem(
+        icon: Icons.video_camera_front_outlined,
+        label: 'Toplantılar',
+        color: Colors.purple,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const TelerehabPatientScreen())),
+      ),
+      _QuickActionItem(
+        icon: Icons.monitor_heart_outlined,
+        label: 'Empatica',
+        color: const Color(0xFF0F766E),
+        onTap: () => _navigateToEmpatica(context, auth),
+      ),
+      _QuickActionItem(
+        icon: Icons.notifications_outlined,
+        label: 'Bildirimler',
+        color: const Color(0xFFF59E0B),
+        onTap: () {
+          final userId = int.tryParse(auth.user?.id ?? '');
+          if (userId == null) return;
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) =>
+                      NotificationsScreen(kullaniciId: userId)));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.event_note_outlined,
+        label: 'Ajanda',
+        color: const Color(0xFF2563EB),
+        onTap: () {
+          final u = auth.user;
+          if (u == null) return;
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => PatientAgendaScreen(
+                    patient: sila.Patient(
+                      hastaId: int.tryParse(u.id) ?? 0,
+                      kullaniciId: int.tryParse(u.id) ?? 0,
+                      ad: u.ad,
+                      soyad: u.soyad,
+                      tani: '',
+                      durum: 'Aktif Hasta',
+                      degerlendirmeler: [],
+                    ),
+                  )));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.fitness_center_outlined,
+        label: 'Egzersiz',
+        color: const Color(0xFF8B5CF6),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const HastaEgzersizScreen())),
+      ),
+    ];
+
+    const int crossAxisCount = 3;
+    final int rowCount = (items.length / crossAxisCount).ceil();
+
+    return Column(
+      children: List.generate(rowCount, (rowIndex) {
+        final start = rowIndex * crossAxisCount;
+        final end = (start + crossAxisCount).clamp(0, items.length);
+        final rowItems = items.sublist(start, end);
+
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: rowIndex < rowCount - 1 ? 12 : 0),
+          child: Row(
+            children: [
+              for (int i = 0; i < rowItems.length; i++) ...[
+                Expanded(child: _buildGridTile(rowItems[i])),
+                if (i < rowItems.length - 1) const SizedBox(width: 12),
+              ],
+              // Son satırda eksik hücreleri boş Expanded ile doldur
+              for (int i = rowItems.length; i < crossAxisCount; i++) ...[
+                const SizedBox(width: 12),
+                const Expanded(child: SizedBox()),
+              ],
+            ],
+          ),
+        );
+      }),
     );
   }
-}
 
-class _QuickActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickActionTile({required this.icon, required this.label, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildGridTile(_QuickActionItem item) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: item.onTap,
       child: Container(
-        width: 110,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
+          color: item.color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.1)),
+          border: Border.all(color: item.color.withValues(alpha: 0.12)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4))
-              ]),
-              child: Icon(icon, color: color, size: 24),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: item.color.withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Icon(item.icon, color: item.color, size: 24),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
-              label,
+              item.label,
               textAlign: TextAlign.center,
-              style: TextStyle(color: const Color(0xFF1E293B), fontWeight: FontWeight.w600, fontSize: 12),
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  // ── EMPATİCA NAVİGASYON ───────────────────────────────────────────────────
+
+  Future<void> _navigateToEmpatica(
+      BuildContext context, AuthProvider auth) async {
+    final kullaniciId = int.tryParse(auth.user?.id ?? '');
+    if (kullaniciId == null) return;
+
+    try {
+      final res = await http.get(
+        Uri.parse(
+            '$_kSbUrl/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
+        headers: _sbHeaders(),
+      );
+
+      if (res.statusCode != 200) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Hasta bilgisi alınamadı.')));
+        }
+        return;
+      }
+
+      final list = jsonDecode(res.body) as List;
+      if (list.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Hasta kaydı bulunamadı.')));
+        }
+        return;
+      }
+
+      final hastaId =
+      (list.first as Map<String, dynamic>)['hastaId'] as int;
+      final hasta = Patient(
+        hastaId: hastaId,
+        kullaniciId: kullaniciId,
+        ad: auth.user?.ad ?? '',
+        soyad: auth.user?.soyad ?? '',
+      );
+
+      if (context.mounted) {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => EmpaticaScreen(hasta: hasta)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
+    }
+  }
+}
+
+// ── Veri modeli ───────────────────────────────────────────────────────────────
+
+class _QuickActionItem {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 }

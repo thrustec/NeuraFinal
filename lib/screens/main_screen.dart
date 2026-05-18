@@ -1,7 +1,12 @@
+// lib/screens/main_screen.dart
+
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/patient.dart' as sila;
+import '../models/patient_model.dart';
 import 'clinician_home.dart';
 import 'patient_home.dart';
 import 'patient_list_screen.dart';
@@ -17,7 +22,118 @@ import 'yardim_destek_screen.dart';
 import 'reports_screen.dart';
 import 'hasta_egzersiz_screen.dart';
 import 'notifications_screen.dart';
+import 'empatica_screen.dart';
 import '../services/notification_service.dart';
+
+// ── Hasta Empatica Sayfası (alt bar index 2) ─────────────────────────────────
+// kullaniciId → hastaId çekip kendi EmpaticaScreen'ini açar.
+class _HastaEmpaticaPage extends StatefulWidget {
+  const _HastaEmpaticaPage();
+
+  @override
+  State<_HastaEmpaticaPage> createState() => _HastaEmpaticaPageState();
+}
+
+class _HastaEmpaticaPageState extends State<_HastaEmpaticaPage> {
+  static const String _sbUrl =
+      'https://griteunvazwekosffmjo.supabase.co/rest/v1';
+  static const String _sbKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
+      'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwi'
+      'cm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.'
+      'q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU';
+
+  static const Color _kPrimary = Color(0xFF2563EB);
+
+  bool _yukleniyor = true;
+  String? _hata;
+  Patient? _hasta;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _yukle());
+  }
+
+  Future<void> _yukle() async {
+    setState(() {
+      _yukleniyor = true;
+      _hata = null;
+    });
+    try {
+      final auth = context.read<AuthProvider>();
+      final kullaniciId = int.tryParse(auth.user?.id ?? '');
+      if (kullaniciId == null) throw Exception('Kullanici bilgisi yok.');
+
+      final res = await http.get(
+        Uri.parse(
+            '$_sbUrl/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
+        headers: {
+          'apikey': _sbKey,
+          'Authorization': 'Bearer $_sbKey',
+          'Accept-Profile': 'neura',
+        },
+      );
+
+      if (res.statusCode != 200) throw Exception('Hasta bilgisi alınamadı.');
+      final list = jsonDecode(res.body) as List;
+      if (list.isEmpty) throw Exception('Hasta kaydı bulunamadı.');
+
+      final hastaId =
+      (list.first as Map<String, dynamic>)['hastaId'] as int;
+
+      setState(() {
+        _hasta = Patient(
+          hastaId: hastaId,
+          kullaniciId: kullaniciId,
+          ad: auth.user?.ad ?? '',
+          soyad: auth.user?.soyad ?? '',
+        );
+        _yukleniyor = false;
+      });
+    } catch (e) {
+      setState(() {
+        _hata = e.toString();
+        _yukleniyor = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_yukleniyor) {
+      return const Center(
+          child: CircularProgressIndicator(color: _kPrimary));
+    }
+    if (_hata != null || _hasta == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 12),
+            Text(_hata ?? 'Bilinmeyen hata',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF64748B))),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _yukle,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: _kPrimary, foregroundColor: Colors.white),
+              child: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
+      );
+    }
+    // EmpaticaScreen zaten kendi Scaffold'ını içeriyor,
+    // ana Scaffold'a gömülü olduğu için appBar çakışmasını önlemek için
+    // EmpaticaScreen'i doğrudan döndürüyoruz.
+    return EmpaticaScreen(hasta: _hasta!);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class MainScreen extends StatefulWidget {
   final bool isClinician;
@@ -31,10 +147,10 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _isDarkMode = false;
   int _unreadNotificationCount = 0;
+
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadUnreadNotifications();
     });
@@ -81,7 +197,8 @@ class _MainScreenState extends State<MainScreen> {
         : [
       const PatientHome(),
       const HastaEgzersizScreen(),
-      const Center(child: Text('Gelişim')),
+      // ── DEĞİŞİKLİK: "Gelişim" yerine hasta Empatica sayfası ──
+      const _HastaEmpaticaPage(),
     ];
 
     return Scaffold(
@@ -100,18 +217,17 @@ class _MainScreenState extends State<MainScreen> {
             alignment: Alignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: kTextDark),
+                icon: const Icon(Icons.notifications_outlined,
+                    color: kTextDark),
                 onPressed: () async {
                   final userId = int.tryParse(u?.id ?? '');
-
                   if (userId == null) return;
 
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => NotificationsScreen(
-                        kullaniciId: userId,
-                      ),
+                      builder: (_) =>
+                          NotificationsScreen(kullaniciId: userId),
                     ),
                   );
 
@@ -123,7 +239,8 @@ class _MainScreenState extends State<MainScreen> {
                   right: 6,
                   top: 6,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(999),
@@ -151,21 +268,27 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.event_note_outlined, color: kTextDark),
             onPressed: () {
               if (widget.isClinician) {
-                Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => const ClinicianAgenda()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ClinicianAgenda()));
               } else {
-                Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => PatientAgendaScreen(
-                      patient: sila.Patient(
-                        hastaId: int.tryParse(u?.id ?? '0') ?? 0,
-                        kullaniciId: int.tryParse(u?.id ?? '0') ?? 0,
-                        ad: u?.ad ?? '',
-                        soyad: u?.soyad ?? '',
-                        tani: '',
-                        durum: 'Aktif Hasta',
-                        degerlendirmeler: [],
-                      ),
-                    )));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => PatientAgendaScreen(
+                          patient: sila.Patient(
+                            hastaId:
+                            int.tryParse(u?.id ?? '0') ?? 0,
+                            kullaniciId:
+                            int.tryParse(u?.id ?? '0') ?? 0,
+                            ad: u?.ad ?? '',
+                            soyad: u?.soyad ?? '',
+                            tani: '',
+                            durum: 'Aktif Hasta',
+                            degerlendirmeler: [],
+                          ),
+                        )));
               }
             },
           ),
@@ -185,9 +308,12 @@ class _MainScreenState extends State<MainScreen> {
                   top: 60, bottom: 24, left: 20, right: 20),
               decoration: BoxDecoration(
                 color: primaryColor,
-                boxShadow: [BoxShadow(
-                    color: primaryColor.withOpacity(0.3),
-                    blurRadius: 10, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                      color: primaryColor.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4))
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,33 +323,26 @@ class _MainScreenState extends State<MainScreen> {
                     decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle),
-                    child: () {
-                      final avatarUrl = auth.user?.avatarUrl;
-                      if (avatarUrl != null && avatarUrl.isNotEmpty) {
-                        return CircleAvatar(
-                          radius: 32,
-                          backgroundImage: NetworkImage(avatarUrl),
-                          backgroundColor: Colors.white,
-                        );
-                      }
-                      return CircleAvatar(
-                        radius: 32,
-                        backgroundColor: Colors.white,
-                        child: u?.ad.isNotEmpty == true
-                            ? Text(u!.ad[0].toUpperCase(),
-                            style: TextStyle(fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: primaryColor))
-                            : const Icon(Icons.person, size: 36,
-                            color: kTextGrey),
-                      );
-                    }(),
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.white,
+                      child: u?.ad.isNotEmpty == true
+                          ? Text(u!.ad[0].toUpperCase(),
+                          style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor))
+                          : const Icon(Icons.person,
+                          size: 36, color: kTextGrey),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     u?.fullName ?? 'Kullanıcı',
-                    style: const TextStyle(color: Colors.white,
-                        fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Container(
@@ -233,9 +352,13 @@ class _MainScreenState extends State<MainScreen> {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12)),
                     child: Text(
-                      widget.isClinician ? 'Klinisyen Hesabı' : 'Hasta Hesabı',
-                      style: const TextStyle(color: Colors.white,
-                          fontSize: 12, fontWeight: FontWeight.w600),
+                      widget.isClinician
+                          ? 'Klinisyen Hesabı'
+                          : 'Hasta Hesabı',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -258,16 +381,19 @@ class _MainScreenState extends State<MainScreen> {
                         child: Icon(Icons.person_outline,
                             color: primaryColor, size: 20)),
                     title: const Text('Profilim',
-                        style: TextStyle(color: kTextDark,
+                        style: TextStyle(
+                            color: kTextDark,
                             fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right,
                         color: Color(0xFFCBD5E1)),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => widget.isClinician
-                              ? const KlinisyenProfilScreen()
-                              : const HastaProfilScreen()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => widget.isClinician
+                                  ? const KlinisyenProfilScreen()
+                                  : const HastaProfilScreen()));
                     },
                   ),
 
@@ -281,14 +407,17 @@ class _MainScreenState extends State<MainScreen> {
                         child: const Icon(Icons.settings_outlined,
                             color: kTextGrey, size: 20)),
                     title: const Text('Ayarlar',
-                        style: TextStyle(color: kTextDark,
+                        style: TextStyle(
+                            color: kTextDark,
                             fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right,
                         color: Color(0xFFCBD5E1)),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => const AyarlarScreen()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const AyarlarScreen()));
                     },
                   ),
 
@@ -304,14 +433,18 @@ class _MainScreenState extends State<MainScreen> {
                         child: const Icon(Icons.help_outline,
                             color: kTextGrey, size: 20)),
                     title: const Text('Yardım ve Destek',
-                        style: TextStyle(color: kTextDark,
+                        style: TextStyle(
+                            color: kTextDark,
                             fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right,
                         color: Color(0xFFCBD5E1)),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => const YardimDestekScreen()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                              const YardimDestekScreen()));
                     },
                   ),
                 ],
@@ -334,7 +467,8 @@ class _MainScreenState extends State<MainScreen> {
                       color: Colors.red, size: 20),
                 ),
                 title: const Text('Çıkış Yap',
-                    style: TextStyle(color: Colors.red,
+                    style: TextStyle(
+                        color: Colors.red,
                         fontWeight: FontWeight.bold)),
                 onTap: () async {
                   await auth.logout();
@@ -353,9 +487,12 @@ class _MainScreenState extends State<MainScreen> {
       // ── BOTTOM NAV ───────────────────────────────────────────
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          boxShadow: [BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10, offset: const Offset(0, -4))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -4))
+          ],
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
@@ -366,10 +503,10 @@ class _MainScreenState extends State<MainScreen> {
           unselectedItemColor: const Color(0xFF94A3B8),
           selectedFontSize: 11,
           unselectedFontSize: 11,
-          selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.bold, height: 1.5),
-          unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w500, height: 1.5),
+          selectedLabelStyle:
+          const TextStyle(fontWeight: FontWeight.bold, height: 1.5),
+          unselectedLabelStyle:
+          const TextStyle(fontWeight: FontWeight.w500, height: 1.5),
           elevation: 0,
           items: widget.isClinician
               ? const [
@@ -403,10 +540,11 @@ class _MainScreenState extends State<MainScreen> {
                 icon: Icon(Icons.fitness_center_outlined),
                 activeIcon: Icon(Icons.fitness_center),
                 label: 'Egzersiz'),
+            // ── DEĞİŞİKLİK: Gelişim → Empatica ──────────
             BottomNavigationBarItem(
-                icon: Icon(Icons.insights_outlined),
-                activeIcon: Icon(Icons.insights),
-                label: 'Gelişim'),
+                icon: Icon(Icons.monitor_heart_outlined),
+                activeIcon: Icon(Icons.monitor_heart),
+                label: 'Empatica'),
           ],
         ),
       ),
@@ -416,21 +554,31 @@ class _MainScreenState extends State<MainScreen> {
   String _getTitle(int index, bool isClinician) {
     if (isClinician) {
       switch (index) {
-        case 0: return 'Ana Sayfa';
-        case 1: return 'Hastalar';
-        case 2: return 'Hasta Kaydı';
-        case 3: return 'Değerlendir';
-        case 4: return 'Raporlar';
-        default: return 'NeuraApp';
+        case 0:
+          return 'Ana Sayfa';
+        case 1:
+          return 'Hastalar';
+        case 2:
+          return 'Hasta Kaydı';
+        case 3:
+          return 'Değerlendir';
+        case 4:
+          return 'Raporlar';
+        default:
+          return 'NeuraApp';
       }
     } else {
       switch (index) {
-        case 0: return 'Ana Sayfa';
-        case 1: return 'Egzersizlerim';
-        case 2: return 'Gelişimim';
-        default: return 'NeuraApp';
+        case 0:
+          return 'Ana Sayfa';
+        case 1:
+          return 'Egzersizlerim';
+        case 2:
+        // ── DEĞİŞİKLİK: başlık da güncellendi ──
+          return 'Empatica';
+        default:
+          return 'NeuraApp';
       }
     }
   }
 }
- 
