@@ -191,26 +191,7 @@ class PatientHome extends StatelessWidget {
   Widget _buildNextAppointmentCard(
       BuildContext context, AuthProvider auth) {
     return InkWell(
-      onTap: () {
-        final u = auth.user;
-        if (u != null) {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PatientAgendaScreen(
-                  patient: sila.Patient(
-                    hastaId: int.tryParse(u.id) ?? 0,
-                    kullaniciId: int.tryParse(u.id) ?? 0,
-                    ad: u.ad,
-                    soyad: u.soyad,
-                    tani: '',
-                    durum: 'Aktif Hasta',
-                    degerlendirmeler: [],
-                  ),
-                ),
-              ));
-        }
-      },
+      onTap: () => _navigateToAgenda(context, auth),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -348,24 +329,7 @@ class PatientHome extends StatelessWidget {
         icon: Icons.event_note_outlined,
         label: 'Ajanda',
         color: const Color(0xFF2563EB),
-        onTap: () {
-          final u = auth.user;
-          if (u == null) return;
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => PatientAgendaScreen(
-                    patient: sila.Patient(
-                      hastaId: int.tryParse(u.id) ?? 0,
-                      kullaniciId: int.tryParse(u.id) ?? 0,
-                      ad: u.ad,
-                      soyad: u.soyad,
-                      tani: '',
-                      durum: 'Aktif Hasta',
-                      degerlendirmeler: [],
-                    ),
-                  )));
-        },
+        onTap: () => _navigateToAgenda(context, auth),
       ),
       _QuickActionItem(
         icon: Icons.fitness_center_outlined,
@@ -502,6 +466,43 @@ class PatientHome extends StatelessWidget {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Hata: $e')));
       }
+    }
+  }
+  // ── YENİ: AJANDAYA DOĞRU ID İLE GİTMEK İÇİN METOT ──
+  Future<void> _navigateToAgenda(BuildContext context, AuthProvider auth) async {
+    final kullaniciId = int.tryParse(auth.user?.id ?? '');
+    if (kullaniciId == null) return;
+
+    try {
+      final res = await http.get(
+        Uri.parse('$_kSbUrl/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
+        headers: _sbHeaders(),
+      );
+
+      if (res.statusCode != 200) return;
+      final list = jsonDecode(res.body) as List;
+      if (list.isEmpty) return;
+
+      final hastaId = (list.first as Map<String, dynamic>)['hastaId'] as int;
+
+      if (context.mounted) {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => PatientAgendaScreen(
+                  patient: sila.Patient(
+                    hastaId: hastaId, // İşte gerçek 30 değeri!
+                    kullaniciId: kullaniciId,
+                    ad: auth.user?.ad ?? '',
+                    soyad: auth.user?.soyad ?? '',
+                    tani: '',
+                    durum: 'Aktif Hasta',
+                    degerlendirmeler: const [],
+                  ),
+                )));
+      }
+    } catch (e) {
+      debugPrint('Ajanda yönlendirme hatası: $e');
     }
   }
 }

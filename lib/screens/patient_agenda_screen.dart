@@ -57,46 +57,17 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
     super.dispose();
   }
 
-  Future<int?> _resolveRealHastaId() async {
-    final candidateId = widget.patient.hastaId;
-
-    final byHastaId = await SupabaseService.client
-        .schema('neura')
-        .from('hastalar')
-        .select('hastaId')
-        .eq('hastaId', candidateId)
-        .maybeSingle();
-
-    if (byHastaId != null) {
-      return byHastaId['hastaId'] as int;
-    }
-
-    final byKullaniciId = await SupabaseService.client
-        .schema('neura')
-        .from('hastalar')
-        .select('hastaId')
-        .eq('kullaniciId', candidateId)
-        .maybeSingle();
-
-    if (byKullaniciId != null) {
-      return byKullaniciId['hastaId'] as int;
-    }
-
-    return null;
-  }
-
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
     try {
-      _realHastaId = await _resolveRealHastaId();
+      _realHastaId = widget.patient.hastaId;
+      debugPrint('=== AJANDA: Doğrudan hastaId ile sorgulanıyor: $_realHastaId');
 
-      if (_realHastaId == null) {
+      if (_realHastaId == null || _realHastaId == 0) {
         if (!mounted) return;
         setState(() {
-          _assignedClinicianId = null;
-          _assignedClinicianName =
-          'Hasta kaydı bulunamadı. Gelen ID: ${widget.patient.hastaId}';
+          _assignedClinicianName = 'Hata: Geçersiz Hasta ID';
           _isLoading = false;
         });
         return;
@@ -173,21 +144,35 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
   }
   Future<void> _loadPatientExercises() async {
     try {
+      debugPrint('=== EGZERSİZ SORGUSU: hastaId=$_realHastaId');
+
       final data = await SupabaseService.client
           .schema('neura')
-          .from('egzersizAtalari') // tablo adı değişebilir
-          .select('hastaId,egzersizAdi,notlar,atamaTarihi')
+          .from('egzersizAtalari')
+          .select(
+        'egzersizAtamaId,hastaId,egzersizAdi,notlar,atamaTarihi,'
+            'tekrarSayisi,tamamlananTekrar,tamamlandiMi',
+      )
           .eq('hastaId', _realHastaId!)
-          .order('atamaTarihi', ascending: false); // kolon adı değişebilir
+          .order('atamaTarihi', ascending: false);
 
       if (!mounted) return;
 
+      final list = List<Map<String, dynamic>>.from(data);
+      debugPrint('=== EGZERSİZ SAYISI: ${list.length}');
+      for (final e in list) {
+        debugPrint('  → egzersizAdi=${e['egzersizAdi']} '
+            'atamaTarihi=${e['atamaTarihi']} '
+            'hastaId=${e['hastaId']}');
+      }
+
       setState(() {
-        _exercises = List<Map<String, dynamic>>.from(data);
+        _exercises = list;
       });
     } catch (e) {
       if (!mounted) return;
       _showMessage('Egzersizler yüklenemedi: $e');
+      debugPrint('=== EGZERSİZ HATA: $e');
     }
   }
   Future<void> _loadApprovedMeetings() async {
@@ -264,15 +249,22 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
   }
   List<Map<String, dynamic>> _exercisesForDay(DateTime day) {
     return _exercises.where((exercise) {
-      final created = DateTime.tryParse(
-        exercise['atamaTarihi']?.toString() ?? '',
-      );
+      final raw = exercise['atamaTarihi']?.toString() ?? '';
+      if (raw.isEmpty) return false;
 
-      if (created == null) return false;
+      // atamaTarihi "date" tipinde gelir: "2025-05-18"
+      // DateTime.tryParse bunu "2025-05-18 00:00:00.000" olarak parse eder
+      // Timezone kaymasını önlemek için sadece yıl/ay/gün kısımlarını karşılaştır
+      final parts = raw.split('T').first.split('-');
+      if (parts.length < 3) return false;
 
-      return created.year == day.year &&
-          created.month == day.month &&
-          created.day == day.day;
+      final year  = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final dayNo = int.tryParse(parts[2]);
+
+      if (year == null || month == null || dayNo == null) return false;
+
+      return year == day.year && month == day.month && dayNo == day.day;
     }).toList();
   }
   List<Map<String, dynamic>> _approvedMeetingsForDay(DateTime day) {
@@ -736,6 +728,10 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
 
     final rawDate = exercise['atamaTarihi']?.toString() ?? '';
 
+    // Tekrar sayısı — egzersizAtalari.tekrarSayisi ve tamamlananTekrar
+    final int tekrar = exercise['tekrarSayisi'] as int? ?? 1;
+    final int tamamlanan = exercise['tamamlananTekrar'] as int? ?? 0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -779,6 +775,39 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
             ),
           ),
           const SizedBox(height: 10),
+          // Tekrar sayısı satırı
+          Row(
+            children: [
+              const Icon(
+                Icons.repeat_rounded,
+                size: 14,
+                color: Color(0xFF8B5CF6),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$tamamlanan / $tekrar tekrar',
+                style: const TextStyle(
+                  color: Color(0xFF8B5CF6),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // İlerleme çubuğu
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: tekrar > 0 ? (tamamlanan / tekrar).clamp(0.0, 1.0) : 0,
+                    backgroundColor: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                    color: const Color(0xFF8B5CF6),
+                    minHeight: 6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               const Icon(
@@ -794,20 +823,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(width: 14),
-              const Icon(
-                Icons.access_time_outlined,
-                size: 14,
-                color: kTextHint,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _formatTime(rawDate),
-                style: const TextStyle(
-                  color: kTextGrey,
-                  fontSize: 13,
-                ),
-              ),
+              // atamaTarihi "date" tipinde gelir — saat bilgisi yok
             ],
           ),
         ],
