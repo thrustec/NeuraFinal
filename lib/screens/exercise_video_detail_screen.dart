@@ -1,22 +1,18 @@
 // lib/screens/exercise_video_detail_screen.dart
-//
-// Değişiklikler:
-//  1. _videoOynatici() → gerçek video URL'si açılır (video_player paketi yerine
-//     url_launcher kullanılır; native player yeterli bu akış için).
-//  2. "Hastaya Ata" butonu → _hastaAtaModal() açar.
-//  3. Modal: klinisyenin sorumlu hastalarını listeler, hasta seçilir, not girişi,
-//     tarih seçimi, Kaydet.
-//  Bağımlılıklar (pubspec.yaml'a ekle):
-//    url_launcher: ^6.2.0
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/exercise_video_model.dart';
 import '../providers/auth_provider.dart';
-import '../services/egzersiz_atama_service.dart';
 import '../services/auth_service.dart';
+import '../services/egzersiz_atama_service.dart';
+
+const Color kPrimary = Color(0xFF0F766E);
+
+// ─── Ana Ekran ────────────────────────────────────────────────────────────────
 
 class ExerciseVideoDetailScreen extends StatefulWidget {
   final EgzersizVideo video;
@@ -29,302 +25,127 @@ class ExerciseVideoDetailScreen extends StatefulWidget {
 
 class _ExerciseVideoDetailScreenState
     extends State<ExerciseVideoDetailScreen> {
-  static const Color kPrimary = Color(0xFF0F766E);
-
   @override
   Widget build(BuildContext context) {
-    final v = widget.video;
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
-      appBar: _appBar(),
-      bottomNavigationBar: _altAksiyon(context),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _videoOynatici(),
-            const SizedBox(height: 20),
-            Text(v.baslik,
+      body: CustomScrollView(
+        slivers: [
+          _buildAppBar(context),
+          SliverToBoxAdapter(child: _buildBody()),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomBar(context),
+    );
+  }
+
+  // ── AppBar ────────────────────────────────────────────────────────────────
+  SliverAppBar _buildAppBar(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: 240,
+      pinned: true,
+      backgroundColor: kPrimary,
+      foregroundColor: Colors.white,
+      flexibleSpace: FlexibleSpaceBar(
+        background: widget.video.thumbnailUrl != null
+            ? Image.network(
+          widget.video.thumbnailUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _thumbnailPlaceholder(),
+        )
+            : _thumbnailPlaceholder(),
+      ),
+      title: Text(
+        widget.video.baslik,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _thumbnailPlaceholder() => Container(
+    color: kPrimary.withOpacity(0.15),
+    child: const Center(
+      child: Icon(Icons.fitness_center, size: 64, color: kPrimary),
+    ),
+  );
+
+  // ── Gövde ─────────────────────────────────────────────────────────────────
+  Widget _buildBody() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Başlık + kategori chip
+          Row(children: [
+            Expanded(
+              child: Text(
+                widget.video.baslik,
                 style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B))),
-            const SizedBox(height: 12),
-            _hizliBilgiler(),
-            const SizedBox(height: 20),
-            if (v.aciklama != null) ...[
-              _bolumBaslik(Icons.description_outlined, 'AÇIKLAMA'),
-              const SizedBox(height: 8),
-              _aciklamaKutu(v.aciklama!),
-              const SizedBox(height: 20),
-            ],
-            _bolumBaslik(Icons.info_outline, 'DETAYLAR'),
-            const SizedBox(height: 8),
-            _detayKart(),
-            const SizedBox(height: 20),
-            _uyariKutusu(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Video Oynatıcı ────────────────────────────────────────
-  Widget _videoOynatici() {
-    final v = widget.video;
-    return GestureDetector(
-      onTap: () async {
-        if (v.videoUrl.isNotEmpty) {
-          final uri = Uri.parse(v.videoUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Video açılamadı')),
-              );
-            }
-          }
-        }
-      },
-      child: Container(
-        height: 210,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(20),
-          image: v.thumbnailUrl != null
-              ? DecorationImage(
-                  image: NetworkImage(v.thumbnailUrl!),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.35),
-                    BlendMode.darken,
-                  ),
-                )
-              : null,
-        ),
-        child: Stack(children: [
-          // Renkli overlay (thumbnail yoksa)
-          if (v.thumbnailUrl == null)
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F766E), Color(0xFF134E4A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                    color: Color(0xFF1E293B)),
+              ),
+            ),
+            if (widget.video.kategoriAdi != null)
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kPrimary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  widget.video.kisaKategori,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: kPrimary),
                 ),
               ),
+          ]),
+          const SizedBox(height: 12),
+
+          // Süre bilgisi
+          Row(children: [
+            const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF64748B)),
+            const SizedBox(width: 6),
+            Text(
+              widget.video.formatliSure,
+              style:
+              const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
             ),
-          // Oynat ikonu
-          Center(
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.92),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.play_arrow_rounded,
-                  color: Color(0xFF0F766E), size: 40),
+          ]),
+
+          if (widget.video.aciklama != null &&
+              widget.video.aciklama!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Color(0xFFE2E8F0)),
+            const SizedBox(height: 12),
+            const Text(
+              'Açıklama',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF374151)),
             ),
-          ),
-          // Süre rozeti
-          Positioned(
-            bottom: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _formatSure(widget.video.sureSaniye),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold),
-              ),
+            const SizedBox(height: 6),
+            Text(
+              widget.video.aciklama!,
+              style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                  height: 1.55),
             ),
-          ),
-          // "Oynamak için tıkla" etiketi
-          Positioned(
-            bottom: 12,
-            left: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black45,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.open_in_new, color: Colors.white, size: 12),
-                  SizedBox(width: 4),
-                  Text('Oynatmak için tıkla',
-                      style: TextStyle(color: Colors.white, fontSize: 11)),
-                ],
-              ),
-            ),
-          ),
-        ]),
+          ],
+        ],
       ),
     );
   }
 
-  String _formatSure(int saniye) {
-    final d = Duration(seconds: saniye);
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
-  // ── Hızlı Bilgiler ───────────────────────────────────────
-  Widget _hizliBilgiler() {
-    final v = widget.video;
-    return Row(children: [
-      _bilgiChip(Icons.category_outlined, v.kategoriAdi ?? 'Genel'),
-      const SizedBox(width: 8),
-      _bilgiChip(Icons.timer_outlined, _formatSure(v.sureSaniye)),
-    ]);
-  }
-
-  Widget _bilgiChip(IconData ikon, String metin) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: kPrimary.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(ikon, size: 14, color: kPrimary),
-          const SizedBox(width: 6),
-          Text(metin,
-              style: const TextStyle(
-                  fontSize: 12,
-                  color: kPrimary,
-                  fontWeight: FontWeight.w600)),
-        ]),
-      );
-
-  // ── Açıklama Kutusu ──────────────────────────────────────
-  Widget _aciklamaKutu(String aciklama) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        child: Text(aciklama,
-            style: const TextStyle(
-                fontSize: 14, color: Color(0xFF475569), height: 1.6)),
-      );
-
-  // ── Detay Kartı ──────────────────────────────────────────
-  Widget _detayKart() => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        child: Column(children: [
-          _detaySatir(Icons.category_outlined, 'Kategori',
-              widget.video.kategoriAdi ?? 'Belirtilmedi'),
-          const Divider(height: 20),
-          _detaySatir(Icons.timer_outlined, 'Süre',
-              _formatSure(widget.video.sureSaniye)),
-        ]),
-      );
-
-  Widget _detaySatir(IconData ikon, String etiket, String deger) => Row(
-        children: [
-          Icon(ikon, size: 18, color: const Color(0xFF94A3B8)),
-          const SizedBox(width: 10),
-          Text(etiket,
-              style: const TextStyle(
-                  fontSize: 13, color: Color(0xFF64748B))),
-          const Spacer(),
-          Text(deger,
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF1E293B),
-                  fontWeight: FontWeight.w600)),
-        ],
-      );
-
-  // ── Uyarı Kutusu ─────────────────────────────────────────
-  Widget _uyariKutusu() => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFFDE68A)),
-        ),
-        child: const Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.warning_amber_rounded,
-                color: Color(0xFFD97706), size: 18),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Ağrı veya rahatsızlık hissederseniz egzersizi durdurun.',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF92400E),
-                    height: 1.5),
-              ),
-            ),
-          ],
-        ),
-      );
-
-  // ── Bölüm Başlık ─────────────────────────────────────────
-  Widget _bolumBaslik(IconData ikon, String baslik) => Row(children: [
-        Icon(ikon, size: 16, color: const Color(0xFF94A3B8)),
-        const SizedBox(width: 6),
-        Text(baslik,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF94A3B8),
-                letterSpacing: 0.8)),
-      ]);
-
-  // ── AppBar ───────────────────────────────────────────────
-  AppBar _appBar() => AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Color(0xFF1E293B), size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Egzersiz Detayı',
-            style: TextStyle(
-                color: Color(0xFF1E293B),
-                fontWeight: FontWeight.bold,
-                fontSize: 18)),
-        centerTitle: false,
-      );
-
-  // ── Alt Butonlar ─────────────────────────────────────────
-  Widget _altAksiyon(BuildContext context) {
+  // ── Alt Bar ───────────────────────────────────────────────────────────────
+  Widget _buildBottomBar(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final isKlinisyen = auth.user?.rolAdi == 'Klinisyen';
 
@@ -342,14 +163,12 @@ class _ExerciseVideoDetailScreenState
       ),
       child: SafeArea(
         child: Row(children: [
-          // Kaydet / Videoyu Aç butonu
           Expanded(
             child: OutlinedButton.icon(
               onPressed: () async {
                 final uri = Uri.parse(widget.video.videoUrl);
                 if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri,
-                      mode: LaunchMode.externalApplication);
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
               },
               icon: const Icon(Icons.play_circle_outline, size: 20),
@@ -364,7 +183,6 @@ class _ExerciseVideoDetailScreenState
               ),
             ),
           ),
-          // "Hastaya Ata" sadece klinisyene göster
           if (isKlinisyen) ...[
             const SizedBox(width: 12),
             Expanded(
@@ -391,15 +209,13 @@ class _ExerciseVideoDetailScreenState
     );
   }
 
-  // ── Hastaya Ata Modal ────────────────────────────────────
+  // ── Hastaya Ata Modal Açıcı ───────────────────────────────────────────────
   Future<void> _hastaAtaModal(BuildContext context) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final kullaniciId = int.tryParse(auth.user?.id ?? '');
     if (kullaniciId == null) return;
 
-    // klinisyenId'yi çek
-    final klinisyenId =
-        auth.user?.klinisyenId ??
+    final klinisyenId = auth.user?.klinisyenId ??
         await AuthService.getKlinisyenIdByKullaniciId(kullaniciId);
 
     if (klinisyenId == null) {
@@ -411,17 +227,19 @@ class _ExerciseVideoDetailScreenState
       return;
     }
 
-    // Hastalar yüklenirken loading göster
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) =>
-          const Center(child: CircularProgressIndicator(color: Color(0xFF0F766E))),
-    );
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+            child: CircularProgressIndicator(color: kPrimary)),
+      );
+    }
 
     List<Map<String, dynamic>> hastalar = [];
     try {
-      hastalar = await EgzersizAtamaService.getHastalarByKlinisyen(klinisyenId);
+      hastalar =
+      await EgzersizAtamaService.getHastalarByKlinisyen(klinisyenId);
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
@@ -432,8 +250,7 @@ class _ExerciseVideoDetailScreenState
       return;
     }
 
-    if (mounted) Navigator.pop(context); // loading kapat
-
+    if (mounted) Navigator.pop(context);
     if (!mounted) return;
 
     await showModalBottomSheet(
@@ -449,7 +266,7 @@ class _ExerciseVideoDetailScreenState
   }
 }
 
-// ─── Atama Modal Widget ───────────────────────────────────────────────────────
+// ─── Atama Modal ─────────────────────────────────────────────────────────────
 
 class _AtamaModal extends StatefulWidget {
   final EgzersizVideo video;
@@ -467,13 +284,14 @@ class _AtamaModal extends StatefulWidget {
 }
 
 class _AtamaModalState extends State<_AtamaModal> {
-  static const Color kPrimary = Color(0xFF0F766E);
-
   int? _secilenHastaId;
   String? _secilenHastaAdi;
   final _notCtrl = TextEditingController();
   DateTime _atamaTarihi = DateTime.now();
+  int _tekrarSayisi = 3;
   bool _kaydediliyor = false;
+
+  static const List<int> _tekrarSecenekleri = [1, 2, 3, 5, 7, 10, 14, 21, 30];
 
   @override
   void dispose() {
@@ -484,8 +302,8 @@ class _AtamaModalState extends State<_AtamaModal> {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      maxChildSize: 0.92,
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
       minChildSize: 0.5,
       builder: (_, scrollCtrl) => Container(
         decoration: const BoxDecoration(
@@ -507,66 +325,65 @@ class _AtamaModalState extends State<_AtamaModal> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
             child: Row(children: [
-              const Text('Hastaya Ata',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B))),
-              const Spacer(),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: kPrimary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.person_add_outlined,
+                    color: kPrimary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Hastaya Ata',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E293B))),
+                      Text(
+                        widget.video.baslik,
+                        style: const TextStyle(
+                            fontSize: 13, color: Color(0xFF64748B)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ]),
+              ),
               IconButton(
-                icon: const Icon(Icons.close, color: Color(0xFF64748B)),
                 onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
               ),
             ]),
           ),
-          const Divider(height: 1),
+          const Divider(height: 20, color: Color(0xFFE2E8F0)),
           // İçerik
           Expanded(
             child: ListView(
               controller: scrollCtrl,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               children: [
-                // Egzersiz özeti
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: kPrimary.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.fitness_center,
-                        color: kPrimary, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(widget.video.baslik,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1E293B))),
-                    ),
-                  ]),
-                ),
-                const SizedBox(height: 20),
-
-                // Hasta seç
-                const Text('Hasta Seç',
+                // ── Hasta Listesi ─────────────────────────────────
+                const Text('Hasta Seçin',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF374151))),
                 const SizedBox(height: 8),
-
                 if (widget.hastalar.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'Sorumlu olduğunuz aktif hasta bulunamadı.',
-                      style: TextStyle(color: Color(0xFF64748B)),
-                    ),
+                    child: Text('Sorumlu hastanız bulunamadı.',
+                        style: TextStyle(color: Color(0xFF64748B))),
                   )
                 else
                   ...widget.hastalar.map((h) {
-                    final k = h['kullanicilar'] as Map<String, dynamic>?;
-                    final ad = '${k?['ad'] ?? ''} ${k?['soyad'] ?? ''}'.trim();
+                    final k =
+                    h['kullanicilar'] as Map<String, dynamic>?;
+                    final ad =
+                    '${k?['ad'] ?? ''} ${k?['soyad'] ?? ''}'.trim();
                     final hastaId = h['hastaId'] as int;
                     final secili = _secilenHastaId == hastaId;
                     return GestureDetector(
@@ -584,8 +401,9 @@ class _AtamaModalState extends State<_AtamaModal> {
                               : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color:
-                                secili ? kPrimary : const Color(0xFFE2E8F0),
+                            color: secili
+                                ? kPrimary
+                                : const Color(0xFFE2E8F0),
                             width: secili ? 1.5 : 1,
                           ),
                         ),
@@ -624,7 +442,111 @@ class _AtamaModalState extends State<_AtamaModal> {
 
                 const SizedBox(height: 20),
 
-                // Atama tarihi
+                // ── Tekrar Sayısı Seçici ──────────────────────────
+                const Text('Tekrar Sayısı',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF374151))),
+                const SizedBox(height: 4),
+                const Text(
+                  'Hasta bu videoyu kaç kez tekrarlamalı?',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                ),
+                const SizedBox(height: 10),
+                // Büyük sayı gösterimi + +/- butonları
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: kPrimary.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border:
+                    Border.all(color: kPrimary.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Azalt
+                      _TekrarBtn(
+                        icon: Icons.remove,
+                        onTap: _tekrarSayisi > 1
+                            ? () => setState(() => _tekrarSayisi--)
+                            : null,
+                      ),
+                      const SizedBox(width: 20),
+                      // Sayı
+                      Column(
+                        children: [
+                          Text(
+                            '$_tekrarSayisi',
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: kPrimary,
+                              height: 1,
+                            ),
+                          ),
+                          const Text(
+                            'tekrar',
+                            style: TextStyle(
+                                fontSize: 12, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 20),
+                      // Artır
+                      _TekrarBtn(
+                        icon: Icons.add,
+                        onTap: _tekrarSayisi < 99
+                            ? () => setState(() => _tekrarSayisi++)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Hızlı seçim chipleri
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: _tekrarSecenekleri.map((sayi) {
+                    final secili = _tekrarSayisi == sayi;
+                    return GestureDetector(
+                      onTap: () => setState(() => _tekrarSayisi = sayi),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: secili
+                              ? kPrimary
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: secili
+                                ? kPrimary
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Text(
+                          '$sayi×',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: secili
+                                ? Colors.white
+                                : const Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Atama Tarihi ──────────────────────────────────
                 const Text('Atama Tarihi',
                     style: TextStyle(
                         fontSize: 13,
@@ -639,7 +561,7 @@ class _AtamaModalState extends State<_AtamaModal> {
                       firstDate: DateTime.now()
                           .subtract(const Duration(days: 30)),
                       lastDate:
-                          DateTime.now().add(const Duration(days: 365)),
+                      DateTime.now().add(const Duration(days: 365)),
                       builder: (ctx, child) => Theme(
                         data: Theme.of(ctx).copyWith(
                           colorScheme: const ColorScheme.light(
@@ -654,32 +576,37 @@ class _AtamaModalState extends State<_AtamaModal> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
+                        horizontal: 14, vertical: 13),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12),
                       border:
-                          Border.all(color: const Color(0xFFE2E8F0)),
+                      Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.calendar_today,
-                          size: 16, color: kPrimary),
+                      const Icon(Icons.calendar_today_outlined,
+                          size: 18, color: kPrimary),
                       const SizedBox(width: 10),
                       Text(
                         '${_atamaTarihi.day.toString().padLeft(2, '0')}/'
-                        '${_atamaTarihi.month.toString().padLeft(2, '0')}/'
-                        '${_atamaTarihi.year}',
+                            '${_atamaTarihi.month.toString().padLeft(2, '0')}/'
+                            '${_atamaTarihi.year}',
                         style: const TextStyle(
-                            fontSize: 14, color: Color(0xFF1E293B)),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF374151)),
                       ),
+                      const Spacer(),
+                      const Icon(Icons.chevron_right,
+                          color: Color(0xFFCBD5E1)),
                     ]),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // Notlar
-                const Text('Not (isteğe bağlı)',
+                // ── Not alanı ─────────────────────────────────────
+                const Text('Not (İsteğe Bağlı)',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -698,12 +625,12 @@ class _AtamaModalState extends State<_AtamaModal> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide:
-                          const BorderSide(color: Color(0xFFE2E8F0)),
+                      const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide:
-                          const BorderSide(color: Color(0xFFE2E8F0)),
+                      const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -714,33 +641,38 @@ class _AtamaModalState extends State<_AtamaModal> {
 
                 const SizedBox(height: 28),
 
-                // Kaydet butonu
+                // ── Kaydet Butonu ─────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: (_secilenHastaId == null || _kaydediliyor)
+                    onPressed:
+                    (_secilenHastaId == null || _kaydediliyor)
                         ? null
                         : _kaydet,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kPrimary,
-                      disabledBackgroundColor:
-                          const Color(0xFFCBD5E1),
+                      disabledBackgroundColor: const Color(0xFFCBD5E1),
                       padding:
-                          const EdgeInsets.symmetric(vertical: 16),
+                      const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                     ),
                     child: _kaydediliyor
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                        : const Text('Ata',
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                        : Text(
+                      _secilenHastaAdi != null
+                          ? '$_secilenHastaAdi\'a Ata  ($_tekrarSayisi tekrar)'
+                          : 'Hasta Seçin',
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
                   ),
                 ),
               ],
@@ -760,31 +692,56 @@ class _AtamaModalState extends State<_AtamaModal> {
         egzersizVideoId: widget.video.egzersizVideoId,
         egzersizAdi: widget.video.baslik,
         klinisyenId: widget.klinisyenId,
-        notlar: _notCtrl.text.trim().isEmpty ? null : _notCtrl.text.trim(),
+        notlar: _notCtrl.text.trim(),
         atamaTarihi: _atamaTarihi,
+        tekrarSayisi: _tekrarSayisi,
       );
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '${widget.video.baslik} → $_secilenHastaAdi için atandı'),
-            backgroundColor: const Color(0xFF0F766E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              '${widget.video.baslik} → $_secilenHastaAdi\'a atandı ($_tekrarSayisi tekrar)'),
+          backgroundColor: kPrimary,
+        ));
       }
     } catch (e) {
+      setState(() => _kaydediliyor = false);
       if (mounted) {
-        setState(() => _kaydediliyor = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Hata: $e'),
-              backgroundColor: Colors.red.shade700),
+          SnackBar(content: Text('Hata: $e')),
         );
       }
     }
+  }
+}
+
+// ─── Tekrar +/- Buton ────────────────────────────────────────────────────────
+
+class _TekrarBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _TekrarBtn({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: enabled ? kPrimary : const Color(0xFFE2E8F0),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: enabled ? Colors.white : const Color(0xFFCBD5E1),
+          size: 22,
+        ),
+      ),
+    );
   }
 }

@@ -40,12 +40,15 @@ class _ClinicianHomeState extends State<ClinicianHome> {
 
   Future<void> _loadData() async {
     await _resolveKlinisyenId();
-    await _loadPatientCount();
-    await _loadCreatedReportCount();
-    await _loadTodayMeetings();
+
+    await Future.wait([
+      _loadPatientCount(),
+      _loadCreatedReportCount(),
+      _loadTodayMeetings(),
+    ]);
   }
 
-  /// Giriş yapan kullanıcının klinisyenler.klinisyenId'sini çeker.
+  /// Giriş yapan kullanıcının klinisyenId'sini çeker.
   Future<void> _resolveKlinisyenId() async {
     if (!mounted) return;
 
@@ -168,15 +171,16 @@ class _ClinicianHomeState extends State<ClinicianHome> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final user = auth.user;
-    final displayName = user?.displayName ?? 'Değerli Hocam';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildWelcomeCard(displayName),
+          _buildWelcomeCard(
+            auth.user?.displayName ?? 'Klinisyen',
+            auth.user?.avatarUrl,
+          ),
 
           const SizedBox(height: 28),
 
@@ -225,9 +229,8 @@ class _ClinicianHomeState extends State<ClinicianHome> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => PatientListScreen(
-                        klinisyenId: _klinisyenId,
-                      ),
+                      builder: (_) =>
+                          PatientListScreen(klinisyenId: _klinisyenId),
                     ),
                   ),
                 ),
@@ -243,7 +246,8 @@ class _ClinicianHomeState extends State<ClinicianHome> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const ReportsScreen(),
+                      builder: (_) =>
+                      const ReportsScreen(showBackButton: true),
                     ),
                   ),
                 ),
@@ -255,7 +259,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
     );
   }
 
-  Widget _buildWelcomeCard(String displayName) {
+  Widget _buildWelcomeCard(String displayName, String? avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -274,48 +278,86 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'İyi çalışmalar 👋',
-            style: TextStyle(color: Colors.white70, fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            displayName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.medical_services_outlined,
-                  color: Colors.white,
-                  size: 14,
+                const Text(
+                  'İyi çalışmalar 👋',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
                 ),
-                SizedBox(width: 6),
+                const SizedBox(height: 6),
                 Text(
-                  'Klinisyen',
-                  style: TextStyle(
+                  displayName,
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.medical_services_outlined,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Klinisyen',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.5),
+                width: 2,
+              ),
+            ),
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? CircleAvatar(
+              radius: 36,
+              backgroundImage: NetworkImage(avatarUrl),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+            )
+                : CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              child: Text(
+                displayName.isNotEmpty
+                    ? displayName[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],

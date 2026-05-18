@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/patient.dart' as sila;
+import '../models/patient_model.dart' as patient_model;
 import 'telerehab_patient_screen.dart';
 import 'hasta_egzersiz_screen.dart';
 import 'patient_agenda_screen.dart';
+import 'notifications_screen.dart';
+import 'empatica_screen.dart';
 import '../services/supabase_service.dart';
 
 class PatientHome extends StatefulWidget {
@@ -193,6 +196,38 @@ class _PatientHomeState extends State<PatientHome> {
     );
   }
 
+  Future<void> _openEmpatica(AuthProvider auth) async {
+    final hastaId = await _getCurrentPatientId();
+    final user = auth.user;
+    final kullaniciId = int.tryParse(user?.id ?? '');
+
+    if (!mounted) return;
+
+    if (hastaId == null || user == null || kullaniciId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hasta bilgisi alınamadı.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final hasta = patient_model.Patient(
+      hastaId: hastaId,
+      kullaniciId: kullaniciId,
+      ad: user.ad,
+      soyad: user.soyad,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EmpaticaScreen(hasta: hasta),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -202,7 +237,10 @@ class _PatientHomeState extends State<PatientHome> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildWelcomeCard(auth.user?.fullName ?? 'Değerli Hastamız'),
+          _buildWelcomeCard(
+            auth.user?.fullName ?? 'Değerli Hastamız',
+            auth.user?.avatarUrl,
+          ),
 
           const SizedBox(height: 28),
 
@@ -220,13 +258,13 @@ class _PatientHomeState extends State<PatientHome> {
 
           _buildSectionHeader('Hızlı İşlemler'),
           const SizedBox(height: 12),
-          _buildQuickActionsRow(context),
+          _buildQuickActionsGrid(context, auth),
         ],
       ),
     );
   }
 
-  Widget _buildWelcomeCard(String userName) {
+  Widget _buildWelcomeCard(String userName, String? avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -245,44 +283,86 @@ class _PatientHomeState extends State<PatientHome> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'Hoşgeldin 👋',
-            style: TextStyle(color: Colors.white70, fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            userName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.monitor_heart, color: Colors.white, size: 14),
-                SizedBox(width: 6),
+                const Text(
+                  'Hoşgeldin 👋',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
                 Text(
-                  'Hasta',
-                  style: TextStyle(
+                  userName,
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.monitor_heart,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Hasta',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.5),
+                width: 2,
+              ),
+            ),
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? CircleAvatar(
+              radius: 36,
+              backgroundImage: NetworkImage(avatarUrl),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+            )
+                : CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              child: Text(
+                userName.isNotEmpty
+                    ? userName[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],
@@ -539,83 +619,124 @@ class _PatientHomeState extends State<PatientHome> {
     );
   }
 
-  Widget _buildQuickActionsRow(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.video_camera_front_outlined,
-            label: 'Toplantılar',
-            color: Colors.purple,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const TelerehabPatientScreen(),
-              ),
-            ),
+  Widget _buildQuickActionsGrid(
+      BuildContext context,
+      AuthProvider auth,
+      ) {
+    final items = [
+      _QuickActionItem(
+        icon: Icons.video_camera_front_outlined,
+        label: 'Toplantılar',
+        color: Colors.purple,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TelerehabPatientScreen(),
           ),
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.calendar_month_outlined,
-            label: 'Ajanda',
-            color: Colors.blue,
-            onTap: _openPatientAgenda,
-          ),
-        ],
+        ),
       ),
+      _QuickActionItem(
+        icon: Icons.monitor_heart_outlined,
+        label: 'Empatica',
+        color: const Color(0xFF0F766E),
+        onTap: () => _openEmpatica(auth),
+      ),
+      _QuickActionItem(
+        icon: Icons.notifications_outlined,
+        label: 'Bildirimler',
+        color: const Color(0xFFF59E0B),
+        onTap: () {
+          final userId = int.tryParse(auth.user?.id ?? '');
+          if (userId == null) return;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => NotificationsScreen(kullaniciId: userId),
+            ),
+          );
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.event_note_outlined,
+        label: 'Ajanda',
+        color: const Color(0xFF2563EB),
+        onTap: _openPatientAgenda,
+      ),
+      _QuickActionItem(
+        icon: Icons.fitness_center_outlined,
+        label: 'Egzersiz',
+        color: const Color(0xFF8B5CF6),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const HastaEgzersizScreen(),
+          ),
+        ),
+      ),
+    ];
+
+    const int crossAxisCount = 3;
+    final int rowCount = (items.length / crossAxisCount).ceil();
+
+    return Column(
+      children: List.generate(rowCount, (rowIndex) {
+        final start = rowIndex * crossAxisCount;
+        final end = (start + crossAxisCount).clamp(0, items.length);
+        final rowItems = items.sublist(start, end);
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: rowIndex < rowCount - 1 ? 12 : 0,
+          ),
+          child: Row(
+            children: [
+              for (int i = 0; i < rowItems.length; i++) ...[
+                Expanded(child: _buildGridTile(rowItems[i])),
+                if (i < rowItems.length - 1) const SizedBox(width: 12),
+              ],
+              for (int i = rowItems.length; i < crossAxisCount; i++) ...[
+                const SizedBox(width: 12),
+                const Expanded(child: SizedBox()),
+              ],
+            ],
+          ),
+        );
+      }),
     );
   }
-}
 
-class _QuickActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickActionTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildGridTile(_QuickActionItem item) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: item.onTap,
       child: Container(
-        width: 110,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
+          color: item.color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.1)),
+          border: Border.all(color: item.color.withValues(alpha: 0.12)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: color.withValues(alpha: 0.1),
+                    color: item.color.withValues(alpha: 0.12),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(item.icon, color: item.color, size: 24),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
-              label,
+              item.label,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Color(0xFF1E293B),
@@ -628,4 +749,18 @@ class _QuickActionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _QuickActionItem {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 }
