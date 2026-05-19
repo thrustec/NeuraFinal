@@ -131,6 +131,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
   bool get _isLastStep => _currentStep == _steps.length - 1;
 
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
@@ -1056,6 +1058,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Future<void> _handleContinue() async {
+    if (_isSaving) return;
     if (_currentStep == 0) {
       final providerHastaId = context.read<EvaluationProvider>().filterHastaId;
       final dbHastaId = _selectedDbPatient?.hastaId;
@@ -1573,6 +1576,15 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Future<void> _saveEvaluation() async {
+    setState(() => _isSaving = true);
+    try {
+      await _saveEvaluationImpl();
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _saveEvaluationImpl() async {
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<EvaluationProvider>();
@@ -2815,16 +2827,18 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: provider.isFormLoading
+                          onPressed: (provider.isFormLoading || _isSaving)
                               ? null
                               : _handleContinue,
-                          icon: provider.isFormLoading
+                          icon: (provider.isFormLoading || _isSaving)
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.2,
-                                    color: Colors.white,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : const Icon(
@@ -2832,9 +2846,11 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                                   color: Colors.white,
                                 ),
                           label: Text(
-                            _isLastStep
-                                ? 'Değerlendirmeyi Kaydet'
-                                : 'Kaydet ve Devam Et',
+                            _isSaving
+                                ? 'Kaydediliyor...'
+                                : (_isLastStep
+                                    ? 'Değerlendirmeyi Kaydet'
+                                    : 'Kaydet ve Devam Et'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w800,
