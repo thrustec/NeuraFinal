@@ -10,6 +10,7 @@ class Patient { // verilerin yapısı değişmemesi için final kullandım
   final String? meslekAdi;
   final String? dogumTarihi;
   final String? telefonNo;
+  final String? acilKisiAdi;
   final String? adres;
   final String? notlar;
   final double? boy;
@@ -35,6 +36,7 @@ class Patient { // verilerin yapısı değişmemesi için final kullandım
     this.meslekAdi,
     this.dogumTarihi,
     this.telefonNo,
+    this.acilKisiAdi,
     this.adres,
     this.notlar,
     this.boy,
@@ -84,6 +86,7 @@ class Patient { // verilerin yapısı değişmemesi için final kullandım
       ]),
       dogumTarihi:      _firstNullableString(json, const ['dogumTarihi', 'birthDate']),
       telefonNo:        _firstNullableString(json, const ['telefonNo', 'phone']),
+      acilKisiAdi:      _firstNullableString(json, const ['acilKisiAdi', 'emergencyContactName']),
       adres:            _firstNullableString(json, const [
         'adres',
         'yasadigiYer',

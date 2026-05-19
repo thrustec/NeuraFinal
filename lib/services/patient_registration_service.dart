@@ -6,14 +6,12 @@ class PatientService {
   final SupabaseClient _supabase = SupabaseService.client;
 
   Future<Map<String, dynamic>> registerPatient(
-      PatientFormData formData, {
-        required int klinisyenId, // klinisyenler.klinisyenId → hastalar.klinisyenId
-        required int kullaniciId, // kullanicilar.kullaniciId → degerlendirmeler.klinisyenId
-      }) async {
+    PatientFormData formData, {
+    required int klinisyenId, // klinisyenler.klinisyenId → hastalar.klinisyenId
+  }) async {
     Map<String, dynamic>? existingUser;
     Map<String, dynamic>? updatedPatient;
     Map<String, dynamic>? createdEmpatica;
-    Map<String, dynamic>? createdEvaluation;
 
     try {
       existingUser = await _supabase
@@ -25,11 +23,15 @@ class PatientService {
 
       final int hastaKullaniciId = existingUser['kullaniciId'] as int;
 
-      await _supabase.schema('neura').from('kullanicilar').update({
-        'ad': formData.name.trim(),
-        'soyad': formData.surname.trim(),
-        'aktifMi': formData.aktifMi,
-      }).eq('kullaniciId', hastaKullaniciId);
+      await _supabase
+          .schema('neura')
+          .from('kullanicilar')
+          .update({
+            'ad': formData.name.trim(),
+            'soyad': formData.surname.trim(),
+            'aktifMi': formData.aktifMi,
+          })
+          .eq('kullaniciId', hastaKullaniciId);
 
       final existingPatient = await _supabase
           .schema('neura')
@@ -44,22 +46,26 @@ class PatientService {
           .schema('neura')
           .from('hastalar')
           .update({
-        'klinisyenId': klinisyenId,
-        'cinsiyetId': formData.genderId,
-        'medeniDurumId': formData.maritalStatusId,
-        'egitimDurumId': formData.educationId,
-        'meslekId': formData.occupationId,
-        'sigaraDurumId': formData.smokingStatusId,
-        'baskinId': formData.dominantSideId,
-        'dogumTarihi': _convertDateToIso(formData.birthDate),
-        'telefonNo': formData.phone.trim(),
-        'adres': formData.city.trim(),
-        'acilKisiAdi': formData.emergencyContactName.trim(),
-        'acilKisiTelefonu': formData.emergencyPhone.trim(),
-        'boy': formData.heightValue,
-        'kilo': formData.weightValue,
-        'hastalikId': formData.diagnosisId,
-      })
+            'klinisyenId': klinisyenId,
+            'cinsiyetId': formData.genderId,
+            'medeniDurumId': formData.maritalStatusId,
+            'egitimDurumId': formData.educationId,
+            'meslekId': formData.occupationId,
+            'sigaraDurumId': formData.smokingStatusId,
+            'baskinId': formData.dominantSideId,
+            'dogumTarihi': _convertDateToIso(formData.birthDate),
+            'telefonNo': formData.phone.trim(),
+            'adres': formData.city.trim(),
+            'acilKisiAdi': formData.emergencyContactName.trim(),
+            'acilKisiTelefonu': formData.emergencyPhone.trim(),
+            'boy': formData.heightValue,
+            'kilo': formData.weightValue,
+            'hastalikId': formData.diagnosisId,
+            'baslangicTarihi': _convertDateToIso(formData.complaintDate),
+            'notlar': formData.complaintHistory.trim().isEmpty
+                ? null
+                : formData.complaintHistory.trim(),
+          })
           .eq('hastaId', hastaId)
           .select()
           .single();
@@ -76,9 +82,7 @@ class PatientService {
           createdEmpatica = await _supabase
               .schema('neura')
               .from('empatica')
-              .update({
-            'cihazKimlik': formData.empeticaId.trim(),
-          })
+              .update({'cihazKimlik': formData.empeticaId.trim()})
               .eq('hastaId', hastaId)
               .select()
               .single();
@@ -87,56 +91,26 @@ class PatientService {
               .schema('neura')
               .from('empatica')
               .insert({
-            'hastaId': hastaId,
-            'cihazKimlik': formData.empeticaId.trim(),
-          })
+                'hastaId': hastaId,
+                'cihazKimlik': formData.empeticaId.trim(),
+              })
               .select()
               .single();
         }
 
         final int empaticaId = createdEmpatica['empaticaId'] as int;
 
-        await _supabase.schema('neura').from('hastalar').update({
-          'empaticaId': empaticaId,
-        }).eq('hastaId', hastaId);
+        await _supabase
+            .schema('neura')
+            .from('hastalar')
+            .update({'empaticaId': empaticaId})
+            .eq('hastaId', hastaId);
       }
-
-      createdEvaluation = await _supabase
-          .schema('neura')
-          .from('degerlendirmeler')
-          .insert({
-        'hastaId': hastaId,
-        'klinisyenId': kullaniciId,
-        'sigaraDurumId': formData.smokingStatusId,
-        'hikaye': formData.complaintHistory.trim().isEmpty
-            ? null
-            : formData.complaintHistory.trim(),
-        'baslangicTarihi': _convertDateToIso(formData.complaintDate),
-        'hastalikId': formData.diagnosisId,
-        'kullanilanIlaclar': formData.medications.trim().isEmpty
-            ? null
-            : formData.medications.trim(),
-        'sporAliskanligi': formData.exerciseStatus.trim().isEmpty
-            ? null
-            : formData.exerciseStatus.trim(),
-        'yardimciCihaz': formData.assistiveDeviceStatus.trim().isEmpty
-            ? null
-            : formData.assistiveDeviceStatus.trim(),
-        'bakiciKisi': formData.caregiverStatus.trim().isEmpty
-            ? null
-            : formData.caregiverStatus.trim(),
-        'klinisyenNotlari': formData.clinicianNotes.trim().isEmpty
-            ? null
-            : formData.clinicianNotes.trim(),
-      })
-          .select()
-          .single();
 
       return {
         'user': existingUser,
         'patient': updatedPatient,
         'empatica': createdEmpatica,
-        'evaluation': createdEvaluation,
       };
     } catch (e) {
       rethrow;
@@ -144,17 +118,37 @@ class PatientService {
   }
 
   String? _convertDateToIso(String rawDate) {
-    if (rawDate.trim().isEmpty) return null;
+    final value = rawDate.trim();
+    if (value.isEmpty) return null;
+
+    final parsedIso = DateTime.tryParse(value);
+    if (parsedIso != null) return parsedIso.toIso8601String();
+
+    final normalized = value.replaceAll('.', '/').replaceAll('-', '/');
+    final parts = normalized.split('/');
+    if (parts.length != 3) return null;
 
     try {
-      final parts = rawDate.split('/');
-      if (parts.length != 3) return null;
+      final first = int.parse(parts[0]);
+      final second = int.parse(parts[1]);
+      final third = int.parse(parts[2]);
 
-      final day = int.parse(parts[0]);
-      final month = int.parse(parts[1]);
-      final year = int.parse(parts[2]);
+      if (parts[0].length == 4) {
+        final date = DateTime(first, second, third);
+        if (date.year != first || date.month != second || date.day != third) {
+          return null;
+        }
+        return date.toIso8601String();
+      }
 
-      return DateTime(year, month, day).toIso8601String();
+      final day = first;
+      final month = second;
+      final year = third;
+      final date = DateTime(year, month, day);
+      if (date.year != year || date.month != month || date.day != day) {
+        return null;
+      }
+      return date.toIso8601String();
     } catch (_) {
       return null;
     }
