@@ -43,6 +43,9 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   bool _showListLoading = false;
   Timer? _listLoadingTimer;
 
+  bool _isDeleting = false;
+  int? _deletingEvaluationId;
+
   // Karşılaştırma seçim modu
   bool _compareMode = false;
   final List<dynamic> _selectedEvaluations = [];
@@ -394,6 +397,8 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
   }
 
   Future<void> _deleteEvaluation(int id) async {
+    if (_isDeleting || _deletingEvaluationId == id) return;
+
     final provider = context.read<EvaluationProvider>();
 
     final ok = await showDialog<bool>(
@@ -424,17 +429,51 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
     ) ??
         false;
 
-    if (!ok) return;
+    if (!ok || !mounted) return;
 
-    final deleted = await provider.delete(id);
-    if (deleted) {
-      await _loadInitialEvaluations();
+    setState(() {
+      _isDeleting = true;
+      _deletingEvaluationId = id;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+            SizedBox(width: 16),
+            Expanded(child: Text('Değerlendirme siliniyor...')),
+          ],
+        ),
+      ),
+    );
+
+    bool deleted = false;
+    try {
+      deleted = await provider.delete(id);
+      if (deleted && mounted) {
+        await _loadInitialEvaluations();
+      }
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop(); // close loading dialog
+        setState(() {
+          _isDeleting = false;
+          _deletingEvaluationId = null;
+        });
+      }
     }
 
     if (!mounted) return;
     if (deleted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Değerlendirme silindi')),
+        const SnackBar(content: Text('Değerlendirme başarıyla silindi.')),
       );
     } else {
       final errorMessage =
