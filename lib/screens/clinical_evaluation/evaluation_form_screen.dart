@@ -1368,6 +1368,19 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
     final patient = _selectedDbPatient;
 
+    // C5: resolve hastalikId from diagnosis text; fallback to existing id on edit
+    int? resolvedHastalikId;
+    final diagnosisLookupText = _diagnosisCtrl.text.trim();
+    if (diagnosisLookupText.isNotEmpty) {
+      try {
+        resolvedHastalikId =
+            await EvaluationService().getHastalikIdByAdi(diagnosisLookupText);
+      } catch (_) {}
+    }
+    if (resolvedHastalikId == null && widget.isEdit) {
+      resolvedHastalikId = provider.selected?.hastalikId;
+    }
+
     final allSymptoms = <String>{
       ..._motorSymptoms,
       ..._sensorySymptoms,
@@ -1427,6 +1440,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           : (patient?.tamAd ?? ''),
 
       sigaraDurumId: _sigaraDurumId,
+      hastalikId: resolvedHastalikId,
 
       diagnosis: _diagnosisCtrl.text.trim().isEmpty
           ? null

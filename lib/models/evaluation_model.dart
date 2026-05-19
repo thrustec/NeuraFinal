@@ -7,6 +7,7 @@ class Evaluation {
 
   final String? hastaAdSoyad;
   final int? sigaraDurumId;
+  final int? hastalikId;
   final String? hastalikAdi;
   final String? diagnosis;
   final String? hikaye;
@@ -29,6 +30,7 @@ class Evaluation {
     required this.degerlendirmeTarihi,
     this.hastaAdSoyad,
     this.sigaraDurumId,
+    this.hastalikId,
     this.hastalikAdi,
     this.diagnosis,
     this.hikaye,
@@ -237,6 +239,7 @@ class Evaluation {
           .toString(),
       hastaAdSoyad: hastaAdSoyad.isEmpty ? null : hastaAdSoyad,
       sigaraDurumId: json['sigaraDurumId'] as int?,
+      hastalikId: json['hastalikId'] as int?,
       hastalikAdi: hastalikAdi.isEmpty ? null : hastalikAdi,
       notlar: rawNotlar,
       klinisyenNotlari: json['klinisyenNotlari']?.toString(),
@@ -261,6 +264,7 @@ class Evaluation {
       'notlar': notlar,
       'hikaye': hikaye,
       'kullanilanIlaclar': kullanilanIlaclar,
+      if (hastalikId != null) 'hastalikId': hastalikId,
       'bakiciKisi': caregiver,
       'klinisyenNotlari': klinisyenNotlari,
       // symptoms ayrı DB kolonu değilse ekleme. Semptomlar notlar içinde güncel olarak saklanır.
@@ -276,7 +280,8 @@ class Evaluation {
       'degerlendirmeTarihi': degerlendirmeTarihi,
       'notlar': notlar,
       'hikaye': hikaye,
-      'kullanilanIlaclar': kullanilanIlaclar,
+      if (kullanilanIlaclar != null) 'kullanilanIlaclar': kullanilanIlaclar,
+      if (hastalikId != null) 'hastalikId': hastalikId,
       'bakiciKisi': caregiver,
       'klinisyenNotlari': klinisyenNotlari,
       // Update sırasında eski semptomlarla merge yapılmamalı; notlar alanı güncel paket olarak replace edilir.

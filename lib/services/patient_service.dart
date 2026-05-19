@@ -180,6 +180,41 @@ class PatientService {
     }
   }
 
+  /// En son degerlendirmeler satırının klinisyenNotlari alanını günceller.
+  /// Değerlendirme yoksa false döner, uygulama çökmez.
+  static Future<bool> updateLatestEvaluationNote(
+      int hastaId, String note) async {
+    try {
+      final findResp = await http
+          .get(
+            Uri.parse(
+              '$SUPABASE_URL/degerlendirmeler'
+              '?hastaId=eq.$hastaId'
+              '&select=degerlendirmeId'
+              '&order=degerlendirmeTarihi.desc'
+              '&limit=1',
+            ),
+            headers: _headers(),
+          )
+          .timeout(const Duration(seconds: 5));
+      if (findResp.statusCode != 200) return false;
+      final list = json.decode(findResp.body) as List;
+      if (list.isEmpty) return false;
+      final degId =
+          (list.first as Map<String, dynamic>)['degerlendirmeId'] as int;
+
+      final patchResp = await http.patch(
+        Uri.parse(
+            '$SUPABASE_URL/degerlendirmeler?degerlendirmeId=eq.$degId'),
+        headers: _headers(write: true),
+        body: json.encode({'klinisyenNotlari': note}),
+      );
+      return patchResp.statusCode == 200 || patchResp.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// hastalar.klinisyenId = klinisyenler.klinisyenId eşleşmesi ile hasta sahipliğini doğrular.
   static Future<bool> isPatientOwnedByClinician(
       int hastaId, int klinisyenId) async {

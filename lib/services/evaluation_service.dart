@@ -469,6 +469,26 @@ class EvaluationService {
   }
 
   // ---------------------------------------------------------------------------
+  // Disease id lookup by hastalikAdi
+  // ---------------------------------------------------------------------------
+  Future<int?> getHastalikIdByAdi(String hastalikAdi) async {
+    final trimmed = hastalikAdi.trim();
+    if (trimmed.isEmpty) return null;
+    try {
+      final encoded = Uri.encodeQueryComponent(trimmed);
+      final data = await _client.get(
+        '${ApiConstants.hastaliklar}?select=hastalikId&hastalikAdi=eq.$encoded&limit=1',
+      );
+      if (data.isEmpty) return null;
+      final id = (data.first as Map<String, dynamic>)['hastalikId'];
+      if (id is int) return id;
+      return int.tryParse(id?.toString() ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Test ID lookup — queries testler table once; returns lowercase-keyed map
   // so callers can do a case-insensitive match against their own label strings.
   // Returns empty map on any error so callers can proceed without testId.
