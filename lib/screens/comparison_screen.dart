@@ -61,8 +61,21 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
       _isLoadingEvaluations = true;
     });
     try {
-      final evaluations =
-      await _evaluationService.getEvaluationsForPatient(patient.hastaId);
+      final klinisyenKullaniciId = context.read<AuthProvider>().kullaniciId;
+      if (klinisyenKullaniciId <= 0) {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingEvaluations = false;
+          _evaluationError =
+              'Klinisyen kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.';
+        });
+        return;
+      }
+
+      final evaluations = await _evaluationService.getEvaluationsForPatient(
+        hastaId: patient.hastaId,
+        klinisyenKullaniciId: klinisyenKullaniciId,
+      );
       if (!mounted) return;
       setState(() {
         _patientEvaluations = evaluations;

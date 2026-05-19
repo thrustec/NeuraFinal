@@ -11,10 +11,7 @@ import '../patient_step_1_screen.dart';
 class EvaluationFormScreen extends StatefulWidget {
   final bool isEdit;
 
-  const EvaluationFormScreen({
-    super.key,
-    this.isEdit = false,
-  });
+  const EvaluationFormScreen({super.key, this.isEdit = false});
 
   @override
   State<EvaluationFormScreen> createState() => _EvaluationFormScreenState();
@@ -68,20 +65,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   final _otherExtraCtrl = TextEditingController();
 
   final _diseaseNoteCtrl = TextEditingController();
-  final _functionalsNoteCtrl = TextEditingController();
-  final _clinicTypeCtrl = TextEditingController();
 
   final _alzExtraCtrl = TextEditingController();
   final _pdExtraCtrl = TextEditingController();
   final _alsExtraCtrl = TextEditingController();
   final _msExtraCtrl = TextEditingController();
   final _ataxiaExtraCtrl = TextEditingController();
-
-  final _miniMentalScoreCtrl = TextEditingController();
-  final _updrsEngineScoreCtrl = TextEditingController();
-  final _alsfrsScoreCtrl = TextEditingController();
-  final _totalAttackCountCtrl = TextEditingController();
-  final _saraScoreCtrl = TextEditingController();
 
   final _chairStandCtrl = TextEditingController();
   final _timedUpGoCtrl = TextEditingController();
@@ -177,20 +166,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _otherExtraCtrl.dispose();
 
     _diseaseNoteCtrl.dispose();
-    _functionalsNoteCtrl.dispose();
-    _clinicTypeCtrl.dispose();
 
     _alzExtraCtrl.dispose();
     _pdExtraCtrl.dispose();
     _alsExtraCtrl.dispose();
     _msExtraCtrl.dispose();
     _ataxiaExtraCtrl.dispose();
-
-    _miniMentalScoreCtrl.dispose();
-    _updrsEngineScoreCtrl.dispose();
-    _alsfrsScoreCtrl.dispose();
-    _totalAttackCountCtrl.dispose();
-    _saraScoreCtrl.dispose();
 
     _chairStandCtrl.dispose();
     _timedUpGoCtrl.dispose();
@@ -310,8 +291,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       _caregiverCtrl.text = patient.bakiciKisi!;
     } else {
       // No degerlendirmeler row yet: derive caregiver presence from emergency contact.
-      _caregiverCtrl.text =
-          (patient.acilKisiAdi ?? '').trim().isNotEmpty ? 'Var' : 'Yok';
+      _caregiverCtrl.text = (patient.acilKisiAdi ?? '').trim().isNotEmpty
+          ? 'Var'
+          : 'Yok';
     }
     if (patient.sigaraDurumId != null) {
       _sigaraDurumId = patient.sigaraDurumId;
@@ -444,20 +426,39 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   void _fillFunctionalControllersFromText(String text) {
-    _miniMentalScoreCtrl.text = _extractInlineValue(text, 'Mini Mental Test Score');
-    _updrsEngineScoreCtrl.text = _extractInlineValue(text, 'UPDRS Engine Score');
-    _alsfrsScoreCtrl.text = _extractInlineValue(text, 'ALSFRS-R Score');
-    _totalAttackCountCtrl.text = _extractInlineValue(text, 'Total Number of Attacks');
-    _saraScoreCtrl.text = _extractInlineValue(text, 'SARA Score');
-    _chairStandCtrl.text = _extractInlineValue(text, '30-sec Chair Stand Test (Reps)');
+    _chairStandCtrl.text = _extractInlineValue(
+      text,
+      '30-sec Chair Stand Test (Reps)',
+    );
     _timedUpGoCtrl.text = _extractInlineValue(text, 'Timed Up & Go Test (Sec)');
-    _pegRightCtrl.text = _extractInlineValue(text, '9-Hole Peg – Right Hand (Sec)');
-    _pegLeftCtrl.text = _extractInlineValue(text, '9-Hole Peg – Left Hand (Sec)');
-    _ctsibFirmOpenCtrl.text = _extractInlineValue(text, 'Eyes Open – Firm Surface (Sec)');
-    _ctsibFirmClosedCtrl.text = _extractInlineValue(text, 'Eyes Closed – Firm Surface (Sec)');
-    _ctsibSoftOpenCtrl.text = _extractInlineValue(text, 'Eyes Open – Soft Surface (Sec)');
-    _ctsibSoftClosedCtrl.text = _extractInlineValue(text, 'Eyes Closed – Soft Surface (Sec)');
-    _pstAnteriorPosteriorCtrl.text = _extractInlineValue(text, 'Anterior – Posterior');
+    _pegRightCtrl.text = _extractInlineValue(
+      text,
+      '9-Hole Peg – Right Hand (Sec)',
+    );
+    _pegLeftCtrl.text = _extractInlineValue(
+      text,
+      '9-Hole Peg – Left Hand (Sec)',
+    );
+    _ctsibFirmOpenCtrl.text = _extractInlineValue(
+      text,
+      'Eyes Open – Firm Surface (Sec)',
+    );
+    _ctsibFirmClosedCtrl.text = _extractInlineValue(
+      text,
+      'Eyes Closed – Firm Surface (Sec)',
+    );
+    _ctsibSoftOpenCtrl.text = _extractInlineValue(
+      text,
+      'Eyes Open – Soft Surface (Sec)',
+    );
+    _ctsibSoftClosedCtrl.text = _extractInlineValue(
+      text,
+      'Eyes Closed – Soft Surface (Sec)',
+    );
+    _pstAnteriorPosteriorCtrl.text = _extractInlineValue(
+      text,
+      'Anterior – Posterior',
+    );
     _pstMedialLateralCtrl.text = _extractInlineValue(text, 'Medial – Lateral');
     _pstOverallCtrl.text = _extractInlineValue(text, 'Overall Score');
     _trailPartACtrl.text = _extractInlineValue(text, 'Part A (Sec)');
@@ -478,8 +479,6 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _caregiverCtrl.clear();
     _medicalHistoryCtrl.clear();
     _diseaseNoteCtrl.clear();
-    _functionalsNoteCtrl.clear();
-    _clinicTypeCtrl.clear();
 
     _alzExtraCtrl.clear();
     _pdExtraCtrl.clear();
@@ -487,11 +486,6 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     _msExtraCtrl.clear();
     _ataxiaExtraCtrl.clear();
 
-    _miniMentalScoreCtrl.clear();
-    _updrsEngineScoreCtrl.clear();
-    _alsfrsScoreCtrl.clear();
-    _totalAttackCountCtrl.clear();
-    _saraScoreCtrl.clear();
     _chairStandCtrl.clear();
     _timedUpGoCtrl.clear();
     _pegRightCtrl.clear();
@@ -521,7 +515,11 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   void _restoreSymptomsFromText(String text) {
-    void fillGroup(String label, Set<String> target, TextEditingController extraCtrl) {
+    void fillGroup(
+      String label,
+      Set<String> target,
+      TextEditingController extraCtrl,
+    ) {
       final rawValue = _extractInlineValue(text, label);
       if (rawValue.isEmpty) return;
 
@@ -542,10 +540,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
       if (selectedPart.trim().isEmpty) return;
 
-      final parts = selectedPart
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) {
+      final parts = selectedPart.split(',').map((e) => e.trim()).where((e) {
         if (e.isEmpty) return false;
         final low = e.toLowerCase();
         return low != 'yok' &&
@@ -617,8 +612,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       // "Yeni bulgu:"; trim that off before splitting.
       var trimmedSelected = selectedPart.trim();
       if (trimmedSelected.endsWith(',')) {
-        trimmedSelected =
-            trimmedSelected.substring(0, trimmedSelected.length - 1).trim();
+        trimmedSelected = trimmedSelected
+            .substring(0, trimmedSelected.length - 1)
+            .trim();
       }
 
       final values = trimmedSelected
@@ -729,7 +725,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final packedClinicianNotes = (ev.klinisyenNotlari ?? '').trim();
 
     _restoreDemographicsFromText(packedHikaye);
-    _restoreSymptomsFromText(_extractSection(packedNotlar, 'Semptomlar'));
+    final symptomsSection = _extractSection(packedNotlar, 'Semptomlar');
+    _restoreSymptomsFromText(symptomsSection);
     final diseaseSection = _extractSection(packedNotlar, 'Hastalık');
     // CRITICAL: do NOT assign the entire Hastalık section back into
     // _diseaseNoteCtrl. _composeDiseaseNote later wraps this controller's
@@ -739,29 +736,35 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     // Klinisyen Notları sub-section (free-text the user typed) belongs
     // in this controller; if it isn't present, leave it empty so a
     // resave produces an unchanged Hastalık block.
-    _diseaseNoteCtrl.text =
-        _extractDiseaseClinicianNote(diseaseSection);
+    _diseaseNoteCtrl.text = _extractDiseaseClinicianNote(diseaseSection);
     _restoreDiseaseSelectionsFromText(diseaseSection);
-    _functionalsNoteCtrl.text = _extractSection(packedClinicianNotes, 'Klinisyen Notları');
-    _clinicTypeCtrl.text = _extractInlineValue(packedClinicianNotes, 'Klinik tip');
-
-    final functionalSection = _extractSection(packedClinicianNotes, 'Fonksiyonel');
+    final functionalSection = _extractSection(
+      packedClinicianNotes,
+      'Fonksiyonel',
+    );
     if (functionalSection.isNotEmpty) {
       _fillFunctionalControllersFromText(functionalSection);
     }
 
-    _motorOpen = _motorSymptoms.isNotEmpty || _motorExtraCtrl.text.trim().isNotEmpty;
-    _sensoryOpen = _sensorySymptoms.isNotEmpty || _sensoryExtraCtrl.text.trim().isNotEmpty;
-    _emotionalOpen = _emotionalSymptoms.isNotEmpty || _emotionalExtraCtrl.text.trim().isNotEmpty;
-    _cognitiveOpen = _cognitiveSymptoms.isNotEmpty || _cognitiveExtraCtrl.text.trim().isNotEmpty;
-    _pulmonaryOpen = _pulmonarySymptoms.isNotEmpty || _pulmonaryExtraCtrl.text.trim().isNotEmpty;
-    _otherOpen = _otherSymptoms.isNotEmpty || _otherExtraCtrl.text.trim().isNotEmpty;
+    _motorOpen =
+        _motorSymptoms.isNotEmpty || _motorExtraCtrl.text.trim().isNotEmpty;
+    _sensoryOpen =
+        _sensorySymptoms.isNotEmpty || _sensoryExtraCtrl.text.trim().isNotEmpty;
+    _emotionalOpen =
+        _emotionalSymptoms.isNotEmpty ||
+        _emotionalExtraCtrl.text.trim().isNotEmpty;
+    _cognitiveOpen =
+        _cognitiveSymptoms.isNotEmpty ||
+        _cognitiveExtraCtrl.text.trim().isNotEmpty;
+    _pulmonaryOpen =
+        _pulmonarySymptoms.isNotEmpty ||
+        _pulmonaryExtraCtrl.text.trim().isNotEmpty;
+    _otherOpen =
+        _otherSymptoms.isNotEmpty || _otherExtraCtrl.text.trim().isNotEmpty;
 
-    _alzOpen =
-        _alzSymptoms.isNotEmpty || _alzExtraCtrl.text.trim().isNotEmpty;
+    _alzOpen = _alzSymptoms.isNotEmpty || _alzExtraCtrl.text.trim().isNotEmpty;
     _pdOpen = _pdSymptoms.isNotEmpty || _pdExtraCtrl.text.trim().isNotEmpty;
-    _alsOpen =
-        _alsSymptoms.isNotEmpty || _alsExtraCtrl.text.trim().isNotEmpty;
+    _alsOpen = _alsSymptoms.isNotEmpty || _alsExtraCtrl.text.trim().isNotEmpty;
     _msOpen = _msSymptoms.isNotEmpty || _msExtraCtrl.text.trim().isNotEmpty;
     _ataxiaOpen =
         _ataxiaSymptoms.isNotEmpty || _ataxiaExtraCtrl.text.trim().isNotEmpty;
@@ -818,8 +821,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       await _loadDbPatients();
     }
 
-    final selectedPatient =
-    await showModalBottomSheet<patient_model.Patient>(
+    final selectedPatient = await showModalBottomSheet<patient_model.Patient>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -830,12 +832,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
             final results = query.isEmpty
                 ? _dbPatients
                 : _dbPatients.where((p) {
-              final fullName = p.tamAd.toLowerCase();
-              final email = (p.eposta ?? '').toLowerCase();
-              return fullName.contains(query) ||
-                  email.contains(query) ||
-                  p.hastaId.toString().contains(query);
-            }).toList();
+                    final fullName = p.tamAd.toLowerCase();
+                    final email = (p.eposta ?? '').toLowerCase();
+                    return fullName.contains(query) ||
+                        email.contains(query) ||
+                        p.hastaId.toString().contains(query);
+                  }).toList();
 
             return Container(
               height: MediaQuery.of(context).size.height * 0.82,
@@ -919,114 +921,114 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                       Expanded(
                         child: results.isEmpty
                             ? const Center(
-                          child: Text(
-                            'Bu arama için hasta bulunamadı.',
-                            style: TextStyle(
-                              color: _textMid,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                            : ListView.separated(
-                          itemCount: results.length,
-                          separatorBuilder: (_, __) =>
-                          const SizedBox(height: 12),
-                          itemBuilder: (_, index) {
-                            final patient = results[index];
-                            final initials = patient.tamAd
-                                .split(' ')
-                                .where((e) => e.isNotEmpty)
-                                .take(2)
-                                .map((e) => e[0])
-                                .join()
-                                .toUpperCase();
-
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () =>
-                                  Navigator.pop(sheetContext, patient),
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: _surface,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: _border),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x05000000),
-                                      blurRadius: 10,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
+                                child: Text(
+                                  'Bu arama için hasta bulunamadı.',
+                                  style: TextStyle(
+                                    color: _textMid,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 48,
-                                      height: 48,
+                              )
+                            : ListView.separated(
+                                itemCount: results.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (_, index) {
+                                  final patient = results[index];
+                                  final initials = patient.tamAd
+                                      .split(' ')
+                                      .where((e) => e.isNotEmpty)
+                                      .take(2)
+                                      .map((e) => e[0])
+                                      .join()
+                                      .toUpperCase();
+
+                                  return InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () =>
+                                        Navigator.pop(sheetContext, patient),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: _primarySoft,
-                                        borderRadius:
-                                        BorderRadius.circular(12),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          initials,
-                                          style: const TextStyle(
-                                            color: _primary,
-                                            fontWeight: FontWeight.w800,
+                                        color: _surface,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(color: _border),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x05000000),
+                                            blurRadius: 10,
+                                            offset: Offset(0, 4),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                      child: Row(
                                         children: [
-                                          Text(
-                                            patient.tamAd,
-                                            style: const TextStyle(
-                                              color: _textDark,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w800,
+                                          Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              color: _primarySoft,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                initials,
+                                                style: const TextStyle(
+                                                  color: _primary,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            patient.eposta ??
-                                                'E-posta bilgisi yok',
-                                            style: const TextStyle(
-                                              color: _textMid,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  patient.tamAd,
+                                                  style: const TextStyle(
+                                                    color: _textDark,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  patient.eposta ??
+                                                      'E-posta bilgisi yok',
+                                                  style: const TextStyle(
+                                                    color: _textMid,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
+                                          ),
+                                          Text(
+                                            '#${patient.hastaId}',
+                                            style: const TextStyle(
+                                              color: _textLight,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Icon(
+                                            Icons.arrow_forward_ios_rounded,
+                                            size: 16,
+                                            color: _textLight,
                                           ),
                                         ],
                                       ),
                                     ),
-                                    Text(
-                                      '#${patient.hastaId}',
-                                      style: const TextStyle(
-                                        color: _textLight,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(
-                                      Icons.arrow_forward_ios_rounded,
-                                      size: 16,
-                                      color: _textLight,
-                                    ),
-                                  ],
-                                ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                       ),
                     ],
                   ),
@@ -1045,9 +1047,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   Future<patient_model.Patient?> _openCreatePatientSheet() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const PatientStep1Screen(),
-      ),
+      MaterialPageRoute(builder: (_) => const PatientStep1Screen()),
     );
 
     if (!mounted) return null;
@@ -1141,45 +1141,22 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   String _composeFunctionalNote() {
     final sections = <String>[];
 
-    final scores = <String>[];
-    if (_miniMentalScoreCtrl.text.trim().isNotEmpty) {
-      scores
-          .add('Mini Mental Test Score: ${_miniMentalScoreCtrl.text.trim()}');
-    }
-    if (_updrsEngineScoreCtrl.text.trim().isNotEmpty) {
-      scores.add(
-          'UPDRS Engine Score: ${_updrsEngineScoreCtrl.text.trim()}');
-    }
-    if (_alsfrsScoreCtrl.text.trim().isNotEmpty) {
-      scores.add('ALSFRS-R Score: ${_alsfrsScoreCtrl.text.trim()}');
-    }
-    if (_totalAttackCountCtrl.text.trim().isNotEmpty) {
-      scores.add(
-          'Total Number of Attacks: ${_totalAttackCountCtrl.text.trim()}');
-    }
-    if (_saraScoreCtrl.text.trim().isNotEmpty) {
-      scores.add('SARA Score: ${_saraScoreCtrl.text.trim()}');
-    }
-    if (scores.isNotEmpty) {
-      sections.add('Klinik Skorlar\n${scores.join('\n')}');
-    }
-
     final general = <String>[];
     if (_chairStandCtrl.text.trim().isNotEmpty) {
       general.add(
-          '30-sec Chair Stand Test (Reps): ${_chairStandCtrl.text.trim()}');
+        '30-sec Chair Stand Test (Reps): ${_chairStandCtrl.text.trim()}',
+      );
     }
     if (_timedUpGoCtrl.text.trim().isNotEmpty) {
-      general.add(
-          'Timed Up & Go Test (Sec): ${_timedUpGoCtrl.text.trim()}');
+      general.add('Timed Up & Go Test (Sec): ${_timedUpGoCtrl.text.trim()}');
     }
     if (_pegRightCtrl.text.trim().isNotEmpty) {
       general.add(
-          '9-Hole Peg – Right Hand (Sec): ${_pegRightCtrl.text.trim()}');
+        '9-Hole Peg – Right Hand (Sec): ${_pegRightCtrl.text.trim()}',
+      );
     }
     if (_pegLeftCtrl.text.trim().isNotEmpty) {
-      general.add(
-          '9-Hole Peg – Left Hand (Sec): ${_pegLeftCtrl.text.trim()}');
+      general.add('9-Hole Peg – Left Hand (Sec): ${_pegLeftCtrl.text.trim()}');
     }
     if (general.isNotEmpty) {
       sections.add('Genel Test\n${general.join('\n')}');
@@ -1188,19 +1165,23 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final ctsib = <String>[];
     if (_ctsibFirmOpenCtrl.text.trim().isNotEmpty) {
       ctsib.add(
-          'Eyes Open – Firm Surface (Sec): ${_ctsibFirmOpenCtrl.text.trim()}');
+        'Eyes Open – Firm Surface (Sec): ${_ctsibFirmOpenCtrl.text.trim()}',
+      );
     }
     if (_ctsibFirmClosedCtrl.text.trim().isNotEmpty) {
       ctsib.add(
-          'Eyes Closed – Firm Surface (Sec): ${_ctsibFirmClosedCtrl.text.trim()}');
+        'Eyes Closed – Firm Surface (Sec): ${_ctsibFirmClosedCtrl.text.trim()}',
+      );
     }
     if (_ctsibSoftOpenCtrl.text.trim().isNotEmpty) {
       ctsib.add(
-          'Eyes Open – Soft Surface (Sec): ${_ctsibSoftOpenCtrl.text.trim()}');
+        'Eyes Open – Soft Surface (Sec): ${_ctsibSoftOpenCtrl.text.trim()}',
+      );
     }
     if (_ctsibSoftClosedCtrl.text.trim().isNotEmpty) {
       ctsib.add(
-          'Eyes Closed – Soft Surface (Sec): ${_ctsibSoftClosedCtrl.text.trim()}');
+        'Eyes Closed – Soft Surface (Sec): ${_ctsibSoftClosedCtrl.text.trim()}',
+      );
     }
     if (ctsib.isNotEmpty) {
       sections.add('CTSIB Testi\n${ctsib.join('\n')}');
@@ -1208,8 +1189,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
 
     final pst = <String>[];
     if (_pstAnteriorPosteriorCtrl.text.trim().isNotEmpty) {
-      pst.add(
-          'Anterior – Posterior: ${_pstAnteriorPosteriorCtrl.text.trim()}');
+      pst.add('Anterior – Posterior: ${_pstAnteriorPosteriorCtrl.text.trim()}');
     }
     if (_pstMedialLateralCtrl.text.trim().isNotEmpty) {
       pst.add('Medial – Lateral: ${_pstMedialLateralCtrl.text.trim()}');
@@ -1236,19 +1216,14 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       sections.add('Stroop Testi\nStroop: ${_stroopCtrl.text.trim()}');
     }
 
-    if (_functionalsNoteCtrl.text.trim().isNotEmpty) {
-      sections.add(
-          'Klinisyen Notları\n${_functionalsNoteCtrl.text.trim()}');
-    }
-
     return sections.join('\n\n');
   }
 
   // Builds the list of structured test rows to persist in
   // degerlendirmeTestSonuclari.  Each non-empty controller becomes one row.
-  // testIdMap is keyed by lowercase testAdi/testKodu from the testler table;
-  // if a name doesn't match we omit testId and rely on metrikAdi for
-  // comparison matching (see _parseTestResult fallback in evaluation_service).
+  // testIdMap is keyed by lowercase testAdi/testKodu from the testler table.
+  // Rows also carry _test* metadata so EvaluationService can find/create a
+  // non-null testId before inserting into degerlendirmeTestSonuclari.
   List<Map<String, dynamic>> _collectTestRows({
     required int degerlendirmeId,
     required int hastaId,
@@ -1256,43 +1231,317 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }) {
     final rows = <Map<String, dynamic>>[];
 
-    void add(TextEditingController ctrl, String metrikAdi, String birim) {
+    void add(
+      TextEditingController ctrl, {
+      required String testAdi,
+      required String testKodu,
+      required String kategori,
+      required String metrikAdi,
+      required String birim,
+    }) {
       final raw = ctrl.text.trim().replaceAll(',', '.');
       if (raw.isEmpty) return;
       final value = double.tryParse(raw);
       if (value == null) return;
-      final testId = testIdMap[metrikAdi.toLowerCase()];
+      final testId =
+          testIdMap[testAdi.toLowerCase()] ?? testIdMap[testKodu.toLowerCase()];
       rows.add({
         'degerlendirmeId': degerlendirmeId,
         'hastaId': hastaId,
         if (testId != null) 'testId': testId,
+        '_testAdi': testAdi,
+        '_testKodu': testKodu,
+        '_testKategori': kategori,
         'metrikAdi': metrikAdi,
         'olculenDeger': value,
         'birim': birim,
       });
     }
 
-    add(_miniMentalScoreCtrl,     'Mini Mental Test Score',           'Puan');
-    add(_updrsEngineScoreCtrl,    'UPDRS Engine Score',               'Puan');
-    add(_alsfrsScoreCtrl,         'ALSFRS-R Score',                   'Puan');
-    add(_totalAttackCountCtrl,    'Total Number of Attacks',          'Atak');
-    add(_saraScoreCtrl,           'SARA Score',                       'Puan');
-    add(_chairStandCtrl,          '30-sec Chair Stand Test (Reps)',   'Tekrar');
-    add(_timedUpGoCtrl,           'Timed Up & Go Test (Sec)',         'Saniye');
-    add(_pegRightCtrl,            '9-Hole Peg – Right Hand (Sec)',    'Saniye');
-    add(_pegLeftCtrl,             '9-Hole Peg – Left Hand (Sec)',     'Saniye');
-    add(_ctsibFirmOpenCtrl,       'Eyes Open – Firm Surface (Sec)',   'Saniye');
-    add(_ctsibFirmClosedCtrl,     'Eyes Closed – Firm Surface (Sec)', 'Saniye');
-    add(_ctsibSoftOpenCtrl,       'Eyes Open – Soft Surface (Sec)',   'Saniye');
-    add(_ctsibSoftClosedCtrl,     'Eyes Closed – Soft Surface (Sec)','Saniye');
-    add(_pstAnteriorPosteriorCtrl,'Anterior – Posterior',             'mm');
-    add(_pstMedialLateralCtrl,    'Medial – Lateral',                 'mm');
-    add(_pstOverallCtrl,          'Overall Score',                    'Puan');
-    add(_trailPartACtrl,          'Part A (Sec)',                     'Saniye');
-    add(_trailPartBCtrl,          'Part B (Sec)',                     'Saniye');
-    add(_stroopCtrl,              'Stroop',                           'Saniye');
+    add(
+      _chairStandCtrl,
+      testAdi: 'Genel Test',
+      testKodu: 'GENEL_TEST',
+      kategori: 'Fonksiyonel',
+      metrikAdi: '30-sec Chair Stand Test (Reps)',
+      birim: 'Tekrar',
+    );
+    add(
+      _timedUpGoCtrl,
+      testAdi: 'Genel Test',
+      testKodu: 'GENEL_TEST',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Timed Up & Go Test (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _pegRightCtrl,
+      testAdi: 'Genel Test',
+      testKodu: 'GENEL_TEST',
+      kategori: 'Fonksiyonel',
+      metrikAdi: '9-Hole Peg – Right Hand (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _pegLeftCtrl,
+      testAdi: 'Genel Test',
+      testKodu: 'GENEL_TEST',
+      kategori: 'Fonksiyonel',
+      metrikAdi: '9-Hole Peg – Left Hand (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _ctsibFirmOpenCtrl,
+      testAdi: 'CTSIB Testi',
+      testKodu: 'CTSIB',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Eyes Open – Firm Surface (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _ctsibFirmClosedCtrl,
+      testAdi: 'CTSIB Testi',
+      testKodu: 'CTSIB',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Eyes Closed – Firm Surface (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _ctsibSoftOpenCtrl,
+      testAdi: 'CTSIB Testi',
+      testKodu: 'CTSIB',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Eyes Open – Soft Surface (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _ctsibSoftClosedCtrl,
+      testAdi: 'CTSIB Testi',
+      testKodu: 'CTSIB',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Eyes Closed – Soft Surface (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _pstAnteriorPosteriorCtrl,
+      testAdi: 'PST',
+      testKodu: 'PST',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Anterior – Posterior',
+      birim: 'mm',
+    );
+    add(
+      _pstMedialLateralCtrl,
+      testAdi: 'PST',
+      testKodu: 'PST',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Medial – Lateral',
+      birim: 'mm',
+    );
+    add(
+      _pstOverallCtrl,
+      testAdi: 'PST',
+      testKodu: 'PST',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Overall Score',
+      birim: 'Puan',
+    );
+    add(
+      _trailPartACtrl,
+      testAdi: 'Trail Making Testi',
+      testKodu: 'TRAIL_MAKING',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Part A (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _trailPartBCtrl,
+      testAdi: 'Trail Making Testi',
+      testKodu: 'TRAIL_MAKING',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Part B (Sec)',
+      birim: 'Saniye',
+    );
+    add(
+      _stroopCtrl,
+      testAdi: 'Stroop Testi',
+      testKodu: 'STROOP',
+      kategori: 'Fonksiyonel',
+      metrikAdi: 'Stroop',
+      birim: 'Saniye',
+    );
 
     return rows;
+  }
+
+  List<Map<String, dynamic>> _collectStructuredBelirtiler() {
+    final rows = <Map<String, dynamic>>[];
+
+    void addGroup(
+      String kategoriAdi,
+      Set<String> selected,
+      TextEditingController extraCtrl, {
+      String? hastalikAdi,
+    }) {
+      for (final value in selected) {
+        final belirtiAdi = value.trim();
+        if (belirtiAdi.isEmpty) continue;
+        rows.add({
+          'belirtiAdi': belirtiAdi,
+          'kategoriAdi': kategoriAdi,
+          if ((hastalikAdi ?? '').trim().isNotEmpty)
+            'hastalikAdi': hastalikAdi!.trim(),
+        });
+      }
+
+      final custom = extraCtrl.text.trim();
+      if (custom.isNotEmpty) {
+        rows.add({
+          'belirtiAdi': custom,
+          'kategoriAdi': kategoriAdi,
+          'notlar': 'Yeni bulgu',
+          if ((hastalikAdi ?? '').trim().isNotEmpty)
+            'hastalikAdi': hastalikAdi!.trim(),
+        });
+      }
+    }
+
+    addGroup('Motor', _motorSymptoms, _motorExtraCtrl);
+    addGroup('Duyusal', _sensorySymptoms, _sensoryExtraCtrl);
+    addGroup('Emosyonel', _emotionalSymptoms, _emotionalExtraCtrl);
+    addGroup('Kognitif', _cognitiveSymptoms, _cognitiveExtraCtrl);
+    addGroup('Pulmoner', _pulmonarySymptoms, _pulmonaryExtraCtrl);
+    addGroup('Diğer', _otherSymptoms, _otherExtraCtrl);
+    addGroup(
+      'Hafif Kognitif Bozukluk / Alzheimer Hastalığı',
+      _alzSymptoms,
+      _alzExtraCtrl,
+      hastalikAdi: 'Alzheimer',
+    );
+    addGroup('Parkinson', _pdSymptoms, _pdExtraCtrl, hastalikAdi: 'Parkinson');
+    addGroup('ALS', _alsSymptoms, _alsExtraCtrl, hastalikAdi: 'ALS');
+    addGroup('MS', _msSymptoms, _msExtraCtrl, hastalikAdi: 'MS');
+    addGroup(
+      'Ataksi',
+      _ataxiaSymptoms,
+      _ataxiaExtraCtrl,
+      hastalikAdi: 'Ataksi',
+    );
+
+    return rows;
+  }
+
+  Map<String, Map<String, dynamic>> _collectFunctionalStructuredRows() {
+    double? number(TextEditingController ctrl) {
+      final raw = ctrl.text.trim().replaceAll(',', '.');
+      if (raw.isEmpty) return null;
+      return double.tryParse(raw);
+    }
+
+    String? notes(List<MapEntry<String, TextEditingController>> items) {
+      final lines = <String>[];
+      for (final item in items) {
+        final value = item.value.text.trim();
+        if (value.isEmpty) continue;
+        lines.add('${item.key}: $value');
+      }
+      return lines.isEmpty ? null : lines.join('\n');
+    }
+
+    final rows = <String, Map<String, dynamic>>{};
+
+    final genelPuan = number(_chairStandCtrl);
+    final genelSure =
+        number(_timedUpGoCtrl) ?? number(_pegRightCtrl) ?? number(_pegLeftCtrl);
+    final genelNotlar = notes([
+      MapEntry('30 Saniye Otur Kalk', _chairStandCtrl),
+      MapEntry('Zamanlı Kalk ve Yürü', _timedUpGoCtrl),
+      MapEntry('9-Delikli Peg Sağ', _pegRightCtrl),
+      MapEntry('9-Delikli Peg Sol', _pegLeftCtrl),
+    ]);
+    final genel = <String, dynamic>{};
+    genel['puan'] = genelPuan;
+    genel['sure'] = genelSure;
+    genel['notlar'] = genelNotlar;
+    genel.removeWhere((_, value) => value == null);
+    if (genel.isNotEmpty) rows['fonksiyonelGenel'] = genel;
+
+    final ctsibNotlar = notes([
+      MapEntry('Gözler Açık - Sert Zemin', _ctsibFirmOpenCtrl),
+      MapEntry('Gözler Kapalı - Sert Zemin', _ctsibFirmClosedCtrl),
+      MapEntry('Gözler Açık - Yumuşak Zemin', _ctsibSoftOpenCtrl),
+      MapEntry('Gözler Kapalı - Yumuşak Zemin', _ctsibSoftClosedCtrl),
+    ]);
+    if (ctsibNotlar != null) {
+      rows['fonksiyonelCtsib'] = {'notlar': ctsibNotlar};
+    }
+
+    final pstNotlar = notes([
+      MapEntry('Anterior - Posterior', _pstAnteriorPosteriorCtrl),
+      MapEntry('Medial - Lateral', _pstMedialLateralCtrl),
+      MapEntry('Toplam Skor', _pstOverallCtrl),
+    ]);
+    final pstPuan = number(_pstOverallCtrl);
+    final pst = <String, dynamic>{};
+    pst['puan'] = pstPuan;
+    pst['notlar'] = pstNotlar;
+    pst.removeWhere((_, value) => value == null);
+    if (pst.isNotEmpty) rows['fonksiyonelPst'] = pst;
+
+    final trailPartA = number(_trailPartACtrl);
+    final trailPartB = number(_trailPartBCtrl);
+    final trailNotlar = notes([
+      MapEntry('İz Koşu Test A', _trailPartACtrl),
+      MapEntry('İz Koşu Test B', _trailPartBCtrl),
+    ]);
+    final izKosu = <String, dynamic>{};
+    if (trailPartA != null && trailPartB == null) {
+      izKosu['sure'] = trailPartA;
+    }
+    if (trailPartB != null && trailPartA == null) {
+      izKosu['sure'] = trailPartB;
+    }
+    izKosu['notlar'] = trailNotlar;
+    izKosu.removeWhere((_, value) => value == null);
+    if (izKosu.isNotEmpty) rows['fonksiyonelIzKosu'] = izKosu;
+
+    final stroopNotlar = notes([MapEntry('Stroop', _stroopCtrl)]);
+    if (stroopNotlar != null) {
+      rows['fonksiyonelStroop'] = {'notlar': stroopNotlar};
+    }
+
+    return rows;
+  }
+
+  String? _toIsoDateOrNull(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return null;
+
+    final parsedDirect = DateTime.tryParse(value);
+    if (parsedDirect != null) {
+      return DateTime(
+        parsedDirect.year,
+        parsedDirect.month,
+        parsedDirect.day,
+      ).toIso8601String();
+    }
+
+    final match = RegExp(
+      r'^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$',
+    ).firstMatch(value);
+    if (match == null) return null;
+
+    final day = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final year = int.tryParse(match.group(3)!);
+    if (day == null || month == null || year == null) return null;
+
+    final parsed = DateTime(year, month, day);
+    if (parsed.day != day || parsed.month != month || parsed.year != year) {
+      return null;
+    }
+
+    return parsed.toIso8601String();
   }
 
   Future<int> _resolveCurrentDoctorId() async {
@@ -1312,7 +1561,8 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     // Last resort: email lookup returns kullaniciId from kullanicilar table
     final email = auth.user?.eposta.trim() ?? '';
     if (email.isNotEmpty) {
-      final serviceId = await EvaluationService().getClinicianIdByEmail(email) ?? 0;
+      final serviceId =
+          await EvaluationService().getClinicianIdByEmail(email) ?? 0;
       if (serviceId > 0) {
         provider.setDoctorId(serviceId);
         return serviceId;
@@ -1323,12 +1573,12 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
   }
 
   Future<void> _saveEvaluation() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<EvaluationProvider>();
     // Capture klinisyenId before any await (hastalar.klinisyenId ownership check)
-    final clinicianKlinisyenId = context.read<AuthProvider>().user?.klinisyenId ?? 0;
+    final clinicianKlinisyenId =
+        context.read<AuthProvider>().user?.klinisyenId ?? 0;
 
     final currentDoctorId = await _resolveCurrentDoctorId();
     if (currentDoctorId <= 0) {
@@ -1339,8 +1589,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       return;
     }
 
-    if (_selectedDbPatient == null &&
-        _hastaSearchCtrl.text.trim().isNotEmpty) {
+    if (_selectedDbPatient == null && _hastaSearchCtrl.text.trim().isNotEmpty) {
       _selectedDbPatient = _findDbPatientByName(_hastaSearchCtrl.text.trim());
       if (_selectedDbPatient != null) {
         _hastaId = _selectedDbPatient!.hastaId;
@@ -1360,7 +1609,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     // Validate: patient must belong to this doctor (hastalar.klinisyenId = klinisyenler.klinisyenId)
     if (clinicianKlinisyenId > 0) {
       final isOwned = await PatientService.isPatientOwnedByClinician(
-          effectiveHastaId, clinicianKlinisyenId);
+        effectiveHastaId,
+        clinicianKlinisyenId,
+      );
       if (!isOwned) {
         _showSnack(
           'Bu hasta size kayıtlı olmadığı için değerlendirme oluşturulamaz.',
@@ -1377,8 +1628,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     final diagnosisLookupText = _diagnosisCtrl.text.trim();
     if (diagnosisLookupText.isNotEmpty) {
       try {
-        resolvedHastalikId =
-            await EvaluationService().getHastalikIdByAdi(diagnosisLookupText);
+        resolvedHastalikId = await EvaluationService().getHastalikIdByAdi(
+          diagnosisLookupText,
+        );
       } catch (_) {}
     }
     if (resolvedHastalikId == null && widget.isEdit) {
@@ -1392,30 +1644,40 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       ..._cognitiveSymptoms,
       ..._pulmonarySymptoms,
       ..._otherSymptoms,
-    }
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList(growable: false);
+    }.map((e) => e.trim()).where((e) => e.isNotEmpty).toList(growable: false);
 
     final symptomsNoteText = _composeSymptomsNote().trim();
     final diseaseNoteText = _composeDiseaseNote().trim();
     final functionalsNoteText = _composeFunctionalNote().trim();
-    final clinicTypeText = _clinicTypeCtrl.text.trim();
 
     final packedHikaye = [
-      if (_diagnosisCtrl.text.trim().isNotEmpty) 'Tanı: ${_diagnosisCtrl.text.trim()}',
+      if (_diagnosisCtrl.text.trim().isNotEmpty)
+        'Tanı: ${_diagnosisCtrl.text.trim()}',
       if (_heightCtrl.text.trim().isNotEmpty) 'Boy: ${_heightCtrl.text.trim()}',
-      if (_weightCtrl.text.trim().isNotEmpty) 'Kilo: ${_weightCtrl.text.trim()}',
-      if (_birthDateCtrl.text.trim().isNotEmpty) 'Doğum Tarihi: ${_birthDateCtrl.text.trim()}',
-      if (_educationCtrl.text.trim().isNotEmpty) 'Eğitim: ${_educationCtrl.text.trim()}',
-      if (_maritalCtrl.text.trim().isNotEmpty) 'Medeni Durum: ${_maritalCtrl.text.trim()}',
-      if (_occupationCtrl.text.trim().isNotEmpty) 'Meslek: ${_occupationCtrl.text.trim()}',
-      if (_locationCtrl.text.trim().isNotEmpty) 'Lokasyon: ${_locationCtrl.text.trim()}',
-      if (_complaintDateCtrl.text.trim().isNotEmpty) 'İlk Şikayet Tarihi: ${_complaintDateCtrl.text.trim()}',
-      if (_caregiverCtrl.text.trim().isNotEmpty) 'Bakım Veren: ${_caregiverCtrl.text.trim()}',
+      if (_weightCtrl.text.trim().isNotEmpty)
+        'Kilo: ${_weightCtrl.text.trim()}',
+      if (_birthDateCtrl.text.trim().isNotEmpty)
+        'Doğum Tarihi: ${_birthDateCtrl.text.trim()}',
+      if (_educationCtrl.text.trim().isNotEmpty)
+        'Eğitim: ${_educationCtrl.text.trim()}',
+      if (_maritalCtrl.text.trim().isNotEmpty)
+        'Medeni Durum: ${_maritalCtrl.text.trim()}',
+      if (_occupationCtrl.text.trim().isNotEmpty)
+        'Meslek: ${_occupationCtrl.text.trim()}',
+      if (_locationCtrl.text.trim().isNotEmpty)
+        'Lokasyon: ${_locationCtrl.text.trim()}',
+      if (_complaintDateCtrl.text.trim().isNotEmpty)
+        'İlk Şikayet Tarihi: ${_complaintDateCtrl.text.trim()}',
+      if (_caregiverCtrl.text.trim().isNotEmpty)
+        'Bakım Veren: ${_caregiverCtrl.text.trim()}',
       if ((_dominantSide ?? '').trim().isNotEmpty)
-        'Dominant Taraf: ${_dominantSide == 'Right' ? 'Sağ' : _dominantSide == 'Left' ? 'Sol' : 'Her İkisi'}',
-      if (_medicalHistoryCtrl.text.trim().isNotEmpty) 'Hikaye:\n${_medicalHistoryCtrl.text.trim()}',
+        'Dominant Taraf: ${_dominantSide == 'Right'
+            ? 'Sağ'
+            : _dominantSide == 'Left'
+            ? 'Sol'
+            : 'Her İkisi'}',
+      if (_medicalHistoryCtrl.text.trim().isNotEmpty)
+        'Hikaye:\n${_medicalHistoryCtrl.text.trim()}',
     ].join('\n\n');
 
     final packedNotlar = [
@@ -1424,11 +1686,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     ].join('\n\n');
 
     final packedKlinisyenNotlari = [
-      if (_functionalsNoteCtrl.text.trim().isNotEmpty)
-        'Klinisyen Notları:\n${_functionalsNoteCtrl.text.trim()}',
-      if (functionalsNoteText.isNotEmpty)
-        'Fonksiyonel:\n$functionalsNoteText',
-      if (clinicTypeText.isNotEmpty) 'Klinik tip: $clinicTypeText',
+      if (functionalsNoteText.isNotEmpty) 'Fonksiyonel:\n$functionalsNoteText',
     ].join('\n\n');
 
     final evaluation = Evaluation(
@@ -1451,12 +1709,14 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           : _diagnosisCtrl.text.trim(),
 
       hikaye: packedHikaye.isEmpty ? null : packedHikaye,
+      baslangicTarihi: _toIsoDateOrNull(_complaintDateCtrl.text),
 
       notlar: packedNotlar.isEmpty ? null : packedNotlar,
-      // Önemli: update işleminde provider/service bu alanları eski değerlerle birleştirmemeli; tamamen replace etmeli.
 
-      klinisyenNotlari:
-      packedKlinisyenNotlari.isEmpty ? null : packedKlinisyenNotlari,
+      // Önemli: update işleminde provider/service bu alanları eski değerlerle birleştirmemeli; tamamen replace etmeli.
+      klinisyenNotlari: packedKlinisyenNotlari.isEmpty
+          ? null
+          : packedKlinisyenNotlari,
 
       caregiver: _caregiverCtrl.text.trim().isEmpty
           ? null
@@ -1467,9 +1727,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       symptoms: allSymptoms,
       symptomsNote: symptomsNoteText.isEmpty ? null : symptomsNoteText,
       diseaseNote: diseaseNoteText.isEmpty ? null : diseaseNoteText,
-      functionalsNote:
-      functionalsNoteText.isEmpty ? null : functionalsNoteText,
-      clinicType: clinicTypeText.isEmpty ? null : clinicTypeText,
+      functionalsNote: functionalsNoteText.isEmpty ? null : functionalsNoteText,
     );
 
     final success = widget.isEdit && provider.selected?.id != null
@@ -1482,10 +1740,46 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       // After the evaluation row is persisted, also write structured test rows
       // to degerlendirmeTestSonuclari so the comparison screen can read them.
       // provider.selected is set to the saved Evaluation by create/update.
-      final savedId = provider.selected?.id ?? provider.selected?.degerlendirmeId;
+      final savedId =
+          provider.selected?.id ?? provider.selected?.degerlendirmeId;
       if (savedId != null && savedId > 0) {
+        final svc = EvaluationService();
         try {
-          final svc = EvaluationService();
+          final muayeneId = await svc.createMuayene(
+            hastaId: effectiveHastaId,
+            degerlendirmeId: savedId,
+            muayeneTarihi: evaluation.degerlendirmeTarihi,
+            notlar: null,
+          );
+
+          if (muayeneId != null) {
+            await svc.getOrCreateKlinikDegerlendirme(
+              hastaId: effectiveHastaId,
+              muayeneId: muayeneId,
+              notlar: diseaseNoteText.isEmpty ? null : diseaseNoteText,
+            );
+            await svc.getOrCreateDemografikBilgiler(
+              degerlendirmeId: savedId,
+              hastaId: effectiveHastaId,
+              muayeneId: muayeneId,
+            );
+            await svc.saveMuayeneBelirtileri(
+              muayeneId: muayeneId,
+              belirtiler: _collectStructuredBelirtiler(),
+              hastalikId: resolvedHastalikId,
+            );
+            await svc.saveFunctionalStructuredRows(
+              muayeneId: muayeneId,
+              rowsByTable: _collectFunctionalStructuredRows(),
+            );
+          }
+        } catch (e) {
+          debugPrint(
+            '_saveEvaluation: yapılandırılmış klinik veriler kaydedilemedi: $e',
+          );
+        }
+
+        try {
           final testIdMap = await svc.getTestIdMap();
           final testRows = _collectTestRows(
             degerlendirmeId: savedId,
@@ -1509,10 +1803,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       );
       Navigator.pop(context, true);
     } else {
-      _showSnack(
-        provider.formError ?? 'İşlem başarısız oldu.',
-        isError: true,
-      );
+      _showSnack(provider.formError ?? 'İşlem başarısız oldu.', isError: true);
     }
   }
 
@@ -1707,8 +1998,9 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                       item.label,
                       style: TextStyle(
                         color: selected ? _primary : _textLight,
-                        fontWeight:
-                        selected ? FontWeight.w700 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
                         fontSize: 12.5,
                       ),
                     ),
@@ -1817,12 +2109,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
       child: Column(
         children: [
           InkWell(
-            borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             onTap: onTap,
             child: Padding(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
               child: Row(
                 children: [
                   Expanded(
@@ -1847,10 +2137,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           ),
           if (open) ...[
             const Divider(height: 1, color: _border),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: child,
-            ),
+            Padding(padding: const EdgeInsets.all(18), child: child),
           ],
         ],
       ),
@@ -1953,8 +2240,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: _successBg,
               borderRadius: BorderRadius.circular(20),
@@ -1970,11 +2256,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
         ],
         const SizedBox(height: 22),
         _label('Ad Soyad'),
-        _field(
-          controller: _hastaSearchCtrl,
-          hint: 'Hasta adı',
-          readOnly: true,
-        ),
+        _field(controller: _hastaSearchCtrl, hint: 'Hasta adı', readOnly: true),
         const SizedBox(height: 18),
         _label('Tanı'),
         _field(controller: _diagnosisCtrl, hint: 'Tanı'),
@@ -2010,10 +2292,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _label('Doğum Tarihi'),
-                  _field(
-                    controller: _birthDateCtrl,
-                    hint: 'dd.mm.yyyy',
-                  ),
+                  _field(controller: _birthDateCtrl, hint: 'dd.mm.yyyy'),
                 ],
               ),
             ),
@@ -2023,10 +2302,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _label('Eğitim Durumu'),
-                  _field(
-                    controller: _educationCtrl,
-                    hint: 'Eğitim durumu',
-                  ),
+                  _field(controller: _educationCtrl, hint: 'Eğitim durumu'),
                 ],
               ),
             ),
@@ -2040,10 +2316,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _label('Medeni Durum'),
-                  _field(
-                    controller: _maritalCtrl,
-                    hint: 'Medeni durum',
-                  ),
+                  _field(controller: _maritalCtrl, hint: 'Medeni durum'),
                 ],
               ),
             ),
@@ -2089,10 +2362,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                     items: SigaraDurum.defaults
                         .map(
                           (s) => DropdownMenuItem<int>(
-                        value: s.id,
-                        child: Text(s.ad),
-                      ),
-                    )
+                            value: s.id,
+                            child: Text(s.ad),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => _sigaraDurumId = v),
                   ),
@@ -2180,11 +2453,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           open: _emotionalOpen,
           onTap: () => setState(() => _emotionalOpen = !_emotionalOpen),
           child: _symptomChecklist(
-            options: const [
-              'Depresyon',
-              'Anksiyete',
-              'Emosyonel labilite',
-            ],
+            options: const ['Depresyon', 'Anksiyete', 'Emosyonel labilite'],
             selected: _emotionalSymptoms,
             extraCtrl: _emotionalExtraCtrl,
           ),
@@ -2195,10 +2464,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
           open: _cognitiveOpen,
           onTap: () => setState(() => _cognitiveOpen = !_cognitiveOpen),
           child: _symptomChecklist(
-            options: const [
-              'Dikkat problemleri',
-              'Hafıza problemleri',
-            ],
+            options: const ['Dikkat problemleri', 'Hafıza problemleri'],
             selected: _cognitiveSymptoms,
             extraCtrl: _cognitiveExtraCtrl,
           ),
@@ -2369,64 +2635,6 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionCard(
-          color: _primarySoft,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'KLİNİK SKORLAR',
-                style: TextStyle(
-                  color: _primary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _scoreBox(
-                      label: 'MİNİ MENTAL TEST SKORU',
-                      hint: '0 – 20',
-                      controller: _miniMentalScoreCtrl,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: _scoreBox(
-                      label: 'UPDRS MOTOR SKORU',
-                      hint: '0 – 100',
-                      controller: _updrsEngineScoreCtrl,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              _scoreBox(
-                label: 'ALSFRS-R SKORU',
-                hint: '0 – 48',
-                controller: _alsfrsScoreCtrl,
-              ),
-              const SizedBox(height: 18),
-              _scoreBox(
-                label: 'TOPLAM ATAK SAYISI',
-                hint: 'Sayı giriniz',
-                controller: _totalAttackCountCtrl,
-              ),
-              const SizedBox(height: 18),
-              _scoreBox(
-                label: 'SARA SKORU',
-                hint: 'Sayı giriniz',
-                controller: _saraScoreCtrl,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 22),
-        _label('KLİNİK TİP'),
-        _field(controller: _clinicTypeCtrl, hint: 'Klinik tip girin'),
-        const SizedBox(height: 16),
         _expandCard(
           title: 'General Test',
           open: _generalTestOpen,
@@ -2564,12 +2772,6 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
             controller: _stroopCtrl,
           ),
         ),
-        const SizedBox(height: 18),
-        _field(
-          controller: _functionalsNoteCtrl,
-          hint: 'Klinisyen notları...',
-          maxLines: 5,
-        ),
       ],
     );
   }
@@ -2604,8 +2806,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                 _stepTabs(),
                 Expanded(
                   child: ListView(
-                    padding:
-                    const EdgeInsets.fromLTRB(20, 22, 20, 28),
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
                     children: [
                       _sectionIntro(),
                       const SizedBox(height: 20),
@@ -2614,21 +2815,22 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed:
-                          provider.isFormLoading ? null : _handleContinue,
+                          onPressed: provider.isFormLoading
+                              ? null
+                              : _handleContinue,
                           icon: provider.isFormLoading
                               ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: Colors.white,
-                            ),
-                          )
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : const Icon(
-                            Icons.save_outlined,
-                            color: Colors.white,
-                          ),
+                                  Icons.save_outlined,
+                                  color: Colors.white,
+                                ),
                           label: Text(
                             _isLastStep
                                 ? 'Değerlendirmeyi Kaydet'
@@ -2643,8 +2845,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                             backgroundColor: _primary,
                             disabledBackgroundColor: _primary.withOpacity(0.45),
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 18),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),

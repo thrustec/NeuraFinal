@@ -13,6 +13,7 @@ class Evaluation {
   final String? hikaye;
   final String? notlar;
   final String? klinisyenNotlari;
+  final String? baslangicTarihi;
   final String? kullanilanIlaclar;
   final String? clinicType;
   final String? symptomsNote;
@@ -36,6 +37,7 @@ class Evaluation {
     this.hikaye,
     this.notlar,
     this.klinisyenNotlari,
+    this.baslangicTarihi,
     this.kullanilanIlaclar,
     this.clinicType,
     this.symptomsNote,
@@ -182,43 +184,45 @@ class Evaluation {
     final nestedSoyad = (json['hastalar']?['kullanicilar']?['soyad'] ?? '')
         .toString()
         .trim();
-    final nestedTamAd = [nestedAd, nestedSoyad]
-        .where((e) => e.isNotEmpty)
-        .join(' ')
-        .trim();
+    final nestedTamAd = [
+      nestedAd,
+      nestedSoyad,
+    ].where((e) => e.isNotEmpty).join(' ').trim();
 
     final directAd = (json['ad'] ?? '').toString().trim();
     final directSoyad = (json['soyad'] ?? '').toString().trim();
-    final directTamAd = [directAd, directSoyad]
-        .where((e) => e.isNotEmpty)
-        .join(' ')
-        .trim();
+    final directTamAd = [
+      directAd,
+      directSoyad,
+    ].where((e) => e.isNotEmpty).join(' ').trim();
 
-    final hastaAdSoyad = [
-      json['hastaAdSoyad'],
-      json['hasta_ad_soyad'],
-      json['hastaTamAd'],
-      json['hasta_tam_ad'],
-      json['tamAd'],
-      json['tam_ad'],
-      json['adSoyad'],
-      json['ad_soyad'],
-      nestedTamAd.isNotEmpty ? nestedTamAd : null,
-      directTamAd.isNotEmpty ? directTamAd : null,
-      json['hastaAd'],
-    ]
-        .map((e) => e?.toString().trim() ?? '')
-        .firstWhere((e) => e.isNotEmpty, orElse: () => '');
+    final hastaAdSoyad =
+        [
+              json['hastaAdSoyad'],
+              json['hasta_ad_soyad'],
+              json['hastaTamAd'],
+              json['hasta_tam_ad'],
+              json['tamAd'],
+              json['tam_ad'],
+              json['adSoyad'],
+              json['ad_soyad'],
+              nestedTamAd.isNotEmpty ? nestedTamAd : null,
+              directTamAd.isNotEmpty ? directTamAd : null,
+              json['hastaAd'],
+            ]
+            .map((e) => e?.toString().trim() ?? '')
+            .firstWhere((e) => e.isNotEmpty, orElse: () => '');
 
-    final hastalikAdi = [
-      json['hastalikAdi'],
-      json['hastalik_adi'],
-      json['hastaliklar']?['hastalikAdi'],
-      json['hastalik']?['hastalikAdi'],
-      json['diagnosis'],
-    ]
-        .map((e) => e?.toString().trim() ?? '')
-        .firstWhere((e) => e.isNotEmpty, orElse: () => '');
+    final hastalikAdi =
+        [
+              json['hastalikAdi'],
+              json['hastalik_adi'],
+              json['hastaliklar']?['hastalikAdi'],
+              json['hastalik']?['hastalikAdi'],
+              json['diagnosis'],
+            ]
+            .map((e) => e?.toString().trim() ?? '')
+            .firstWhere((e) => e.isNotEmpty, orElse: () => '');
 
     final rawNotlar = json['notlar']?.toString();
     final parsedSymptomsFromNotlar = _parseSymptomsFromNotlar(rawNotlar);
@@ -231,18 +235,19 @@ class Evaluation {
       id: json['degerlendirmeId'] ?? json['id'],
       degerlendirmeId: (json['degerlendirmeId'] ?? json['id'] ?? 0) as int,
       doctorId:
-      (json['klinisyenId'] ?? json['doctorId'] ?? json['doctor_id'] ?? 0)
-      as int,
+          (json['klinisyenId'] ?? json['doctorId'] ?? json['doctor_id'] ?? 0)
+              as int,
       hastaId: (json['hastaId'] ?? json['hasta_id'] ?? 0) as int,
       degerlendirmeTarihi:
-      (json['degerlendirmeTarihi'] ?? json['degerlendirme_tarihi'] ?? '')
-          .toString(),
+          (json['degerlendirmeTarihi'] ?? json['degerlendirme_tarihi'] ?? '')
+              .toString(),
       hastaAdSoyad: hastaAdSoyad.isEmpty ? null : hastaAdSoyad,
       sigaraDurumId: json['sigaraDurumId'] as int?,
       hastalikId: json['hastalikId'] as int?,
       hastalikAdi: hastalikAdi.isEmpty ? null : hastalikAdi,
       notlar: rawNotlar,
       klinisyenNotlari: json['klinisyenNotlari']?.toString(),
+      baslangicTarihi: json['baslangicTarihi']?.toString(),
       kullanilanIlaclar: json['kullanilanIlaclar']?.toString(),
       hikaye: json['hikaye']?.toString(),
       diagnosis: hastalikAdi.isEmpty ? null : hastalikAdi,
@@ -263,6 +268,7 @@ class Evaluation {
       'degerlendirmeTarihi': degerlendirmeTarihi,
       'notlar': notlar,
       'hikaye': hikaye,
+      'baslangicTarihi': baslangicTarihi,
       'kullanilanIlaclar': kullanilanIlaclar,
       if (hastalikId != null) 'hastalikId': hastalikId,
       'bakiciKisi': caregiver,
@@ -280,6 +286,7 @@ class Evaluation {
       'degerlendirmeTarihi': degerlendirmeTarihi,
       'notlar': notlar,
       'hikaye': hikaye,
+      'baslangicTarihi': baslangicTarihi,
       if (kullanilanIlaclar != null) 'kullanilanIlaclar': kullanilanIlaclar,
       if (hastalikId != null) 'hastalikId': hastalikId,
       'bakiciKisi': caregiver,
@@ -324,12 +331,7 @@ class Evaluation {
   }
 }
 
-enum LoadStatus {
-  idle,
-  loading,
-  success,
-  error,
-}
+enum LoadStatus { idle, loading, success, error }
 
 class Patient {
   final int id;
@@ -389,10 +391,7 @@ class SigaraDurum {
   final int id;
   final String ad;
 
-  const SigaraDurum({
-    required this.id,
-    required this.ad,
-  });
+  const SigaraDurum({required this.id, required this.ad});
 
   static const defaults = <SigaraDurum>[
     SigaraDurum(id: 1, ad: 'İçiyor'),

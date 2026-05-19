@@ -28,7 +28,8 @@ class EvaluationService {
       final allPatientsData = <dynamic>[];
 
       if (isNumeric) {
-        final path = '${ApiConstants.hastalar}'
+        final path =
+            '${ApiConstants.hastalar}'
             '?select=hastaId,kullaniciId,'
             'kullanicilar(ad,soyad,eposta,aktifMi)'
             '&hastaId=eq.$encodedQ'
@@ -38,7 +39,8 @@ class EvaluationService {
         allPatientsData.addAll(data);
       } else {
         // 1) AD / SOYAD ARAMASI
-        final usersPath = '${ApiConstants.kullanicilar}'
+        final usersPath =
+            '${ApiConstants.kullanicilar}'
             '?select=kullaniciId'
             '&or=(ad.ilike.*$encodedQ*,soyad.ilike.*$encodedQ*)'
             '&limit=10';
@@ -54,7 +56,8 @@ class EvaluationService {
         if (userIds.isNotEmpty) {
           final userIdsText = userIds.join(',');
 
-          final patientsByUserPath = '${ApiConstants.hastalar}'
+          final patientsByUserPath =
+              '${ApiConstants.hastalar}'
               '?select=hastaId,kullaniciId,'
               'kullanicilar(ad,soyad,eposta,aktifMi)'
               '&kullaniciId=in.($userIdsText)'
@@ -65,7 +68,8 @@ class EvaluationService {
         }
 
         // 2) TANI ARAMASI
-        final diseasePath = '${ApiConstants.hastaliklar}'
+        final diseasePath =
+            '${ApiConstants.hastaliklar}'
             '?select=hastalikId,hastalikAdi'
             '&hastalikAdi=ilike.*$encodedQ*'
             '&limit=10';
@@ -92,7 +96,8 @@ class EvaluationService {
         if (diseaseIds.isNotEmpty) {
           final diseaseIdsText = diseaseIds.join(',');
 
-          final evalPath = '${ApiConstants.degerlendirmeler}'
+          final evalPath =
+              '${ApiConstants.degerlendirmeler}'
               '?select=hastaId,hastalikId'
               '&hastalikId=in.($diseaseIdsText)'
               '&order=degerlendirmeTarihi.desc';
@@ -119,14 +124,16 @@ class EvaluationService {
           if (hastaIdsFromDisease.isNotEmpty) {
             final hastaIdsText = hastaIdsFromDisease.join(',');
 
-            final patientsByDiseasePath = '${ApiConstants.hastalar}'
+            final patientsByDiseasePath =
+                '${ApiConstants.hastalar}'
                 '?select=hastaId,kullaniciId,'
                 'kullanicilar(ad,soyad,eposta,aktifMi)'
                 '&hastaId=in.($hastaIdsText)'
                 '&limit=10';
 
-            final patientsByDiseaseData =
-            await _client.get(patientsByDiseasePath);
+            final patientsByDiseaseData = await _client.get(
+              patientsByDiseasePath,
+            );
 
             allPatientsData.addAll(patientsByDiseaseData);
           }
@@ -158,7 +165,8 @@ class EvaluationService {
       if (hastaIds.isNotEmpty) {
         final hastaIdsText = hastaIds.join(',');
 
-        final diagnosisPath = '${ApiConstants.degerlendirmeler}'
+        final diagnosisPath =
+            '${ApiConstants.degerlendirmeler}'
             '?select=hastaId,hastalikId,hastaliklar(hastalikAdi)'
             '&hastaId=in.($hastaIdsText)'
             '&hastalikId=not.is.null'
@@ -175,11 +183,11 @@ class EvaluationService {
             continue;
           }
 
-          final hastalikMap =
-          map['hastaliklar'] as Map<String, dynamic>?;
+          final hastalikMap = map['hastaliklar'] as Map<String, dynamic>?;
 
-          final hastalikAdi =
-          (hastalikMap?['hastalikAdi'] ?? '').toString().trim();
+          final hastalikAdi = (hastalikMap?['hastalikAdi'] ?? '')
+              .toString()
+              .trim();
 
           if (hastalikAdi.isNotEmpty) {
             taniByHastaId[hastaId] = hastalikAdi;
@@ -187,10 +195,7 @@ class EvaluationService {
         }
       }
 
-      return _parsePatients(
-        uniquePatientsData,
-        taniByHastaId: taniByHastaId,
-      );
+      return _parsePatients(uniquePatientsData, taniByHastaId: taniByHastaId);
     } catch (e) {
       debugPrint('EvaluationService.searchPatients error: $e');
       rethrow;
@@ -200,14 +205,21 @@ class EvaluationService {
   // ---------------------------------------------------------------------------
   // Bir hastanın değerlendirmelerini getir
   // ---------------------------------------------------------------------------
-  Future<List<EvaluationDate>> getEvaluationsForPatient(int hastaId) async {
+  Future<List<EvaluationDate>> getEvaluationsForPatient({
+    required int hastaId,
+    required int klinisyenKullaniciId,
+  }) async {
+    if (klinisyenKullaniciId <= 0) return [];
+
     try {
-      final path = '${ApiConstants.degerlendirmeler}'
+      final path =
+          '${ApiConstants.degerlendirmeler}'
           '?select=degerlendirmeId,hastaId,klinisyenId,degerlendirmeTarihi,'
           'notlar,hikaye,baslangicTarihi,kullanilanIlaclar,sporAliskanligi,'
           'yardimciCihaz,bakiciKisi,klinisyenNotlari,hastalikId,'
           'hastaliklar(hastalikAdi)'
           '&hastaId=eq.$hastaId'
+          '&klinisyenId=eq.$klinisyenKullaniciId'
           '&order=degerlendirmeTarihi.desc';
 
       final data = await _client.get(path);
@@ -229,7 +241,7 @@ class EvaluationService {
         } catch (e) {
           debugPrint(
             'Test sonuçları alınamadı '
-                '(degerlendirmeId: $degerlendirmeId): $e',
+            '(degerlendirmeId: $degerlendirmeId): $e',
           );
         }
 
@@ -271,7 +283,8 @@ class EvaluationService {
     required int degerlendirmeId,
     required int hastaId,
   }) async {
-    final path = '${ApiConstants.degerlendirmeTestSonuclari}'
+    final path =
+        '${ApiConstants.degerlendirmeTestSonuclari}'
         '?select=testSonucId,degerlendirmeId,hastaId,testId,metrikId,metrikAdi,'
         'olculenDeger,birim,notlar,olusturmaTarihi,'
         'testler(testAdi,testKodu,kategori,sureDakika)'
@@ -290,43 +303,43 @@ class EvaluationService {
   // Parse patient
   // ---------------------------------------------------------------------------
   List<Patient> _parsePatients(
-      List<dynamic> data, {
-        Map<int, String> taniByHastaId = const {},
-      }) {
+    List<dynamic> data, {
+    Map<int, String> taniByHastaId = const {},
+  }) {
     return data
         .map((item) {
-      final map = item as Map<String, dynamic>;
-      final kullanici = map['kullanicilar'] as Map<String, dynamic>?;
+          final map = item as Map<String, dynamic>;
+          final kullanici = map['kullanicilar'] as Map<String, dynamic>?;
 
-      if (kullanici == null) return null;
+          if (kullanici == null) return null;
 
-      final hastaId = map['hastaId'] as int;
-      final ad = (kullanici['ad'] ?? '').toString().trim();
-      final soyad = (kullanici['soyad'] ?? '').toString().trim();
+          final hastaId = map['hastaId'] as int;
+          final ad = (kullanici['ad'] ?? '').toString().trim();
+          final soyad = (kullanici['soyad'] ?? '').toString().trim();
 
-      if (ad.isEmpty && soyad.isEmpty) return null;
+          if (ad.isEmpty && soyad.isEmpty) return null;
 
-      return Patient(
-        hastaId: hastaId,
-        kullaniciId: map['kullaniciId'] as int,
-        ad: ad,
-        soyad: soyad,
-        tani: taniByHastaId[hastaId] ?? 'Tanı Yok',
-        durum: (kullanici['aktifMi'] as bool? ?? true)
-            ? 'Aktif Hasta'
-            : 'Pasif Hasta',
-        degerlendirmeler: const [],
-      );
-    })
+          return Patient(
+            hastaId: hastaId,
+            kullaniciId: map['kullaniciId'] as int,
+            ad: ad,
+            soyad: soyad,
+            tani: taniByHastaId[hastaId] ?? 'Tanı Yok',
+            durum: (kullanici['aktifMi'] as bool? ?? true)
+                ? 'Aktif Hasta'
+                : 'Pasif Hasta',
+            degerlendirmeler: const [],
+          );
+        })
         .whereType<Patient>()
         .toList();
   }
 
   EvaluationDate _parseEvaluationDate(
-      Map<String, dynamic> map,
-      List<TestResult> testSonuclari,
-      {bool isFirstEvaluation = false}
-      ) {
+    Map<String, dynamic> map,
+    List<TestResult> testSonuclari, {
+    bool isFirstEvaluation = false,
+  }) {
     final DateTime dt = map['degerlendirmeTarihi'] is DateTime
         ? map['degerlendirmeTarihi'] as DateTime
         : DateTime.parse(map['degerlendirmeTarihi'] as String);
@@ -379,17 +392,18 @@ class EvaluationService {
     if (_isCleanEvaluationTitle(notlar)) return notlar;
 
     final hastaliklarMap = map['hastaliklar'] as Map<String, dynamic>?;
-    final diagnosis = [
-      hastaliklarMap?['hastalikAdi'],
-      hastaliklarMap?['hastalik_adi'],
-      map['hastalikAdi'],
-      map['hastalik_adi'],
-      map['tani'],
-      map['tanı'],
-      map['diagnosis'],
-    ]
-        .map((value) => value?.toString().trim() ?? '')
-        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
+    final diagnosis =
+        [
+              hastaliklarMap?['hastalikAdi'],
+              hastaliklarMap?['hastalik_adi'],
+              map['hastalikAdi'],
+              map['hastalik_adi'],
+              map['tani'],
+              map['tanı'],
+              map['diagnosis'],
+            ]
+            .map((value) => value?.toString().trim() ?? '')
+            .firstWhere((value) => value.isNotEmpty, orElse: () => '');
 
     final visitLabel = isFirstEvaluation ? 'İlk değerlendirme' : 'Takip';
     if (diagnosis.isNotEmpty) return '$visitLabel - $diagnosis';
@@ -420,19 +434,47 @@ class EvaluationService {
 
     // testAdi: prefer the joined testler row; fall back to metrikAdi for rows
     // that were saved without a matching testler FK (e.g. from the form).
-    final testAdi = testlerMap['testAdi'] as String? ??
+    final testAdi =
+        testlerMap['testAdi'] as String? ??
         map['metrikAdi'] as String? ??
         'Test';
+    final metrikAdi = map['metrikAdi'] as String?;
+    final birim = map['birim'] as String? ?? 'Puan';
 
     return TestResult(
       testSonucId: map['testSonucId'] as int,
       testId: (map['testId'] as int?) ?? 0,
       testAdi: testAdi,
+      metrikAdi: metrikAdi,
       olculenDeger: (map['olculenDeger'] as num? ?? 0).toDouble(),
       maxDeger: 100.0,
-      birim: map['birim'] as String? ?? 'Puan',
-      isLowerBetter: false,
+      birim: birim,
+      isLowerBetter: _isLowerBetterMetric(birim: birim, metrikAdi: metrikAdi),
     );
+  }
+
+  bool _isLowerBetterMetric({required String birim, String? metrikAdi}) {
+    final unit = birim.toLowerCase();
+    final metric = (metrikAdi ?? '').toLowerCase();
+
+    final isTimeUnit =
+        unit.contains('saniye') ||
+        unit.contains('sec') ||
+        unit.contains('second');
+    if (isTimeUnit) return true;
+
+    final isTimeMetric =
+        metric.contains('sec') ||
+        metric.contains('süre') ||
+        metric.contains('sure') ||
+        metric.contains('zaman') ||
+        metric.contains('timed') ||
+        metric.contains('trail') ||
+        metric.contains('peg') ||
+        metric.contains('stroop');
+    if (isTimeMetric) return true;
+
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -447,10 +489,10 @@ class EvaluationService {
 
       final data = await _client.get(
         '${ApiConstants.kullanicilar}'
-            '?select=kullaniciId,rolId,eposta'
-            '&eposta=eq.$encodedEmail'
-            '&rolId=eq.2'
-            '&limit=1',
+        '?select=kullaniciId,rolId,eposta'
+        '&eposta=eq.$encodedEmail'
+        '&rolId=eq.2'
+        '&limit=1',
       );
 
       if (data.isEmpty) {
@@ -517,6 +559,50 @@ class EvaluationService {
     }
   }
 
+  Future<int?> findOrCreateTest({
+    required String testAdi,
+    required String testKodu,
+    required String kategori,
+  }) async {
+    final adi = testAdi.trim();
+    final kodu = testKodu.trim();
+    if (adi.isEmpty && kodu.isEmpty) return null;
+
+    try {
+      final filters = <String>[];
+      if (adi.isNotEmpty) {
+        filters.add('testAdi.eq.${Uri.encodeQueryComponent(adi)}');
+      }
+      if (kodu.isNotEmpty) {
+        filters.add('testKodu.eq.${Uri.encodeQueryComponent(kodu)}');
+      }
+
+      if (filters.isNotEmpty) {
+        final data = await _client.get(
+          '${ApiConstants.testler}'
+          '?select=testId'
+          '&or=(${filters.join(',')})'
+          '&limit=1',
+        );
+        if (data.isNotEmpty) {
+          return _asInt((data.first as Map<String, dynamic>)['testId']);
+        }
+      }
+
+      final created = await _client.post(ApiConstants.testler, {
+        'testAdi': adi.isEmpty ? kodu : adi,
+        'testKodu': kodu.isEmpty ? adi : kodu,
+        'kategori': kategori.trim().isEmpty ? null : kategori.trim(),
+        'aktifMi': true,
+      });
+      final map = created is List ? created.first : created;
+      return _asInt((map as Map<String, dynamic>)['testId']);
+    } catch (e) {
+      debugPrint('EvaluationService.findOrCreateTest error (non-fatal): $e');
+      return null;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Persist structured test rows for an evaluation.
   // Strategy: delete stale rows for (degerlendirmeId, hastaId) then insert.
@@ -533,8 +619,8 @@ class EvaluationService {
     try {
       await _client.delete(
         '${ApiConstants.degerlendirmeTestSonuclari}'
-            '?degerlendirmeId=eq.$degerlendirmeId'
-            '&hastaId=eq.$hastaId',
+        '?degerlendirmeId=eq.$degerlendirmeId'
+        '&hastaId=eq.$hastaId',
       );
     } catch (e) {
       debugPrint(
@@ -544,7 +630,28 @@ class EvaluationService {
 
     for (final row in rows) {
       try {
-        await _client.post(ApiConstants.degerlendirmeTestSonuclari, row);
+        final payload = Map<String, dynamic>.from(row);
+        var testId = _asInt(payload['testId']);
+        final testAdi = (payload.remove('_testAdi') ?? '').toString();
+        final testKodu = (payload.remove('_testKodu') ?? '').toString();
+        final testKategori = (payload.remove('_testKategori') ?? '').toString();
+
+        testId ??= await findOrCreateTest(
+          testAdi: testAdi,
+          testKodu: testKodu,
+          kategori: testKategori,
+        );
+
+        if (testId == null) {
+          debugPrint(
+            'EvaluationService.upsertTestSonuclari skipped row without '
+            'testId: $row',
+          );
+          continue;
+        }
+
+        payload['testId'] = testId;
+        await _client.post(ApiConstants.degerlendirmeTestSonuclari, payload);
       } catch (e) {
         debugPrint(
           'EvaluationService.upsertTestSonuclari insert error (non-fatal): '
@@ -552,6 +659,336 @@ class EvaluationService {
         );
       }
     }
+  }
+
+  Future<int?> getExistingMuayeneIdForEvaluation({
+    required int degerlendirmeId,
+    required int hastaId,
+  }) async {
+    try {
+      final data = await _client.get(
+        '/demografikBilgiler'
+        '?select=muayeneId'
+        '&degerlendirmeId=eq.$degerlendirmeId'
+        '&hastaId=eq.$hastaId'
+        '&limit=1',
+      );
+      if (data.isEmpty) return null;
+      return _asInt((data.first as Map<String, dynamic>)['muayeneId']);
+    } catch (e) {
+      debugPrint(
+        'EvaluationService.getExistingMuayeneIdForEvaluation error '
+        '(non-fatal): $e',
+      );
+      return null;
+    }
+  }
+
+  Future<int?> createMuayene({
+    required int hastaId,
+    required String muayeneTarihi,
+    int? degerlendirmeId,
+    String? notlar,
+  }) async {
+    if (degerlendirmeId != null && degerlendirmeId > 0) {
+      final existing = await getExistingMuayeneIdForEvaluation(
+        degerlendirmeId: degerlendirmeId,
+        hastaId: hastaId,
+      );
+      if (existing != null) {
+        await _patchByFilter('/muayeneler', 'muayeneId=eq.$existing', {
+          'hastaId': hastaId,
+          'muayeneTarihi': muayeneTarihi,
+          'notlar': notlar,
+        });
+        return existing;
+      }
+    }
+
+    final data = await _client.post('/muayeneler', {
+      'hastaId': hastaId,
+      'muayeneTarihi': muayeneTarihi,
+      'notlar': notlar,
+    });
+    final map = data is List ? data.first : data;
+    return _asInt((map as Map<String, dynamic>)['muayeneId']);
+  }
+
+  Future<int?> getOrCreateKlinikDegerlendirme({
+    required int hastaId,
+    required int muayeneId,
+    String? notlar,
+  }) async {
+    final existing = await _client.get(
+      '/klinikDegerlendirmeler'
+      '?select=klinikDegerlendirmeId'
+      '&hastaId=eq.$hastaId'
+      '&muayeneId=eq.$muayeneId'
+      '&limit=1',
+    );
+    if (existing.isNotEmpty) {
+      final id = _asInt(
+        (existing.first as Map<String, dynamic>)['klinikDegerlendirmeId'],
+      );
+      if (id != null) {
+        await _patchByFilter(
+          '/klinikDegerlendirmeler',
+          'klinikDegerlendirmeId=eq.$id',
+          {'hastaId': hastaId, 'muayeneId': muayeneId, 'notlar': notlar},
+        );
+      }
+      return id;
+    }
+
+    final data = await _client.post('/klinikDegerlendirmeler', {
+      'hastaId': hastaId,
+      'muayeneId': muayeneId,
+      'notlar': notlar,
+    });
+    final map = data is List ? data.first : data;
+    return _asInt((map as Map<String, dynamic>)['klinikDegerlendirmeId']);
+  }
+
+  Future<int?> getOrCreateDemografikBilgiler({
+    required int degerlendirmeId,
+    required int hastaId,
+    required int muayeneId,
+  }) async {
+    final existing = await _client.get(
+      '/demografikBilgiler'
+      '?select=demografikBilgiId'
+      '&degerlendirmeId=eq.$degerlendirmeId'
+      '&hastaId=eq.$hastaId'
+      '&limit=1',
+    );
+    if (existing.isNotEmpty) {
+      final id = _asInt(
+        (existing.first as Map<String, dynamic>)['demografikBilgiId'],
+      );
+      if (id != null) {
+        await _patchByFilter(
+          '/demografikBilgiler',
+          'demografikBilgiId=eq.$id',
+          {
+            'degerlendirmeId': degerlendirmeId,
+            'hastaId': hastaId,
+            'muayeneId': muayeneId,
+          },
+        );
+      }
+      return id;
+    }
+
+    final data = await _client.post('/demografikBilgiler', {
+      'degerlendirmeId': degerlendirmeId,
+      'hastaId': hastaId,
+      'muayeneId': muayeneId,
+    });
+    final map = data is List ? data.first : data;
+    return _asInt((map as Map<String, dynamic>)['demografikBilgiId']);
+  }
+
+  Future<int?> findOrCreateBelirti({
+    required String belirtiAdi,
+    String? kategoriAdi,
+  }) async {
+    final name = belirtiAdi.trim();
+    if (name.isEmpty) return null;
+
+    final encodedName = Uri.encodeQueryComponent(name);
+    final existing = await _client.get(
+      '/belirtiler'
+      '?select=belirtiId'
+      '&belirtiAdi=eq.$encodedName'
+      '&limit=1',
+    );
+    if (existing.isNotEmpty) {
+      return _asInt((existing.first as Map<String, dynamic>)['belirtiId']);
+    }
+
+    final kategoriId = await _findOrCreateBelirtiKategori(kategoriAdi);
+    final body = <String, dynamic>{
+      'belirtiAdi': name,
+      ...?(kategoriId == null ? null : {'kategoriId': kategoriId}),
+    };
+    final data = await _client.post('/belirtiler', body);
+    final map = data is List ? data.first : data;
+    return _asInt((map as Map<String, dynamic>)['belirtiId']);
+  }
+
+  Future<void> saveMuayeneBelirtileri({
+    required int muayeneId,
+    required List<Map<String, dynamic>> belirtiler,
+    int? hastalikId,
+  }) async {
+    try {
+      await _client.delete('/muayeneBelirtileri?muayeneId=eq.$muayeneId');
+    } catch (e) {
+      debugPrint(
+        'EvaluationService.saveMuayeneBelirtileri delete error '
+        '(non-fatal): $e',
+      );
+    }
+
+    final seen = <String>{};
+    for (final item in belirtiler) {
+      final belirtiAdi = (item['belirtiAdi'] ?? '').toString().trim();
+      final kategoriAdi = (item['kategoriAdi'] ?? '').toString().trim();
+      final rowHastalikAdi = (item['hastalikAdi'] ?? '').toString().trim();
+      final notlar = (item['notlar'] ?? '').toString().trim();
+      if (belirtiAdi.isEmpty) continue;
+
+      final key =
+          '${kategoriAdi.toLowerCase()}|'
+          '${rowHastalikAdi.toLowerCase()}|'
+          '${belirtiAdi.toLowerCase()}';
+      if (!seen.add(key)) continue;
+
+      try {
+        final belirtiId = await findOrCreateBelirti(
+          belirtiAdi: belirtiAdi,
+          kategoriAdi: kategoriAdi.isEmpty ? null : kategoriAdi,
+        );
+        if (belirtiId == null) continue;
+
+        final relatedHastalikId = rowHastalikAdi.isEmpty
+            ? hastalikId
+            : (await getHastalikIdByAdi(rowHastalikAdi)) ?? hastalikId;
+
+        if (relatedHastalikId != null) {
+          await _getOrCreateBelirtiVerisi(
+            hastalikId: relatedHastalikId,
+            belirtiId: belirtiId,
+          );
+        }
+
+        await _client.post('/muayeneBelirtileri', {
+          'muayeneId': muayeneId,
+          'belirtiId': belirtiId,
+          'siddet': null,
+          'notlar': notlar.isEmpty ? null : notlar,
+        });
+      } catch (e) {
+        debugPrint(
+          'EvaluationService.saveMuayeneBelirtileri insert error '
+          '(non-fatal): $e item=$item',
+        );
+      }
+    }
+  }
+
+  Future<void> saveFunctionalStructuredRows({
+    required int muayeneId,
+    required Map<String, Map<String, dynamic>> rowsByTable,
+  }) async {
+    for (final entry in rowsByTable.entries) {
+      final table = entry.key;
+      final primaryKey = _functionalPrimaryKeyByTable[table];
+      final row = Map<String, dynamic>.from(entry.value)
+        ..['muayeneId'] = muayeneId;
+
+      if (row.length <= 1) continue;
+
+      try {
+        final existing = await _client.get(
+          '/$table?select=${primaryKey ?? 'muayeneId'}'
+          '&muayeneId=eq.$muayeneId'
+          '&limit=1',
+        );
+        if (existing.isEmpty) {
+          await _client.post('/$table', row);
+        } else {
+          final id = primaryKey == null
+              ? null
+              : _asInt((existing.first as Map<String, dynamic>)[primaryKey]);
+          final filter = id == null
+              ? 'muayeneId=eq.$muayeneId'
+              : '$primaryKey=eq.$id';
+          await _patchByFilter('/$table', filter, row);
+        }
+      } catch (e) {
+        debugPrint(
+          'EvaluationService.saveFunctionalStructuredRows $table error '
+          '(non-fatal): $e row=$row',
+        );
+      }
+    }
+  }
+
+  static const Map<String, String> _functionalPrimaryKeyByTable = {
+    'fonksiyonelGenel': 'fonksiyonelGenelId',
+    'fonksiyonelCtsib': 'fonksiyonelCtsibId',
+    'fonksiyonelPst': 'fonksiyonelPstId',
+    'fonksiyonelIzKosu': 'fonksiyonelIzKosuId',
+    'fonksiyonelStroop': 'fonksiyonelStroopId',
+  };
+
+  Future<int?> _findOrCreateBelirtiKategori(String? kategoriAdi) async {
+    final name = (kategoriAdi ?? '').trim();
+    if (name.isEmpty) return null;
+
+    final encodedName = Uri.encodeQueryComponent(name);
+    final existing = await _client.get(
+      '/belirtiKategorileri'
+      '?select=kategoriId'
+      '&kategoriAdi=eq.$encodedName'
+      '&limit=1',
+    );
+    if (existing.isNotEmpty) {
+      return _asInt((existing.first as Map<String, dynamic>)['kategoriId']);
+    }
+
+    final data = await _client.post('/belirtiKategorileri', {
+      'kategoriAdi': name,
+    });
+    final map = data is List ? data.first : data;
+    return _asInt((map as Map<String, dynamic>)['kategoriId']);
+  }
+
+  Future<int?> _getOrCreateBelirtiVerisi({
+    required int hastalikId,
+    required int belirtiId,
+  }) async {
+    try {
+      final existing = await _client.get(
+        '/belirtiVerileri'
+        '?select=belirtiVeriId'
+        '&hastalikId=eq.$hastalikId'
+        '&belirtiId=eq.$belirtiId'
+        '&limit=1',
+      );
+      if (existing.isNotEmpty) {
+        return _asInt(
+          (existing.first as Map<String, dynamic>)['belirtiVeriId'],
+        );
+      }
+
+      final data = await _client.post('/belirtiVerileri', {
+        'hastalikId': hastalikId,
+        'belirtiId': belirtiId,
+      });
+      final map = data is List ? data.first : data;
+      return _asInt((map as Map<String, dynamic>)['belirtiVeriId']);
+    } catch (e) {
+      debugPrint(
+        'EvaluationService._getOrCreateBelirtiVerisi error (non-fatal): $e',
+      );
+      return null;
+    }
+  }
+
+  Future<void> _patchByFilter(
+    String table,
+    String filter,
+    Map<String, dynamic> body,
+  ) async {
+    await _client.patch('$table?$filter', body);
+  }
+
+  int? _asInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
   }
 
   // ---------------------------------------------------------------------------
@@ -570,36 +1007,39 @@ class EvaluationService {
       if (raw.isEmpty) return;
       final v = double.tryParse(raw.replaceAll(',', '.'));
       if (v == null) return;
-      results.add(TestResult(
-        testSonucId: label.hashCode.abs(),
-        testId: 0,
-        testAdi: label,
-        olculenDeger: v,
-        maxDeger: 100.0,
-        birim: birim,
-        isLowerBetter: isLowerBetter,
-      ));
+      results.add(
+        TestResult(
+          testSonucId: label.hashCode.abs(),
+          testId: 0,
+          testAdi: label,
+          metrikAdi: label,
+          olculenDeger: v,
+          maxDeger: 100.0,
+          birim: birim,
+          isLowerBetter: isLowerBetter,
+        ),
+      );
     }
 
-    extract('Mini Mental Test Score',           'Puan',   false);
-    extract('UPDRS Engine Score',               'Puan',   false);
-    extract('ALSFRS-R Score',                   'Puan',   false);
-    extract('Total Number of Attacks',          'Atak',   false);
-    extract('SARA Score',                       'Puan',   false);
-    extract('30-sec Chair Stand Test (Reps)',   'Tekrar', false);
-    extract('Timed Up & Go Test (Sec)',         'Saniye', true);
-    extract('9-Hole Peg – Right Hand (Sec)',    'Saniye', true);
-    extract('9-Hole Peg – Left Hand (Sec)',     'Saniye', true);
-    extract('Eyes Open – Firm Surface (Sec)',   'Saniye', false);
+    extract('Mini Mental Test Score', 'Puan', false);
+    extract('UPDRS Engine Score', 'Puan', false);
+    extract('ALSFRS-R Score', 'Puan', false);
+    extract('Total Number of Attacks', 'Atak', false);
+    extract('SARA Score', 'Puan', false);
+    extract('30-sec Chair Stand Test (Reps)', 'Tekrar', false);
+    extract('Timed Up & Go Test (Sec)', 'Saniye', true);
+    extract('9-Hole Peg – Right Hand (Sec)', 'Saniye', true);
+    extract('9-Hole Peg – Left Hand (Sec)', 'Saniye', true);
+    extract('Eyes Open – Firm Surface (Sec)', 'Saniye', false);
     extract('Eyes Closed – Firm Surface (Sec)', 'Saniye', false);
-    extract('Eyes Open – Soft Surface (Sec)',   'Saniye', false);
+    extract('Eyes Open – Soft Surface (Sec)', 'Saniye', false);
     extract('Eyes Closed – Soft Surface (Sec)', 'Saniye', false);
-    extract('Anterior – Posterior',             'mm',     false);
-    extract('Medial – Lateral',                 'mm',     false);
-    extract('Overall Score',                    'Puan',   false);
-    extract('Part A (Sec)',                     'Saniye', true);
-    extract('Part B (Sec)',                     'Saniye', true);
-    extract('Stroop',                           'Saniye', true);
+    extract('Anterior – Posterior', 'mm', false);
+    extract('Medial – Lateral', 'mm', false);
+    extract('Overall Score', 'Puan', false);
+    extract('Part A (Sec)', 'Saniye', true);
+    extract('Part B (Sec)', 'Saniye', true);
+    extract('Stroop', 'Saniye', true);
 
     debugPrint(
       'parseTestSonuclariFromKlinisyenNotlari: '
@@ -623,10 +1063,10 @@ class EvaluationService {
   // ---------------------------------------------------------------------------
   String get _clinicalEvaluationSelect =>
       'degerlendirmeId,hastaId,klinisyenId,sigaraDurumId,'
-          'degerlendirmeTarihi,notlar,hikaye,kullanilanIlaclar,'
-          'sporAliskanligi,yardimciCihaz,bakiciKisi,klinisyenNotlari,'
-          'hastalikId,hastaliklar(hastalikAdi),'
-          'hastalar(hastaId,kullaniciId,kullanicilar(ad,soyad,eposta))';
+      'degerlendirmeTarihi,notlar,hikaye,baslangicTarihi,kullanilanIlaclar,'
+      'sporAliskanligi,yardimciCihaz,bakiciKisi,klinisyenNotlari,'
+      'hastalikId,hastaliklar(hastalikAdi),'
+      'hastalar(hastaId,kullaniciId,kullanicilar(ad,soyad,eposta))';
 
   Future<List<Evaluation>> getAll({int? klinisyenId}) async {
     try {
@@ -637,7 +1077,8 @@ class EvaluationService {
         return [];
       }
 
-      final path = '${ApiConstants.degerlendirmeler}'
+      final path =
+          '${ApiConstants.degerlendirmeler}'
           '?select=$_clinicalEvaluationSelect'
           '&klinisyenId=eq.$klinisyenId'
           '&order=degerlendirmeTarihi.desc';
@@ -668,7 +1109,7 @@ class EvaluationService {
       return data
           .map<Evaluation>(
             (item) => Evaluation.fromJson(item as Map<String, dynamic>),
-      )
+          )
           .toList();
     } catch (e) {
       debugPrint('EvaluationService.getByPatient error: $e');
@@ -696,8 +1137,8 @@ class EvaluationService {
     try {
       final data = await _client.patch(
         '${ApiConstants.degerlendirmeler}'
-            '?degerlendirmeId=eq.$id'
-            '&select=$_clinicalEvaluationSelect',
+        '?degerlendirmeId=eq.$id'
+        '&select=$_clinicalEvaluationSelect',
         evaluation.toUpdateJson(),
       );
 
