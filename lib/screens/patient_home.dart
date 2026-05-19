@@ -283,13 +283,13 @@ class _PatientHomeState extends State<PatientHome> {
 
           const SizedBox(height: 28),
 
-          _buildSectionHeader('Bugünkü Toplantılarım'),
+          _buildSectionHeader('Günün Toplantıları'),
           const SizedBox(height: 12),
           _buildTodayMeetingsCard(context),
 
           const SizedBox(height: 24),
 
-          _buildSectionHeader('Bugünkü Görevlerim'),
+          _buildSectionHeader('Günün Görevleri'),
           const SizedBox(height: 12),
           _buildDailyExerciseCard(context),
 
@@ -590,7 +590,7 @@ class _PatientHomeState extends State<PatientHome> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Bugünkü Egzersizlerim',
+                    'Egzersizlerim',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
@@ -611,7 +611,7 @@ class _PatientHomeState extends State<PatientHome> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Bugünkü Egzersizlerim',
+                    'Egzersizlerim',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,

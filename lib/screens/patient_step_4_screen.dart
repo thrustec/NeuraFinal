@@ -208,9 +208,11 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: fullWidth ? double.infinity : null,
+        height: 52,
+        alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+          horizontal: 12,
+          vertical: 10,
         ),
         decoration: BoxDecoration(
           color: isSelected ? kPrimary : Colors.white,
@@ -223,11 +225,77 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
         child: Text(
           title,
           textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: isSelected ? Colors.white : kTextDark,
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _occupationDropdown() {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kBorderColor, width: 1.5),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: selectedOccupationId,
+          isExpanded: true,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: kPrimary,
+          ),
+          hint: const Text(
+            'Meslek seçiniz',
+            style: TextStyle(
+              color: kTextHint,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          items: occupationOptions.map((occupation) {
+            final int id = occupation['meslekId'] as int;
+            final String name = occupation['meslekAdi']?.toString() ?? '';
+
+            return DropdownMenuItem<int>(
+              value: id,
+              child: Text(
+                name,
+                style: const TextStyle(
+                  color: kTextDark,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value == null) return;
+
+            final selectedItem = occupationOptions.firstWhere(
+                  (occupation) => occupation['meslekId'] == value,
+            );
+
+            final String name =
+                selectedItem['meslekAdi']?.toString() ?? '';
+
+            setState(() {
+              selectedOccupationId = value;
+              selectedOccupation = name;
+            });
+
+            widget.formData.occupationId = value;
+            widget.formData.occupation = name;
+          },
         ),
       ),
     );
@@ -352,10 +420,19 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                         const SizedBox(height: 12),
                         isLoadingOptions
                             ? _loadingBox()
-                            : Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: educationOptions.map((education) {
+                            : GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: educationOptions.length,
+                          gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 2.45,
+                          ),
+                          itemBuilder: (context, index) {
+                            final education = educationOptions[index];
                             final int id =
                             education['egitimDurumId'] as int;
                             final String name =
@@ -379,7 +456,7 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                                 widget.formData.education = name;
                               },
                             );
-                          }).toList(),
+                          },
                         ),
 
                         const SizedBox(height: 32),
@@ -394,13 +471,11 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                             : Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children:
-                          maritalStatusOptions.map((maritalStatus) {
+                          children: maritalStatusOptions.map((status) {
                             final int id =
-                            maritalStatus['medeniDurumId'] as int;
+                            status['medeniDurumId'] as int;
                             final String name =
-                                maritalStatus['medeniDurumAdi']
-                                    ?.toString() ??
+                                status['medeniDurumAdi']?.toString() ??
                                     '';
 
                             return selectionTile(
@@ -431,36 +506,7 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                         const SizedBox(height: 12),
                         isLoadingOptions
                             ? _loadingBox()
-                            : Column(
-                          children: occupationOptions.map((occupation) {
-                            final int id = occupation['meslekId'] as int;
-                            final String name =
-                                occupation['meslekAdi']?.toString() ?? '';
-
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: 10,
-                              ),
-                              child: selectionTile(
-                                title: name,
-                                value: id,
-                                groupValue: selectedOccupationId,
-                                fullWidth: true,
-                                onChanged: (value) {
-                                  if (value == null) return;
-
-                                  setState(() {
-                                    selectedOccupationId = value;
-                                    selectedOccupation = name;
-                                  });
-
-                                  widget.formData.occupationId = value;
-                                  widget.formData.occupation = name;
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        ),
+                            : _occupationDropdown(),
                       ],
                     ),
                   ),
@@ -484,79 +530,72 @@ class _PatientStep4ScreenState extends State<PatientStep4Screen> {
                 20,
                 24,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(54),
-                            side: const BorderSide(
-                              color: kBorderColor,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Text(
-                            'Geri',
-                            style: TextStyle(
-                              color: kTextGrey,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(54),
+                        side: const BorderSide(
+                          color: kBorderColor,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            widget.formData.education =
-                                selectedEducation ?? '';
-                            widget.formData.educationId =
-                                selectedEducationId;
-
-                            widget.formData.maritalStatus =
-                                selectedMaritalStatus ?? '';
-                            widget.formData.maritalStatusId =
-                                selectedMaritalStatusId;
-
-                            widget.formData.occupation =
-                                selectedOccupation ?? '';
-                            widget.formData.occupationId =
-                                selectedOccupationId;
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PatientStep5Screen(
-                                  formData: widget.formData,
-                                ),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimary,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(54),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          child: const Text('Devam'),
+                      child: const Text(
+                        'Geri',
+                        style: TextStyle(
+                          color: kTextGrey,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        widget.formData.education =
+                            selectedEducation ?? '';
+                        widget.formData.educationId = selectedEducationId;
+
+                        widget.formData.maritalStatus =
+                            selectedMaritalStatus ?? '';
+                        widget.formData.maritalStatusId =
+                            selectedMaritalStatusId;
+
+                        widget.formData.occupation =
+                            selectedOccupation ?? '';
+                        widget.formData.occupationId = selectedOccupationId;
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PatientStep5Screen(
+                              formData: widget.formData,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(54),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      child: const Text('Devam'),
+                    ),
                   ),
                 ],
               ),

@@ -187,7 +187,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSectionHeader('Bugünkü Toplantılarım'),
+              _buildSectionHeader('Günün Toplantıları'),
               TextButton(
                 onPressed: () => Navigator.push(
                   context,
