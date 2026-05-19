@@ -122,7 +122,7 @@ class ExerciseVideoService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // INSERT — veritabanı kaydı
+  // INSERT & UPDATE — veritabanı işlemleri
   // ─────────────────────────────────────────────────────────────
 
   /// Yeni egzersiz videosunu neura.egzersizVideolari tablosuna kaydeder.
@@ -158,6 +158,24 @@ class ExerciseVideoService {
 
     if (response.statusCode != 201) {
       throw Exception('Kayit hatasi (${response.statusCode}): ${response.body}');
+    }
+  }
+
+  /// Videoyu pasife çeker (soft delete)
+  static Future<void> videoSil(int videoId) async {
+    final url = Uri.parse('$SUPABASE_URL/egzersizVideolari?egzersizVideoId=eq.$videoId');
+    final response = await http.patch(
+      url,
+      headers: {
+        ..._headers(),
+        'Content-Profile': 'neura',
+        'Prefer': 'return=minimal',
+      },
+      body: json.encode({'aktifMi': false}),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Silme hatasi (${response.statusCode}): ${response.body}');
     }
   }
 

@@ -125,11 +125,11 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackground,
-      body: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,8 +211,8 @@ class _ComparisonScreenState extends State<ComparisonScreen> {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

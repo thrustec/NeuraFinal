@@ -146,6 +146,35 @@ class _AyarlarScreenState extends State<AyarlarScreen> {
                 ),
               ),
             ]),
+            const SizedBox(height: 24),
+
+            // ── Yapay Zeka Notu ─────────────────────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.auto_awesome,
+                      color: Color(0xFF16A34A), size: 16),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Bu uygulama, geliştirme sürecinde yapay zeka teknolojilerinden yararlanılarak hazırlanmıştır.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF15803D),
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

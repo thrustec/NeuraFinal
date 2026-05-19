@@ -73,6 +73,54 @@ class _ExerciseVideoLibraryScreenState
     _videolariYukle();
   }
 
+  Future<void> _videoSilOnayla(EgzersizVideo video) async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Videoyu Sil', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('"${video.baslik}" videosunu silmek istediğinize emin misiniz?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Sil', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (onay == true) {
+      try {
+        await ExerciseVideoService.videoSil(video.egzersizVideoId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Video başarıyla silindi'),
+              backgroundColor: Color(0xFF0F766E),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          _videolariYukle();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -340,6 +388,7 @@ class _ExerciseVideoLibraryScreenState
                 context,
                 MaterialPageRoute(builder: (_) => ExerciseVideoDetailScreen(video: video)),
               ),
+              onDelete: () => _videoSilOnayla(video),
             ),
           )),
         ],
@@ -404,7 +453,13 @@ class _ExerciseVideoLibraryScreenState
 class _VideoKarti extends StatelessWidget {
   final EgzersizVideo video;
   final VoidCallback onTap;
-  const _VideoKarti({required this.video, required this.onTap});
+  final VoidCallback? onDelete;
+
+  const _VideoKarti({
+    required this.video,
+    required this.onTap,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -502,10 +557,25 @@ class _VideoKarti extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(video.baslik,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(video.baslik,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                        ),
+                        if (onDelete != null)
+                          IconButton(
+                            onPressed: onDelete,
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Videoyu Sil',
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 6),
                     if (video.aciklama != null)
                       Text(video.aciklama!,
