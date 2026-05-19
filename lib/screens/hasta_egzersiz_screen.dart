@@ -187,61 +187,64 @@ class _HastaEgzersizScreenState extends State<HastaEgzersizScreen> {
     );
   }
 
-  Widget _ustPanel() => Container(
-    padding: const EdgeInsets.fromLTRB(8, 12, 16, 16),
-    color: Colors.white,
-    child: Row(
-      children: [
-        IconButton(
-          onPressed: _geriDon,
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B),
-            size: 20,
+  Widget _ustPanel() => SafeArea(
+    bottom: false,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(8, 12, 16, 16),
+      color: Colors.white,
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _geriDon,
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Color(0xFF1E293B),
+              size: 20,
+            ),
           ),
-        ),
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: kPrimary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: kPrimary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.fitness_center,
+              color: kPrimary,
+              size: 22,
+            ),
           ),
-          child: const Icon(
-            Icons.fitness_center,
-            color: kPrimary,
-            size: 22,
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Egzersizlerim',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Egzersizlerim',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
                 ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                'Klinisyeninizin atadığı egzersizleri buradan görebilirsiniz.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
+                SizedBox(height: 2),
+                Text(
+                  'Klinisyeninizin atadığı egzersizleri buradan görebilirsiniz.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
-          onPressed: _yukle,
-        ),
-      ],
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
+            onPressed: _yukle,
+          ),
+        ],
+      ),
     ),
   );
 

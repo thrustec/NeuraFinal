@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import 'notification_service.dart';
 
 class MeetingService {
   final SupabaseClient _supabase = SupabaseService.client;
@@ -131,7 +132,11 @@ class MeetingService {
     })
         .select()
         .single();
-
+    await NotificationService.createPatientNotificationByHastaId(
+      hastaId: hastaId,
+      baslik: 'Yeni Toplantı Oluşturuldu',
+      mesaj: 'Klinisyen sizin için yeni bir toplantı oluşturdu.',
+    );
     return Map<String, dynamic>.from(response);
   }
 
@@ -154,7 +159,11 @@ class MeetingService {
     })
         .select()
         .single();
-
+    await NotificationService.createClinicianNotificationByKlinisyenId(
+      klinisyenId: klinisyenId,
+      baslik: 'Yeni Toplantı Talebi',
+      mesaj: 'Bir hasta yeni toplantı talebi gönderdi.',
+    );
     return Map<String, dynamic>.from(response);
   }
 
@@ -188,6 +197,11 @@ class MeetingService {
       'toplantiId': toplantiId,
     })
         .eq('toplantiIstegiId', toplantiIstegiId);
+    await NotificationService.createPatientNotificationByHastaId(
+      hastaId: hastaId,
+      baslik: 'Toplantı Talebi Onaylandı',
+      mesaj: 'Toplantı talebiniz klinisyen tarafından onaylandı.',
+    );
 
     return createdMeeting;
   }

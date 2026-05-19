@@ -550,6 +550,17 @@ class _ClinicianHomeState extends State<ClinicianHome> {
           ),
         ),
       ),
+      _QuickActionItem(
+        icon: Icons.event_note_outlined,
+        label: 'Ajanda',
+        color: const Color(0xFF2563EB),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const ClinicianAgenda(),
+          ),
+        ),
+      ),
     ];
 
     const int crossAxisCount = 3;

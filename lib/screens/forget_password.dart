@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../services/supabase_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -13,12 +11,9 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
+
   bool _isClinician = false;
   bool _isLoading = false;
-
-  static const String _baseUrl = 'https://griteunvazwekosffmjo.supabase.co';
-  static const String _anonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU';
 
   static const Color kBackground = Color(0xFFF8F9FC);
   static const Color kTextDark = Color(0xFF1E293B);
@@ -50,50 +45,43 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen e-posta adresinizi girin')),
+        const SnackBar(
+          content: Text('Lütfen e-posta adresinizi girin'),
+        ),
       );
       return;
     }
 
     if (!RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geçerli bir e-posta adresi girin')),
+        const SnackBar(
+          content: Text('Geçerli bir e-posta adresi girin'),
+        ),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      // 1) E-posta sistemde kayıtlı mı kontrol et
-      final checkResponse = await http.get(
-        Uri.parse(
-          '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$email&select=eposta',
-        ),
-        headers: {
-          'apikey': _anonKey,
-          'Authorization': 'Bearer $_anonKey',
-        },
-      );
+      // 1) E-posta neura.kullanicilar tablosunda kayıtlı mı kontrol et
+      final checkResponse = await SupabaseService.client
+          .schema('neura')
+          .from('kullanicilar')
+          .select('eposta')
+          .ilike('eposta', email)
+          .limit(1);
+
+      final users = List<Map<String, dynamic>>.from(checkResponse);
 
       if (!mounted) return;
 
-      if (checkResponse.statusCode != 200) {
-        setState(() => _isLoading = false);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('E-posta kontrol edilirken hata oluştu.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      final data = jsonDecode(checkResponse.body) as List;
-
-      if (data.isEmpty) {
-        setState(() => _isLoading = false);
+      if (users.isEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -104,12 +92,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         return;
       }
 
-      // 2) Platforma göre doğru yönlendirme adresini belirle
+      // 2) Platforma göre doğru yönlendirme adresi
       final String redirectUrl = kIsWeb
           ? 'http://localhost:8080/reset-password'
           : 'neuraapp://reset-password';
 
-      // 3) Supabase üzerinden şifre sıfırlama maili gönder
+      // 3) Supabase Auth üzerinden şifre sıfırlama maili gönder
       await SupabaseService.client.auth.resetPasswordForEmail(
         email,
         redirectTo: redirectUrl,
@@ -117,7 +105,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       if (!mounted) return;
 
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
 
       showDialog(
         context: context,
@@ -186,7 +176,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -204,6 +196,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new,
@@ -257,9 +250,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) {
+                  if (!_isLoading) {
+                    _submit();
+                  }
+                },
                 style: const TextStyle(
                   fontSize: 15,
                   color: kTextDark,
@@ -301,13 +301,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryColor,
+                    disabledBackgroundColor: _primaryColor.withOpacity(0.6),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
                       : const Text(
                     'Devam Et',
                     style: TextStyle(

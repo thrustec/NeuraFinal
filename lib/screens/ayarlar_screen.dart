@@ -17,7 +17,6 @@ class _AyarlarScreenState extends State<AyarlarScreen> {
   bool _genelBildirim        = true;
   bool _degerlendirmeBildirim = true;
   bool _ajandaBildirim        = true;
-  String _seciliDil           = 'Türkçe';
   bool _yukleniyor            = true;
 
   @override
@@ -33,7 +32,6 @@ class _AyarlarScreenState extends State<AyarlarScreen> {
       _genelBildirim        = prefs.getBool('bildirim_genel')        ?? true;
       _degerlendirmeBildirim = prefs.getBool('bildirim_degerlendirme') ?? true;
       _ajandaBildirim       = prefs.getBool('bildirim_ajanda')       ?? true;
-      _seciliDil            = prefs.getString('dil')                 ?? 'Türkçe';
       _yukleniyor           = false;
     });
   }
@@ -44,10 +42,6 @@ class _AyarlarScreenState extends State<AyarlarScreen> {
     await prefs.setBool(key, value);
   }
 
-  Future<void> _dilKaydet(String dil) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('dil', dil);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,83 +114,7 @@ class _AyarlarScreenState extends State<AyarlarScreen> {
             ]),
             const SizedBox(height: 20),
 
-            // ── Dil ────────────────────────────────────
-            _baslik('Dil'),
-            const SizedBox(height: 10),
-            _kart([
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 4),
-                child: Row(children: [
-                  Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB)
-                              .withOpacity(0.1),
-                          borderRadius:
-                          BorderRadius.circular(8)),
-                      child: const Icon(Icons.language,
-                          color: Color(0xFF2563EB),
-                          size: 18)),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                      children: [
-                        Text('Uygulama Dili',
-                            style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: kTextDark)),
-                        Text(
-                          'Çoklu dil desteği yakında',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: kTextGrey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  DropdownButton<String>(
-                    value: _seciliDil,
-                    underline: const SizedBox(),
-                    style: const TextStyle(
-                        color: Color(0xFF2563EB),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14),
-                    items: ['Türkçe', 'English']
-                        .map((d) => DropdownMenuItem(
-                        value: d, child: Text(d)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() => _seciliDil = v);
-                        _dilKaydet(v);
-                        // Tam lokalizasyon desteği
-                        // sonraki sürümde eklenecek
-                        if (v == 'English') {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(const SnackBar(
-                            content: Text(
-                                'English support coming soon!'),
-                            behavior:
-                            SnackBarBehavior.floating,
-                            backgroundColor:
-                            Color(0xFF2563EB),
-                          ));
-                          setState(
-                                  () => _seciliDil = 'Türkçe');
-                          _dilKaydet('Türkçe');
-                        }
-                      }
-                    },
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 8),
-            ]),
-            const SizedBox(height: 20),
+
 
             // ── Uygulama ───────────────────────────────
             _baslik('Uygulama'),
