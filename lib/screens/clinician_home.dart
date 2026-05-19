@@ -211,7 +211,7 @@ class _ClinicianHomeState extends State<ClinicianHome> {
 
           _buildSectionHeader('Hızlı İşlemler'),
           const SizedBox(height: 12),
-          _buildQuickActionsRow(context),
+          _buildQuickActionsGrid(context),
 
           const SizedBox(height: 28),
 
@@ -490,75 +490,140 @@ class _ClinicianHomeState extends State<ClinicianHome> {
     );
   }
 
-  Widget _buildQuickActionsRow(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          _QuickActionTile(
-            icon: Icons.person_add_outlined,
-            label: 'Yeni Kayıt',
-            color: Colors.orange,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const PatientStep1Screen(),
-              ),
+  Widget _buildQuickActionsGrid(BuildContext context) {
+    final items = [
+      _QuickActionItem(
+        icon: Icons.person_add_outlined,
+        label: 'Yeni Kayıt',
+        color: Colors.orange,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const PatientStep1Screen(),
+          ),
+        ),
+      ),
+      _QuickActionItem(
+        icon: Icons.fitness_center_outlined,
+        label: 'Egzersizler',
+        color: Colors.red,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const ExerciseVideoLibraryScreen(),
+          ),
+        ),
+      ),
+      _QuickActionItem(
+        icon: Icons.video_camera_front_outlined,
+        label: 'Telerehab',
+        color: Colors.pink,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TelerehabClinicianScreen(),
+          ),
+        ),
+      ),
+      _QuickActionItem(
+        icon: Icons.assignment_outlined,
+        label: 'Klinik Değerlendirme',
+        color: _primaryTeal,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) => EvaluationProvider(doctorId: 0),
+              child: const EvaluationListScreen(),
             ),
           ),
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.fitness_center_outlined,
-            label: 'Egzersizler',
-            color: Colors.red,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const ExerciseVideoLibraryScreen(),
+        ),
+      ),
+      _QuickActionItem(
+        icon: Icons.compare_arrows_outlined,
+        label: 'Karşılaştırma',
+        color: Colors.indigo,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const ComparisonScreen(),
+          ),
+        ),
+      ),
+    ];
+
+    const int crossAxisCount = 3;
+    final int rowCount = (items.length / crossAxisCount).ceil();
+
+    return Column(
+      children: List.generate(rowCount, (rowIndex) {
+        final start = rowIndex * crossAxisCount;
+        final end = (start + crossAxisCount).clamp(0, items.length);
+        final rowItems = items.sublist(start, end);
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: rowIndex < rowCount - 1 ? 12 : 0,
+          ),
+          child: Row(
+            children: [
+              for (int i = 0; i < rowItems.length; i++) ...[
+                Expanded(child: _buildQuickActionGridTile(rowItems[i])),
+                if (i < rowItems.length - 1) const SizedBox(width: 12),
+              ],
+              for (int i = rowItems.length; i < crossAxisCount; i++) ...[
+                const SizedBox(width: 12),
+                const Expanded(child: SizedBox()),
+              ],
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildQuickActionGridTile(_QuickActionItem item) {
+    return GestureDetector(
+      onTap: item.onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+        decoration: BoxDecoration(
+          color: item.color.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: item.color.withValues(alpha: 0.12)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: item.color.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(item.icon, color: item.color, size: 24),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              item.label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.video_camera_front_outlined,
-            label: 'Telerehab',
-            color: Colors.pink,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const TelerehabClinicianScreen(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.assignment_outlined,
-            label: 'Klinik Değerlendirme',
-            color: _primaryTeal,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider(
-                  create: (_) => EvaluationProvider(doctorId: 0),
-                  child: const EvaluationListScreen(),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          _QuickActionTile(
-            icon: Icons.compare_arrows_outlined,
-            label: 'Karşılaştırma',
-            color: Colors.indigo,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const ComparisonScreen(),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -610,64 +675,16 @@ class _ClinicianHomeState extends State<ClinicianHome> {
   }
 }
 
-class _QuickActionTile extends StatelessWidget {
+class _QuickActionItem {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
-  const _QuickActionTile({
+  const _QuickActionItem({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.1)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF1E293B),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -197,35 +197,74 @@ class _PatientHomeState extends State<PatientHome> {
   }
 
   Future<void> _openEmpatica(AuthProvider auth) async {
-    final hastaId = await _getCurrentPatientId();
     final user = auth.user;
     final kullaniciId = int.tryParse(user?.id ?? '');
 
     if (!mounted) return;
 
-    if (hastaId == null || user == null || kullaniciId == null) {
+    if (user == null || kullaniciId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Hasta bilgisi alınamadı.'),
+          content: Text('Kullanıcı bilgisi alınamadı.'),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
-    final hasta = patient_model.Patient(
-      hastaId: hastaId,
-      kullaniciId: kullaniciId,
-      ad: user.ad,
-      soyad: user.soyad,
-    );
+    try {
+      final patientResponse = await SupabaseService.client
+          .schema('neura')
+          .from('hastalar')
+          .select(
+        'hastaId, hastaliklar(hastalikAdi)',
+      )
+          .eq('kullaniciId', kullaniciId)
+          .maybeSingle();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EmpaticaScreen(hasta: hasta),
-      ),
-    );
+      if (!mounted) return;
+
+      if (patientResponse == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hasta bilgisi bulunamadı.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      final int hastaId = patientResponse['hastaId'] as int;
+
+      final hastalikData = patientResponse['hastaliklar'];
+      final String? hastalikAdi = hastalikData is Map<String, dynamic>
+          ? hastalikData['hastalikAdi']?.toString()
+          : null;
+
+      final hasta = patient_model.Patient(
+        hastaId: hastaId,
+        kullaniciId: kullaniciId,
+        ad: user.ad,
+        soyad: user.soyad,
+        hastalikAdi: hastalikAdi,
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmpaticaScreen(hasta: hasta),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Empatica bilgileri açılırken hata oluştu: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override

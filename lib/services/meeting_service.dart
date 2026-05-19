@@ -4,10 +4,15 @@ import 'supabase_service.dart';
 class MeetingService {
   final SupabaseClient _supabase = SupabaseService.client;
 
-  Future<String?> createZoomMeeting({
+  // ============================================================================
+  // Zoom toplantısı oluştur
+  // join_url: hasta için
+  // id: daha sonra klinisyenin güncel start_url alması için
+  // ============================================================================
+  Future<Map<String, dynamic>?> createZoomMeeting({
     required String topic,
     required DateTime startTime,
-    int duration = 60,
+    int duration = 40,
   }) async {
     try {
       print('ZOOM FUNCTION ÇAĞRILIYOR...');
@@ -24,10 +29,13 @@ class MeetingService {
       final data = response.data;
       print('ZOOM RESPONSE DATA: $data');
 
-      if (data is Map && data['join_url'] != null) {
-        final joinUrl = data['join_url'].toString();
-        print('ZOOM JOIN URL: $joinUrl');
-        return joinUrl;
+      if (data is Map &&
+          data['join_url'] != null &&
+          data['id'] != null) {
+        return {
+          'join_url': data['join_url'].toString(),
+          'id': data['id'].toString(),
+        };
       }
 
       if (data is Map && data['error'] != null) {
@@ -42,6 +50,40 @@ class MeetingService {
     }
   }
 
+  // ============================================================================
+  // Klinisyen için güncel host start_url al
+  // ============================================================================
+  Future<String?> getZoomStartUrl(String zoomMeetingId) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'get-zoom-start-url',
+        body: {
+          'meeting_id': zoomMeetingId,
+        },
+      );
+
+      final data = response.data;
+      print('GET START URL RESPONSE: $data');
+
+      if (data is Map && data['start_url'] != null) {
+        return data['start_url'].toString();
+      }
+
+      if (data is Map && data['error'] != null) {
+        print('START URL ERROR: ${data['error']}');
+        print('START URL DETAIL: ${data['detail']}');
+      }
+
+      return null;
+    } catch (e) {
+      print('Zoom start url alınamadı: $e');
+      return null;
+    }
+  }
+
+  // ============================================================================
+  // Toplantı oluştur
+  // ============================================================================
   Future<Map<String, dynamic>> createMeeting({
     required int hastaId,
     required int klinisyenId,
@@ -51,17 +93,27 @@ class MeetingService {
     String? zoomlink,
     String? notlar,
   }) async {
-    final duration = bitisZamani.difference(baslangicZamani).inMinutes;
+    final gercekBitisZamani =
+    baslangicZamani.add(const Duration(minutes: 40));
 
-    final generatedZoomLink = zoomlink?.trim().isNotEmpty == true
-        ? zoomlink!.trim()
-        : await createZoomMeeting(
-      topic: baslik,
-      startTime: baslangicZamani,
-      duration: duration <= 0 ? 60 : duration,
-    );
+    String? generatedZoomLink;
+    String? zoomMeetingId;
 
-    print('DATABASEE YAZILACAK ZOOM LINK: $generatedZoomLink');
+    if (zoomlink?.trim().isNotEmpty == true) {
+      generatedZoomLink = zoomlink!.trim();
+    } else {
+      final zoomData = await createZoomMeeting(
+        topic: baslik,
+        startTime: baslangicZamani,
+        duration: 40,
+      );
+
+      generatedZoomLink = zoomData?['join_url']?.toString();
+      zoomMeetingId = zoomData?['id']?.toString();
+    }
+
+    print('DATABASEE YAZILACAK ZOOM JOIN LINK: $generatedZoomLink');
+    print('DATABASEE YAZILACAK ZOOM MEETING ID: $zoomMeetingId');
 
     final response = await _supabase
         .schema('neura')
@@ -71,8 +123,9 @@ class MeetingService {
       'klinisyenId': klinisyenId,
       'baslik': baslik,
       'baslangicZamani': baslangicZamani.toIso8601String(),
-      'bitisZamani': bitisZamani.toIso8601String(),
+      'bitisZamani': gercekBitisZamani.toIso8601String(),
       'zoomlink': generatedZoomLink,
+      'zoomMeetingId': zoomMeetingId,
       'notlar': notlar?.trim().isEmpty == true ? null : notlar?.trim(),
       'baslatildimi': false,
     })
@@ -199,22 +252,26 @@ class MeetingService {
     required DateTime yeniBaslangicZamani,
     required DateTime yeniBitisZamani,
   }) async {
-    final duration =
-        yeniBitisZamani.difference(yeniBaslangicZamani).inMinutes;
+    final gercekYeniBitisZamani =
+    yeniBaslangicZamani.add(const Duration(minutes: 40));
 
-    final newZoomLink = await createZoomMeeting(
+    final zoomData = await createZoomMeeting(
       topic: 'Ertelenmiş Telerehabilitasyon Randevusu',
       startTime: yeniBaslangicZamani,
-      duration: duration <= 0 ? 60 : duration,
+      duration: 40,
     );
+
+    final newZoomLink = zoomData?['join_url']?.toString();
+    final newZoomMeetingId = zoomData?['id']?.toString();
 
     await _supabase
         .schema('neura')
         .from('toplantilar')
         .update({
       'baslangicZamani': yeniBaslangicZamani.toIso8601String(),
-      'bitisZamani': yeniBitisZamani.toIso8601String(),
+      'bitisZamani': gercekYeniBitisZamani.toIso8601String(),
       'zoomlink': newZoomLink,
+      'zoomMeetingId': newZoomMeetingId,
       'baslatildimi': false,
       'durum': 'Ertelendi',
       'guncellemeTarihi': DateTime.now().toIso8601String(),
@@ -269,14 +326,60 @@ class MeetingService {
   }
 
   Future<List<Map<String, dynamic>>> getMeetingsByPatient(int hastaId) async {
-    final response = await _supabase
+    final meetingsResponse = await _supabase
         .schema('neura')
         .from('toplantilar')
         .select('*')
         .eq('hastaId', hastaId)
         .order('baslangicZamani', ascending: true);
 
-    return List<Map<String, dynamic>>.from(response);
+    final meetings = List<Map<String, dynamic>>.from(meetingsResponse);
+
+    final patientResponse = await _supabase
+        .schema('neura')
+        .from('hastalar')
+        .select('hastaId, kullaniciId, kullanicilar(ad, soyad, eposta)')
+        .eq('hastaId', hastaId)
+        .maybeSingle();
+
+    final klinisyenIds = meetings
+        .map((m) => m['klinisyenId'])
+        .whereType<int>()
+        .toSet()
+        .toList();
+
+    final Map<int, Map<String, dynamic>> clinicianMap = {};
+
+    if (klinisyenIds.isNotEmpty) {
+      final cliniciansResponse = await _supabase
+          .schema('neura')
+          .from('klinisyenler')
+          .select(
+        'klinisyenId, kullaniciId, unvan, kullanicilar(ad, soyad, eposta)',
+      )
+          .inFilter('klinisyenId', klinisyenIds);
+
+      for (final c in List<Map<String, dynamic>>.from(cliniciansResponse)) {
+        final id = c['klinisyenId'];
+        if (id is int) {
+          clinicianMap[id] = c;
+        }
+      }
+    }
+
+    return meetings.map((meeting) {
+      final klinisyenId = meeting['klinisyenId'];
+
+      return {
+        ...meeting,
+        'hastaBilgisi': patientResponse == null
+            ? null
+            : Map<String, dynamic>.from(patientResponse),
+        'klinisyenBilgisi': klinisyenId is int
+            ? clinicianMap[klinisyenId]
+            : null,
+      };
+    }).toList();
   }
 
   Future<List<Map<String, dynamic>>> getMeetingRequests() async {
