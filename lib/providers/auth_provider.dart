@@ -169,7 +169,7 @@ class AuthProvider extends ChangeNotifier {
     if (_user == null) return false;
     try {
       final token     = _user!.token;
-      final dosyaYolu = '${_user!.id}.jpg';
+      final dosyaYolu = '${_user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       const bucket    = 'avatars';
 
       // 1) Storage'a yükle
