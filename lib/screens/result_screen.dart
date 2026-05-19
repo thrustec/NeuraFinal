@@ -2,6 +2,7 @@
 // lib/views/result_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -25,6 +26,47 @@ const Color kTextGrey = Color(0xFF64748B);
 const Color kTextHint = Color(0xFF94A3B8);
 const Color kInputFill = Color(0xFFF1F5F9);
 
+// ─── Localization helpers ────────────────────────────────────────────────────
+String _localizedMetricLabel(String label) {
+  const labels = <String, String>{
+    '30-sec Chair Stand Test (Reps)': '30 Saniye Otur Kalk Testi (Tekrar)',
+    'Timed Up & Go Test (Sec)': 'Zamanlı Kalk ve Yürü Testi (Saniye)',
+    '9-Hole Peg – Right Hand (Sec)': '9 Delikli Peg Testi - Sağ El (Saniye)',
+    '9-Hole Peg – Left Hand (Sec)': '9 Delikli Peg Testi - Sol El (Saniye)',
+    'Eyes Open – Firm Surface (Sec)': 'Gözler Açık - Sert Zemin (Saniye)',
+    'Eyes Closed – Firm Surface (Sec)': 'Gözler Kapalı - Sert Zemin (Saniye)',
+    'Eyes Open – Soft Surface (Sec)': 'Gözler Açık - Yumuşak Zemin (Saniye)',
+    'Eyes Closed – Soft Surface (Sec)': 'Gözler Kapalı - Yumuşak Zemin (Saniye)',
+    'Anterior – Posterior': 'Anterior - Posterior Salınım',
+    'Medial – Lateral': 'Medial - Lateral Salınım',
+    'Overall Score': 'Toplam Skor',
+    'Part A (Sec)': 'Bölüm A (Saniye)',
+    'Part B (Sec)': 'Bölüm B (Saniye)',
+    'Stroop': 'Stroop Testi',
+  };
+  return labels[label] ?? label;
+}
+
+String _localizedUnit(String unit) {
+  switch (unit.trim().toLowerCase()) {
+    case 'sec':
+    case 'second':
+    case 'seconds':
+      return 'Saniye';
+    case 'reps':
+    case 'rep':
+      return 'Tekrar';
+    default:
+      return unit;
+  }
+}
+
+String _localizedStatus(bool iyilesme) {
+  return iyilesme ? 'İyileşme' : 'Değişim Yok / Kötü';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 class ResultsScreen extends StatelessWidget {
   final Patient patient;
   final EvaluationDate startDate;
@@ -42,15 +84,16 @@ class ResultsScreen extends StatelessWidget {
     final List<ComparisonResult> dynamicResults =
     endDate.testSonuclari.map((currentTest) {
       final baselineTest = startDate.testSonuclari.firstWhere(
-            (t) => t.testAdi == currentTest.testAdi,
+            (t) => t.comparisonKey == currentTest.comparisonKey,
         orElse: () => currentTest,
       );
       return ComparisonResult(
-        testAdi: currentTest.testAdi,
+        testAdi: _localizedMetricLabel(currentTest.displayLabel),
+        comparisonKey: currentTest.comparisonKey,
         baselineDeger: baselineTest.olculenDeger,
         guncelDeger: currentTest.olculenDeger,
         maxDeger: currentTest.maxDeger,
-        birim: currentTest.birim,
+        birim: _localizedUnit(currentTest.birim),
         isLowerBetter: currentTest.isLowerBetter,
       );
     }).toList();
@@ -442,50 +485,72 @@ class ResultsScreen extends StatelessWidget {
   }
   Future<void> _createPdfReport(BuildContext context) async {
     try {
+      final regularFontData =
+          await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+      final boldFontData =
+          await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+      final regularFont = pw.Font.ttf(regularFontData);
+      final boldFont = pw.Font.ttf(boldFontData);
+
       final pdf = pw.Document();
 
       final List<ComparisonResult> dynamicResults =
       endDate.testSonuclari.map((currentTest) {
         final baselineTest = startDate.testSonuclari.firstWhere(
-              (t) => t.testAdi == currentTest.testAdi,
+              (t) => t.comparisonKey == currentTest.comparisonKey,
           orElse: () => currentTest,
         );
 
         return ComparisonResult(
-          testAdi: currentTest.testAdi,
+          testAdi: _localizedMetricLabel(currentTest.displayLabel),
+          comparisonKey: currentTest.comparisonKey,
           baselineDeger: baselineTest.olculenDeger,
           guncelDeger: currentTest.olculenDeger,
           maxDeger: currentTest.maxDeger,
-          birim: currentTest.birim,
+          birim: _localizedUnit(currentTest.birim),
           isLowerBetter: currentTest.isLowerBetter,
         );
       }).toList();
 
       pdf.addPage(
         pw.MultiPage(
+          theme: pw.ThemeData.withFont(
+            base: regularFont,
+            bold: boldFont,
+          ),
           build: (context) => [
             pw.Text(
-              'Degerlendirme Karsilastirma Raporu',
+              'Değerlendirme Karşılaştırma Raporu',
               style: pw.TextStyle(
                 fontSize: 22,
                 fontWeight: pw.FontWeight.bold,
+                font: boldFont,
               ),
             ),
             pw.SizedBox(height: 16),
-            pw.Text('Hasta: ${patient.tamAd}'),
-            pw.Text('Hasta ID: ${patient.hastaId}'),
-            pw.Text('Baslangic Tarihi: ${startDate.tarih}'),
-            pw.Text('Bitis Tarihi: ${endDate.tarih}'),
+            pw.Text('Hasta: ${patient.tamAd}',
+                style: pw.TextStyle(font: regularFont)),
+            pw.Text('Hasta ID: ${patient.hastaId}',
+                style: pw.TextStyle(font: regularFont)),
+            pw.Text('Başlangıç Tarihi: ${startDate.tarih}',
+                style: pw.TextStyle(font: regularFont)),
+            pw.Text('Bitiş Tarihi: ${endDate.tarih}',
+                style: pw.TextStyle(font: regularFont)),
             pw.SizedBox(height: 20),
             pw.TableHelper.fromTextArray(
               headers: [
                 'Test',
-                'Once',
+                'Önce',
                 'Sonra',
                 'Fark',
                 'Birim',
                 'Durum',
               ],
+              headerStyle: pw.TextStyle(
+                font: boldFont,
+                fontWeight: pw.FontWeight.bold,
+              ),
+              cellStyle: pw.TextStyle(font: regularFont),
               data: dynamicResults.map((r) {
                 return [
                   r.testAdi,
@@ -493,7 +558,7 @@ class ResultsScreen extends StatelessWidget {
                   r.guncelDeger.toStringAsFixed(1),
                   r.fark.toStringAsFixed(1),
                   r.birim,
-                  r.iyilesme ? 'Iyilesme' : 'Degisim yok / Kotu',
+                  _localizedStatus(r.iyilesme),
                 ];
               }).toList(),
             ),

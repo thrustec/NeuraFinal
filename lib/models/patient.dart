@@ -47,6 +47,7 @@ class TestResult {
   final int testSonucId;
   final int testId;
   final String testAdi;
+  final String? metrikAdi;
   final double olculenDeger;
   final double maxDeger;
   final String birim;
@@ -56,18 +57,32 @@ class TestResult {
     required this.testSonucId,
     required this.testId,
     required this.testAdi,
+    this.metrikAdi,
     required this.olculenDeger,
     required this.maxDeger,
     required this.birim,
     this.isLowerBetter = false,
   });
 
+  String get displayLabel {
+    final metric = (metrikAdi ?? '').trim();
+    if (metric.isNotEmpty) return metric;
+    return testAdi;
+  }
+
+  String get comparisonKey {
+    final metric = (metrikAdi ?? '').trim().toLowerCase();
+    if (metric.isNotEmpty && testId > 0) return '$testId|$metric';
+    if (metric.isNotEmpty) return '${testAdi.toLowerCase()}|$metric';
+    return testAdi.toLowerCase();
+  }
 
   factory TestResult.fromMap(Map<String, dynamic> map) {
     return TestResult(
       testSonucId: map['testSonucId'] as int,
       testId: map['testId'] as int,
       testAdi: map['testAdi'] as String,
+      metrikAdi: map['metrikAdi'] as String?,
       olculenDeger: (map['olculenDeger'] as num).toDouble(),
       maxDeger: (map['maxDeger'] as num? ?? 100).toDouble(),
       birim: map['birim'] as String? ?? 'Puan',

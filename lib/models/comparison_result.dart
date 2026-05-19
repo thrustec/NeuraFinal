@@ -4,7 +4,8 @@
 // İki değerlendirme tarihi arasındaki tek bir testin karşılaştırma sonucu.
 
 class ComparisonResult {
-  final String testAdi;         // testler.testAdi
+  final String testAdi;         // display label shown in comparison/report
+  final String comparisonKey;
   final double baselineDeger;   // degerlendirmeTestSonuclari.olculenDeger (başlangıç)
   final double guncelDeger;     // degerlendirmeTestSonuclari.olculenDeger (güncel)
   final double maxDeger;        // testMetrikleri.maxDeger
@@ -14,6 +15,7 @@ class ComparisonResult {
 
   ComparisonResult({
     required this.testAdi,
+    required this.comparisonKey,
     required this.baselineDeger,
     required this.guncelDeger,
     required this.maxDeger,
@@ -30,6 +32,8 @@ class ComparisonResult {
   factory ComparisonResult.fromMap(Map<String, dynamic> map) {
     return ComparisonResult(
       testAdi: map['testAdi'] as String,
+      comparisonKey:
+          (map['comparisonKey'] as String?) ?? (map['testAdi'] as String),
       baselineDeger: (map['baselineDeger'] as num).toDouble(),
       guncelDeger: (map['guncelDeger'] as num).toDouble(),
       maxDeger: (map['maxDeger'] as num? ?? 100).toDouble(),
