@@ -1151,14 +1151,162 @@ class EvaluationService {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Safe cascading delete — removes child rows before the main row to avoid
+  // FK violations. Non-critical child deletes are logged but do not abort.
+  // ---------------------------------------------------------------------------
   Future<void> delete(int id) async {
+    debugPrint('EvaluationService.deleteEvaluationSafe: start id=$id');
+
+    // Step 1: resolve muayeneId via demografikBilgiler bridge
+    int? muayeneId;
+    try {
+      final rows = await _client.get(
+        '/demografikBilgiler?select=muayeneId&degerlendirmeId=eq.$id&limit=1',
+      );
+      if (rows.isNotEmpty) {
+        muayeneId = _asInt(
+          (rows.first as Map<String, dynamic>)['muayeneId'],
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        'EvaluationService.deleteEvaluationSafe: muayeneId lookup (non-fatal): $e',
+      );
+    }
+
+    // Step 2: delete direct degerlendirmeId child rows
+    await _safeDeleteRows(
+      '/degerlendirmeTestSonuclari?degerlendirmeId=eq.$id',
+      'degerlendirmeTestSonuclari',
+    );
+    await _safeDeleteRows(
+      '/degerlendirmeTestleri?degerlendirmeId=eq.$id',
+      'degerlendirmeTestleri',
+    );
+    await _safeDeleteRows(
+      '/degerlendirmePdtSonuclari?degerlendirmeId=eq.$id',
+      'degerlendirmePdtSonuclari',
+    );
+    await _safeDeleteRows(
+      '/muayenePdtDegerlendirmesi?degerlendirmeId=eq.$id',
+      'muayenePdtDegerlendirmesi',
+    );
+    await _safeDeleteRows(
+      '/bildirimler?degerlendirmeId=eq.$id',
+      'bildirimler',
+    );
+
+    // Step 3: nullify rehabilitasyonProgramlari.degerlendirmeId (nullable FK)
+    try {
+      await _patchByFilter(
+        '/rehabilitasyonProgramlari',
+        'degerlendirmeId=eq.$id',
+        {'degerlendirmeId': null},
+      );
+      debugPrint(
+        'EvaluationService.deleteEvaluationSafe: nullified rehabilitasyonProgramlari.degerlendirmeId',
+      );
+    } catch (e) {
+      debugPrint(
+        'EvaluationService.deleteEvaluationSafe: rehabilitasyonProgramlari patch (non-fatal): $e',
+      );
+    }
+
+    // Step 4: delete demografikBilgiler (bridges degerlendirmeId ↔ muayeneId)
+    debugPrint(
+      'EvaluationService.deleteEvaluationSafe: deleting demografikBilgiler...',
+    );
+    await _safeDeleteRows(
+      '/demografikBilgiler?degerlendirmeId=eq.$id',
+      'demografikBilgiler',
+    );
+
+    // Step 5: delete muayene-linked children if muayeneId found
+    if (muayeneId != null) {
+      await _safeDeleteRows(
+        '/muayeneBelirtileri?muayeneId=eq.$muayeneId',
+        'muayeneBelirtileri',
+      );
+      await _safeDeleteRows(
+        '/fonksiyonelGenel?muayeneId=eq.$muayeneId',
+        'fonksiyonelGenel',
+      );
+      await _safeDeleteRows(
+        '/fonksiyonelCtsib?muayeneId=eq.$muayeneId',
+        'fonksiyonelCtsib',
+      );
+      await _safeDeleteRows(
+        '/fonksiyonelPst?muayeneId=eq.$muayeneId',
+        'fonksiyonelPst',
+      );
+      await _safeDeleteRows(
+        '/fonksiyonelIzKosu?muayeneId=eq.$muayeneId',
+        'fonksiyonelIzKosu',
+      );
+      await _safeDeleteRows(
+        '/fonksiyonelStroop?muayeneId=eq.$muayeneId',
+        'fonksiyonelStroop',
+      );
+      await _safeDeleteRows(
+        '/klinikDegerlendirmeler?muayeneId=eq.$muayeneId',
+        'klinikDegerlendirmeler',
+      );
+
+      // Step 6: delete muayeneler only if no other demografikBilgiler references it
+      try {
+        final remaining = await _client.get(
+          '/demografikBilgiler?select=muayeneId&muayeneId=eq.$muayeneId&limit=1',
+        );
+        if (remaining.isEmpty) {
+          debugPrint(
+            'EvaluationService.deleteEvaluationSafe: deleting muayeneler...',
+          );
+          await _safeDeleteRows(
+            '/muayeneler?muayeneId=eq.$muayeneId',
+            'muayeneler',
+          );
+        } else {
+          debugPrint(
+            'EvaluationService.deleteEvaluationSafe: muayeneler retained (still referenced by another demografikBilgiler)',
+          );
+        }
+      } catch (e) {
+        debugPrint(
+          'EvaluationService.deleteEvaluationSafe: muayeneler check (non-fatal): $e',
+        );
+      }
+    }
+
+    // Step 7: delete the main evaluation row — must succeed
+    debugPrint(
+      'EvaluationService.deleteEvaluationSafe: deleting main evaluation...',
+    );
     try {
       await _client.delete(
         '${ApiConstants.degerlendirmeler}?degerlendirmeId=eq.$id',
       );
+      debugPrint(
+        'EvaluationService.deleteEvaluationSafe: done id=$id',
+      );
     } catch (e) {
-      debugPrint('EvaluationService.delete error: $e');
+      debugPrint(
+        'EvaluationService.deleteEvaluationSafe: FAILED to delete degerlendirmeler: $e',
+      );
       rethrow;
+    }
+  }
+
+  Future<void> _safeDeleteRows(String path, String tableName) async {
+    try {
+      debugPrint(
+        'EvaluationService.deleteEvaluationSafe: deleting $tableName...',
+      );
+      await _client.delete(path);
+    } catch (e) {
+      debugPrint(
+        'EvaluationService.deleteEvaluationSafe: $tableName delete (non-fatal): $e',
+      );
     }
   }
 }
