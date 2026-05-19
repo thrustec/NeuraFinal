@@ -86,12 +86,23 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
     }
   }
 
+  DateTime? _effectiveMeetingEnd(Map<String, dynamic> meeting) {
+    final start = DateTime.tryParse(
+      meeting['baslangicZamani']?.toString() ?? '',
+    );
+
+    if (start == null) return null;
+
+    return start.add(const Duration(minutes: 40));
+  }
+
   Future<void> _startMeeting(Map<String, dynamic> meeting) async {
     final int toplantiId = meeting['toplantiId'] as int;
-    final String? zoomLink =
-    meeting['zoomlink']?.toString().trim().isEmpty == true
+
+    final String? zoomMeetingId =
+    meeting['zoomMeetingId']?.toString().trim().isEmpty == true
         ? null
-        : meeting['zoomlink']?.toString().trim();
+        : meeting['zoomMeetingId']?.toString().trim();
 
     final DateTime? startTime = DateTime.tryParse(
       meeting['baslangicZamani']?.toString() ?? '',
@@ -102,22 +113,36 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       return;
     }
 
-    if (DateTime.now().isBefore(startTime)) {
-      _showMessage('Görüşme zamanı henüz gelmedi.');
+    final baslatilabilirZaman =
+    startTime.subtract(const Duration(minutes: 5));
+
+    if (DateTime.now().isBefore(baslatilabilirZaman)) {
+      _showMessage(
+        'Görüşme, başlangıç saatinden 5 dakika önce başlatılabilir.',
+      );
       return;
     }
 
-    if (zoomLink == null || zoomLink.isEmpty) {
-      _showMessage('Bu toplantıya ait Zoom linki bulunamadı.');
+    if (zoomMeetingId == null || zoomMeetingId.isEmpty) {
+      _showMessage(
+        'Bu toplantının Zoom Meeting ID bilgisi bulunamadı. '
+            'Eski toplantılar için yeni randevu oluşturulması gerekir.',
+      );
       return;
     }
 
     try {
+      final startUrl = await _meetingService.getZoomStartUrl(zoomMeetingId);
+
+      if (startUrl == null || startUrl.trim().isEmpty) {
+        _showMessage('Host bağlantısı alınamadı.');
+        return;
+      }
+
       await _meetingService.startMeeting(toplantiId);
 
-      final uri = Uri.parse(zoomLink);
       final opened = await launchUrl(
-        uri,
+        Uri.parse(startUrl),
         mode: LaunchMode.externalApplication,
       );
 
@@ -230,7 +255,7 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       selectedTime!.minute,
     );
 
-    final newEnd = newStart.add(const Duration(hours: 1));
+    final newEnd = newStart.add(const Duration(minutes: 40));
 
     try {
       await _meetingService.postponeMeeting(
@@ -272,15 +297,23 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
     return 'Hasta';
   }
 
+  String _getPatientId(Map<String, dynamic> meeting) {
+    final hasta = meeting['hastalar'];
+
+    if (hasta is Map && hasta['hastaId'] != null) {
+      return hasta['hastaId'].toString();
+    }
+
+    return meeting['hastaId']?.toString() ?? '-';
+  }
+
   bool _isCancelled(Map<String, dynamic> meeting) {
     final durum = meeting['durum']?.toString() ?? '';
     return durum == 'İptal Edildi';
   }
 
   bool _isPast(Map<String, dynamic> meeting) {
-    final end = DateTime.tryParse(
-      meeting['bitisZamani']?.toString() ?? '',
-    );
+    final end = _effectiveMeetingEnd(meeting);
 
     if (end == null) return false;
 
@@ -295,15 +328,16 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       meeting['baslangicZamani']?.toString() ?? '',
     );
 
-    final end = DateTime.tryParse(
-      meeting['bitisZamani']?.toString() ?? '',
-    );
+    final end = _effectiveMeetingEnd(meeting);
 
     if (start == null || end == null) return false;
 
     final now = DateTime.now();
+    final baslatilabilirZaman =
+    start.subtract(const Duration(minutes: 5));
 
-    return (now.isAfter(start) || now.isAtSameMomentAs(start)) &&
+    return (now.isAfter(baslatilabilirZaman) ||
+        now.isAtSameMomentAs(baslatilabilirZaman)) &&
         (now.isBefore(end) || now.isAtSameMomentAs(end));
   }
 
@@ -324,7 +358,7 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
 
     if (_selectedFilter == 'Geçmiş') {
       return _meetings.where((m) {
-        final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+        final end = _effectiveMeetingEnd(m);
         if (end == null) return false;
 
         return end.isBefore(now) &&
@@ -332,15 +366,13 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
       }).toList();
     }
 
-    if (_selectedFilter == 'Bugünkü') {
+    if (_selectedFilter == 'Bugün') {
       return _meetings.where((m) {
         final start = DateTime.tryParse(
           m['baslangicZamani']?.toString() ?? '',
         );
 
-        final end = DateTime.tryParse(
-          m['bitisZamani']?.toString() ?? '',
-        );
+        final end = _effectiveMeetingEnd(m);
 
         if (start == null || end == null) return false;
 
@@ -353,7 +385,7 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
     }
 
     return _meetings.where((m) {
-      final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+      final end = _effectiveMeetingEnd(m);
       if (end == null) return false;
 
       return end.isAfter(now) &&
@@ -368,17 +400,83 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
     return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
   }
 
-  String _formatTime(String raw) {
-    final d = DateTime.tryParse(raw);
-    if (d == null) return '-';
+  String _formatTimeFromDate(DateTime? date) {
+    if (date == null) return '-';
 
-    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _meetingInfoBox({
+    required IconData icon,
+    required String title,
+    required String name,
+    required String idText,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  idText,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: kTextGrey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final displayName = auth.user?.displayName ?? 'Klinisyen';
+    final clinicianName = auth.user?.displayName ?? 'Klinisyen';
+    final clinicianId = _currentClinicianId?.toString() ?? '-';
     final filteredMeetings = _filteredMeetings();
 
     return Scaffold(
@@ -433,7 +531,7 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
                   scrollDirection: Axis.horizontal,
                   children: [
                     _filterChip('Mevcut'),
-                    _filterChip('Bugünkü'),
+                    _filterChip('Bugün'),
                     _filterChip('Ertelenmiş'),
                     _filterChip('İptal Edilmiş'),
                     _filterChip('Geçmiş'),
@@ -444,7 +542,13 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
               if (filteredMeetings.isEmpty)
                 _emptyCard('Bu filtreye uygun telerehab görüşmesi yok.')
               else
-                ...filteredMeetings.map(_meetingCard),
+                ...filteredMeetings.map(
+                      (meeting) => _meetingCard(
+                    meeting,
+                    clinicianName,
+                    clinicianId,
+                  ),
+                ),
             ],
           ),
         ),
@@ -552,12 +656,19 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
     );
   }
 
-  Widget _meetingCard(Map<String, dynamic> meeting) {
+  Widget _meetingCard(
+      Map<String, dynamic> meeting,
+      String clinicianName,
+      String clinicianId,
+      ) {
     final patientName = _getPatientName(meeting);
+    final patientId = _getPatientId(meeting);
     final baslik = meeting['baslik']?.toString() ?? 'Telerehabilitasyon';
+    final toplantiId = meeting['toplantiId']?.toString() ?? '-';
     final start = meeting['baslangicZamani']?.toString();
-    final end = meeting['bitisZamani']?.toString();
-    final zoomLink = meeting['zoomlink']?.toString();
+    final startDate = DateTime.tryParse(start ?? '');
+    final endDate = _effectiveMeetingEnd(meeting);
+    final zoomMeetingId = meeting['zoomMeetingId']?.toString();
     final started = meeting['baslatildimi'] == true;
     final cancelled = _isCancelled(meeting);
     final past = _isPast(meeting);
@@ -612,14 +723,37 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          Text(
-            baslik,
-            style: const TextStyle(
-              color: kTextDark,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
+
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  baslik,
+                  style: const TextStyle(
+                    color: kTextDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Toplantı ID: $toplantiId',
+                  style: const TextStyle(
+                    color: Color(0xFF7C3AED),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
+
           const SizedBox(height: 10),
           Row(
             children: [
@@ -641,23 +775,45 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                start == null ? '-' : _formatTime(start),
+                startDate == null ? '-' : _formatTimeFromDate(startDate),
                 style: const TextStyle(color: kTextGrey, fontSize: 13),
               ),
-              if (end != null) ...[
-                const SizedBox(width: 4),
-                Text(
-                  '- ${_formatTime(end)}',
-                  style: const TextStyle(color: kTextGrey, fontSize: 13),
-                ),
-              ],
+              const SizedBox(width: 4),
+              Text(
+                '- ${_formatTimeFromDate(endDate)}',
+                style: const TextStyle(color: kTextGrey, fontSize: 13),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _meetingInfoBox(
+                  icon: Icons.person_outline,
+                  title: 'HASTA',
+                  name: patientName,
+                  idText: 'ID: $patientId',
+                  color: const Color(0xFF2563EB),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _meetingInfoBox(
+                  icon: Icons.medical_services_outlined,
+                  title: 'KLİNİSYEN',
+                  name: clinicianName,
+                  idText: 'ID: $clinicianId',
+                  color: kPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Icon(
-                zoomLink == null || zoomLink.trim().isEmpty
+                zoomMeetingId == null || zoomMeetingId.trim().isEmpty
                     ? Icons.link_off
                     : Icons.link,
                 size: 14,
@@ -666,9 +822,9 @@ class _TelerehabClinicianScreenState extends State<TelerehabClinicianScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  zoomLink == null || zoomLink.trim().isEmpty
-                      ? 'Zoom linki eklenmemiş'
-                      : 'Zoom linki hazır',
+                  zoomMeetingId == null || zoomMeetingId.trim().isEmpty
+                      ? 'Zoom Meeting ID bulunamadı'
+                      : 'Zoom host bağlantısı hazır',
                   style: const TextStyle(color: kTextGrey, fontSize: 13),
                 ),
               ),

@@ -4,6 +4,8 @@ import '../models/patient_form_data.dart';
 import '../providers/auth_provider.dart';
 import 'registration_success_screen.dart';
 import '../services/patient_registration_service.dart';
+import '../services/meeting_service.dart';
+import 'main_screen.dart';
 
 class PatientStep8Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -28,6 +30,8 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
   static const Color kBorderColor = Color(0xFFE2E8F0);
 
   final PatientService patientService = PatientService();
+  final MeetingService _meetingService = MeetingService();
+
   bool isSaving = false;
 
   final TextEditingController clinicianNotesController =
@@ -45,6 +49,48 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
     super.dispose();
   }
 
+  Future<void> _showExitFormDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
+  }
+
   Future<void> saveRegistration() async {
     try {
       setState(() {
@@ -54,15 +100,35 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
       widget.formData.clinicianNotes = clinicianNotesController.text.trim();
 
       final auth = context.read<AuthProvider>();
-      final klinisyenId = auth.user?.klinisyenId;          // klinisyenler.klinisyenId → hastalar
-      final kullaniciId = int.tryParse(auth.user?.id ?? ''); // kullanicilar.kullaniciId → degerlendirmeler
+      final kullaniciId = int.tryParse(auth.user?.id ?? '');
 
-      if (klinisyenId == null || klinisyenId <= 0 || !auth.isClinician) {
+      if (kullaniciId == null || !auth.isClinician) {
         if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Hasta kaydı yapmak için klinisyen olarak giriş yapmalısınız.'),
+              'Hasta kaydı yapmak için klinisyen olarak giriş yapmalısınız.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final clinician =
+      await _meetingService.getClinicianByUserId(kullaniciId);
+
+      final int? klinisyenId = clinician?['klinisyenId'] as int?;
+
+      if (klinisyenId == null || klinisyenId <= 0) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Klinisyen bilgisi bulunamadı. Hasta kaydı tamamlanamadı.',
+            ),
+            backgroundColor: Colors.red,
           ),
         );
         return;
@@ -71,7 +137,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
       final result = await patientService.registerPatient(
         widget.formData,
         klinisyenId: klinisyenId,
-        kullaniciId: kullaniciId ?? 0,
+        kullaniciId: kullaniciId,
       );
 
       if (!mounted) return;
@@ -147,7 +213,18 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği silindi.
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: kTextDark,
+          ),
+          onPressed: _showExitFormDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -387,8 +464,9 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color:
-                                isActive ? Colors.white : kTextHint,
+                                color: isActive
+                                    ? Colors.white
+                                    : kTextHint,
                               ),
                             ),
                           ),

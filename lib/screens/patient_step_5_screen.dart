@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/patient_form_data.dart';
 import '../services/supabase_service.dart';
 import 'patient_step_6_screen.dart';
+import 'main_screen.dart';
 
 class PatientStep5Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -18,7 +19,7 @@ class PatientStep5Screen extends StatefulWidget {
 class _PatientStep5ScreenState extends State<PatientStep5Screen> {
   static const Color kBackground = Color(0xFFF8F9FC);
   static const Color kPrimary = Color(0xFF124153);
-  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
   static const Color kInputFill = Color(0xFFF1F5F9);
@@ -49,6 +50,48 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
     widget.formData.diagnosis.isEmpty ? null : widget.formData.diagnosis;
 
     _loadDiseases();
+  }
+
+  Future<void> _showExitDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
   }
 
   Future<void> _loadDiseases() async {
@@ -156,6 +199,15 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: kTextDark),
+          onPressed: _showExitDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -236,7 +288,6 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                         const SizedBox(height: 24),
                         const Divider(color: kBorderColor, height: 1),
                         const SizedBox(height: 24),
-
                         const Text(
                           'HASTALIK HİKAYESİ / İLK ŞİKAYETLER',
                           style: labelStyle,
@@ -249,9 +300,7 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                           decoration:
                           inputDecoration('Şikayet geçmişini giriniz'),
                         ),
-
                         const SizedBox(height: 20),
-
                         const Text(
                           'İLK ŞİKAYETLERİN BAŞLADIĞI TARİH',
                           style: labelStyle,
@@ -271,9 +320,7 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 20),
-
                         const Text('TANI', style: labelStyle),
                         const SizedBox(height: 10),
                         isLoadingDiseases
@@ -311,8 +358,9 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                               value: id,
                               child: Text(
                                 name,
-                                style:
-                                const TextStyle(color: kTextDark),
+                                style: const TextStyle(
+                                  color: kTextDark,
+                                ),
                               ),
                             );
                           }).toList(),
@@ -336,10 +384,11 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                                 selectedDiagnosis ?? '';
                           },
                         ),
-
                         const SizedBox(height: 20),
-
-                        const Text('KULLANILAN İLAÇLAR', style: labelStyle),
+                        const Text(
+                          'KULLANILAN İLAÇLAR',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 10),
                         TextField(
                           controller: medicationsController,
@@ -431,53 +480,6 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(8, (index) {
-                        final bool isActive = index == 4;
-                        final bool isDone = index < 4;
-
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isActive
-                                ? kPrimary
-                                : (isDone
-                                ? kPrimary.withOpacity(0.1)
-                                : Colors.white),
-                            border: Border.all(
-                              color:
-                              (isActive || isDone) ? kPrimary : kBorderColor,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Center(
-                            child: isDone
-                                ? const Icon(
-                              Icons.check,
-                              size: 16,
-                              color: kPrimary,
-                            )
-                                : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color:
-                                isActive ? Colors.white : kTextHint,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
                   ),
                 ],
               ),

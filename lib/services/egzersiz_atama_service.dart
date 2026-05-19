@@ -11,12 +11,12 @@ const String _anonKey =
     'q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU';
 
 Map<String, String> _headers() => {
-      'apikey': _anonKey,
-      'Authorization': 'Bearer $_anonKey',
-      'Accept-Profile': 'neura',
-      'Content-Profile': 'neura',
-      'Content-Type': 'application/json',
-    };
+  'apikey': _anonKey,
+  'Authorization': 'Bearer $_anonKey',
+  'Accept-Profile': 'neura',
+  'Content-Profile': 'neura',
+  'Content-Type': 'application/json',
+};
 
 // ─── Model ───────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,8 @@ class EgzersizAtama {
   final String? notlar;
   final DateTime atamaTarihi;
   final bool tamamlandiMi;
+  final int tekrarSayisi;
+  final int tamamlananTekrar;
 
   EgzersizAtama({
     required this.egzersizAtamaId,
@@ -39,18 +41,25 @@ class EgzersizAtama {
     this.notlar,
     required this.atamaTarihi,
     required this.tamamlandiMi,
+    this.tekrarSayisi = 1,
+    this.tamamlananTekrar = 0,
   });
 
   factory EgzersizAtama.fromJson(Map<String, dynamic> j) => EgzersizAtama(
-        egzersizAtamaId: j['egzersizAtamaId'] as int,
-        hastaId: j['hastaId'] as int,
-        egzersizVideoId: j['egzersizVideoId'] as int?,
-        klinisyenId: j['klinisyenId'] as int?,
-        egzersizAdi: j['egzersizAdi'] as String,
-        notlar: j['notlar'] as String?,
-        atamaTarihi: DateTime.parse(j['atamaTarihi'] as String),
-        tamamlandiMi: j['tamamlandiMi'] as bool? ?? false,
-      );
+    egzersizAtamaId: j['egzersizAtamaId'] as int,
+    hastaId: j['hastaId'] as int,
+    egzersizVideoId: j['egzersizVideoId'] as int?,
+    klinisyenId: j['klinisyenId'] as int?,
+    egzersizAdi: j['egzersizAdi'] as String,
+    notlar: j['notlar'] as String?,
+    atamaTarihi: DateTime.parse(j['atamaTarihi'] as String),
+    tamamlandiMi: j['tamamlandiMi'] as bool? ?? false,
+    tekrarSayisi: j['tekrarSayisi'] as int? ?? 1,
+    tamamlananTekrar: j['tamamlananTekrar'] as int? ?? 0,
+  );
+
+  /// Kalan tekrar sayısı
+  int get kalanTekrar => (tekrarSayisi - tamamlananTekrar).clamp(0, tekrarSayisi);
 }
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -64,6 +73,7 @@ class EgzersizAtamaService {
     required int klinisyenId,
     String? notlar,
     DateTime? atamaTarihi,
+    int tekrarSayisi = 1,
   }) async {
     final body = jsonEncode({
       'hastaId': hastaId,
@@ -72,7 +82,9 @@ class EgzersizAtamaService {
       'egzersizAdi': egzersizAdi,
       if (notlar != null && notlar.isNotEmpty) 'notlar': notlar,
       'atamaTarihi':
-          (atamaTarihi ?? DateTime.now()).toIso8601String().substring(0, 10),
+      (atamaTarihi ?? DateTime.now()).toIso8601String().substring(0, 10),
+      'tekrarSayisi': tekrarSayisi,
+      'tamamlananTekrar': 0,
     });
 
     final res = await http.post(
@@ -120,10 +132,39 @@ class EgzersizAtamaService {
     return list.map((j) => EgzersizAtama.fromJson(j as Map<String, dynamic>)).toList();
   }
 
-  /// Tamamlandı işaretle.
+  /// Videoyu bir kez tamamlandı olarak işaretle.
+  /// tamamlananTekrar artar; tüm tekrarlar bitince tamamlandiMi = true olur.
+  static Future<EgzersizAtama> tekrarTamamla(EgzersizAtama atama) async {
+    final yeniTamamlanan = atama.tamamlananTekrar + 1;
+    final hepsiTamam = yeniTamamlanan >= atama.tekrarSayisi;
+
+    final res = await http.patch(
+      Uri.parse(
+          '$_baseUrl/egzersizAtalari?egzersizAtamaId=eq.${atama.egzersizAtamaId}'),
+      headers: {
+        ..._headers(),
+        'Prefer': 'return=representation',
+      },
+      body: jsonEncode({
+        'tamamlananTekrar': yeniTamamlanan,
+        if (hepsiTamam) 'tamamlandiMi': true,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Güncelleme başarısız (${res.statusCode})');
+    }
+
+    final list = jsonDecode(res.body) as List;
+    if (list.isEmpty) throw Exception('Güncelleme sonucu alınamadı.');
+    return EgzersizAtama.fromJson(list.first as Map<String, dynamic>);
+  }
+
+  /// Eski tamamlandı işaretle (tüm tekrarları tek seferde tamamlar).
   static Future<void> tamamlandiIsaretle(int egzersizAtamaId) async {
     final res = await http.patch(
-      Uri.parse('$_baseUrl/egzersizAtalari?egzersizAtamaId=eq.$egzersizAtamaId'),
+      Uri.parse(
+          '$_baseUrl/egzersizAtalari?egzersizAtamaId=eq.$egzersizAtamaId'),
       headers: _headers(),
       body: jsonEncode({'tamamlandiMi': true}),
     );

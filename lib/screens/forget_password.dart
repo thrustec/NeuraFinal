@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/supabase_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -29,7 +31,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
     final args = ModalRoute.of(context)?.settings.arguments;
+
     if (args != null && args is String) {
       _isClinician = args == 'clinician';
     }
@@ -61,10 +65,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Email kayıtlı mı kontrol et
+      // 1) E-posta sistemde kayıtlı mı kontrol et
       final checkResponse = await http.get(
         Uri.parse(
-            '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$email&select=eposta'),
+          '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$email&select=eposta',
+        ),
         headers: {
           'apikey': _anonKey,
           'Authorization': 'Bearer $_anonKey',
@@ -73,10 +78,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       if (!mounted) return;
 
+      if (checkResponse.statusCode != 200) {
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('E-posta kontrol edilirken hata oluştu.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       final data = jsonDecode(checkResponse.body) as List;
 
       if (data.isEmpty) {
         setState(() => _isLoading = false);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Bu e-posta adresi sistemimizde kayıtlı değil'),
@@ -86,48 +104,55 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         return;
       }
 
-      // Şifre sıfırlama maili gönder
-      await http.post(
-        Uri.parse('$_baseUrl/auth/v1/recover'),
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': _anonKey,
-          'X-Supabase-Auth-Flow': 'implicit',  // ← bunu ekle
-        },
-        body: jsonEncode({
-          'email': email,
-          'redirectTo': 'http://localhost:8080/reset-password',
-        }),
+      // 2) Platforma göre doğru yönlendirme adresini belirle
+      final String redirectUrl = kIsWeb
+          ? 'http://localhost:8080/reset-password'
+          : 'neuraapp://reset-password';
+
+      // 3) Supabase üzerinden şifre sıfırlama maili gönder
+      await SupabaseService.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: redirectUrl,
       );
 
       if (!mounted) return;
+
       setState(() => _isLoading = false);
 
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: Colors.white,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           contentPadding: const EdgeInsets.all(24),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle_outline, color: _primaryColor, size: 56),
+              Icon(
+                Icons.check_circle_outline,
+                color: _primaryColor,
+                size: 56,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'E-posta Gönderildi!',
                 style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: kTextDark),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: kTextDark,
+                ),
               ),
               const SizedBox(height: 12),
               const Text(
                 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.',
                 textAlign: TextAlign.center,
-                style:
-                TextStyle(color: kTextGrey, fontSize: 14, height: 1.5),
+                style: TextStyle(
+                  color: kTextGrey,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -142,11 +167,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     backgroundColor: _primaryColor,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Tamam',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text(
+                    'Tamam',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -155,10 +185,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+
       setState(() => _isLoading = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bağlantı hatası. Lütfen tekrar deneyiniz.'),
+        SnackBar(
+          content: Text('Şifre sıfırlama maili gönderilemedi: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -173,7 +205,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: kTextDark, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: kTextDark,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -203,39 +239,56 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 8),
               const Text(
                 'E-posta adresinizi girin, size şifrenizi sıfırlamanız için bir bağlantı göndereceğiz.',
-                style:
-                TextStyle(fontSize: 14, color: kTextGrey, height: 1.5),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: kTextGrey,
+                  height: 1.5,
+                ),
               ),
 
               const SizedBox(height: 32),
 
-              const Text('E-posta',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: kTextGrey)),
+              const Text(
+                'E-posta',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: kTextGrey,
+                ),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(fontSize: 15, color: kTextDark),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: kTextDark,
+                ),
                 decoration: InputDecoration(
                   hintText: 'ornek@email.com',
                   hintStyle: const TextStyle(
-                      color: Color(0xFF94A3B8), fontSize: 14),
-                  prefixIcon: Icon(Icons.email_outlined,
-                      color: _primaryColor, size: 22),
+                    color: Color(0xFF94A3B8),
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.email_outlined,
+                    color: _primaryColor,
+                    size: 22,
+                  ),
                   filled: true,
                   fillColor: kInputFill,
-                  contentPadding:
-                  const EdgeInsets.symmetric(vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide:
-                      BorderSide(color: _primaryColor, width: 1.5)),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: _primaryColor,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
               ),
 
@@ -250,16 +303,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     backgroundColor: _primaryColor,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Devam Et',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          letterSpacing: 0.5)),
+                      : const Text(
+                    'Devam Et',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
               ),
 

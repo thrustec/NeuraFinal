@@ -18,7 +18,8 @@ class TelerehabPatientScreen extends StatefulWidget {
   const TelerehabPatientScreen({super.key});
 
   @override
-  State<TelerehabPatientScreen> createState() => _TelerehabPatientScreenState();
+  State<TelerehabPatientScreen> createState() =>
+      _TelerehabPatientScreenState();
 }
 
 class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
@@ -99,6 +100,16 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
     }
   }
 
+  DateTime? effectiveMeetingEnd(Map<String, dynamic> meeting) {
+    final start = DateTime.tryParse(
+      meeting['baslangicZamani']?.toString() ?? '',
+    );
+
+    if (start == null) return null;
+
+    return start.add(const Duration(minutes: 40));
+  }
+
   List<Map<String, dynamic>> filteredMeetings() {
     final now = DateTime.now();
 
@@ -112,7 +123,7 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
 
     if (selectedFilter == 'Geçmiş') {
       return meetings.where((m) {
-        final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+        final end = effectiveMeetingEnd(m);
         if (end == null) return false;
 
         return end.isBefore(now) && m['durum'] != 'İptal Edildi';
@@ -121,8 +132,9 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
 
     if (selectedFilter == 'Bugünkü') {
       return meetings.where((m) {
-        final start = DateTime.tryParse(m['baslangicZamani']?.toString() ?? '');
-        final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+        final start =
+        DateTime.tryParse(m['baslangicZamani']?.toString() ?? '');
+        final end = effectiveMeetingEnd(m);
 
         if (start == null || end == null) return false;
 
@@ -135,7 +147,7 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
     }
 
     return meetings.where((m) {
-      final end = DateTime.tryParse(m['bitisZamani']?.toString() ?? '');
+      final end = effectiveMeetingEnd(m);
       if (end == null) return false;
 
       return end.isAfter(now) && m['durum'] != 'İptal Edildi';
@@ -146,9 +158,8 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
     final start = DateTime.tryParse(
       meeting['baslangicZamani']?.toString() ?? '',
     );
-    final end = DateTime.tryParse(
-      meeting['bitisZamani']?.toString() ?? '',
-    );
+
+    final end = effectiveMeetingEnd(meeting);
 
     if (start == null || end == null) return false;
 
@@ -188,11 +199,27 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
     return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
   }
 
+  String formatTimeFromDate(DateTime? date) {
+    if (date == null) return '-';
+
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
   String formatTime(String raw) {
     final d = DateTime.tryParse(raw);
     if (d == null) return '-';
 
-    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    return formatTimeFromDate(d);
+  }
+
+  String fullNameFromUser(dynamic user) {
+    if (user is! Map) return '-';
+
+    final ad = user['ad']?.toString() ?? '';
+    final soyad = user['soyad']?.toString() ?? '';
+    final full = '$ad $soyad'.trim();
+
+    return full.isEmpty ? '-' : full;
   }
 
   Widget filterChip(String label) {
@@ -271,16 +298,103 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
     );
   }
 
+  Widget meetingInfoBox({
+    required IconData icon,
+    required String title,
+    required String name,
+    required String idText,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: kTextDark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  idText,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: kTextGrey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget meetingCard(Map<String, dynamic> meeting) {
     final baslik = meeting['baslik']?.toString() ?? 'Telerehabilitasyon';
-    final start = meeting['baslangicZamani']?.toString();
-    final end = meeting['bitisZamani']?.toString();
+    final startRaw = meeting['baslangicZamani']?.toString();
+    final startDate = DateTime.tryParse(startRaw ?? '');
+    final endDate = effectiveMeetingEnd(meeting);
     final durum = meeting['durum']?.toString() ?? '';
+
+    final hastaBilgisi = meeting['hastaBilgisi'];
+    final klinisyenBilgisi = meeting['klinisyenBilgisi'];
+
+    final hastaMap =
+    hastaBilgisi is Map ? Map<String, dynamic>.from(hastaBilgisi) : null;
+    final klinisyenMap = klinisyenBilgisi is Map
+        ? Map<String, dynamic>.from(klinisyenBilgisi)
+        : null;
+
+    final hastaId = hastaMap?['hastaId'] ?? meeting['hastaId'] ?? '-';
+    final hastaAdi = fullNameFromUser(hastaMap?['kullanicilar']);
+
+    final klinisyenId =
+        klinisyenMap?['klinisyenId'] ?? meeting['klinisyenId'] ?? '-';
+
+    final unvan = klinisyenMap?['unvan']?.toString().trim() ?? '';
+    final klinisyenAdiRaw =
+    fullNameFromUser(klinisyenMap?['kullanicilar']);
+    final klinisyenAdi = unvan.isNotEmpty && klinisyenAdiRaw != '-'
+        ? '$unvan $klinisyenAdiRaw'
+        : klinisyenAdiRaw;
 
     final joinable = canJoinMeeting(meeting);
 
-    final isPast = end != null &&
-        DateTime.tryParse(end)?.isBefore(DateTime.now()) == true;
+    final isPast = endDate?.isBefore(DateTime.now()) == true;
 
     Color badgeColor;
     String badgeText;
@@ -331,33 +445,66 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
               badge(badgeText, badgeColor),
             ],
           ),
+
           const SizedBox(height: 14),
+
           Row(
             children: [
-              const Icon(Icons.calendar_today_outlined,
-                  size: 14, color: kTextHint),
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: kTextHint,
+              ),
               const SizedBox(width: 6),
               Text(
-                start == null ? '-' : formatDate(start),
+                startRaw == null ? '-' : formatDate(startRaw),
                 style: const TextStyle(color: kTextGrey),
               ),
               const SizedBox(width: 16),
-              const Icon(Icons.access_time_outlined,
-                  size: 14, color: kTextHint),
+              const Icon(
+                Icons.access_time_outlined,
+                size: 14,
+                color: kTextHint,
+              ),
               const SizedBox(width: 6),
               Text(
-                start == null ? '-' : formatTime(start),
+                startDate == null ? '-' : formatTimeFromDate(startDate),
                 style: const TextStyle(color: kTextGrey),
               ),
-              if (end != null) ...[
-                const SizedBox(width: 4),
-                Text(
-                  '- ${formatTime(end)}',
-                  style: const TextStyle(color: kTextGrey),
-                ),
-              ],
+              const SizedBox(width: 4),
+              Text(
+                '- ${formatTimeFromDate(endDate)}',
+                style: const TextStyle(color: kTextGrey),
+              ),
             ],
           ),
+
+          const SizedBox(height: 14),
+
+          Row(
+            children: [
+              Expanded(
+                child: meetingInfoBox(
+                  icon: Icons.person_outline,
+                  title: 'HASTA',
+                  name: hastaAdi,
+                  idText: 'ID: $hastaId',
+                  color: kPrimary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: meetingInfoBox(
+                  icon: Icons.medical_services_outlined,
+                  title: 'KLİNİSYEN',
+                  name: klinisyenAdi,
+                  idText: 'ID: $klinisyenId',
+                  color: const Color(0xFF0F766E),
+                ),
+              ),
+            ],
+          ),
+
           if (!isPast && durum != 'İptal Edildi') ...[
             const SizedBox(height: 16),
             SizedBox(
@@ -427,6 +574,14 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: kTextDark,
+            size: 18,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Telerehabilitasyon',
           style: TextStyle(
@@ -463,7 +618,7 @@ class _TelerehabPatientScreenState extends State<TelerehabPatientScreen> {
                   scrollDirection: Axis.horizontal,
                   children: [
                     filterChip('Mevcut'),
-                    filterChip('Bugünkü'),
+                    filterChip('Bugün'),
                     filterChip('Reddedildi'),
                     filterChip('Beklemede'),
                     filterChip('Geçmiş'),

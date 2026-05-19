@@ -22,17 +22,17 @@
                 android:resource="@style/NormalTheme" />
 
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
             <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="com.example.neura_app"
-                    android:host="reset-password"/>
+                    android:scheme="neuraapp"
+                    android:host="reset-password" />
             </intent-filter>
 
         </activity>
@@ -45,8 +45,8 @@
 
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
     </queries>
 
