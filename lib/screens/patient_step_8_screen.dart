@@ -10,10 +10,7 @@ import 'main_screen.dart';
 class PatientStep8Screen extends StatefulWidget {
   final PatientFormData formData;
 
-  const PatientStep8Screen({
-    super.key,
-    required this.formData,
-  });
+  const PatientStep8Screen({super.key, required this.formData});
 
   @override
   State<PatientStep8Screen> createState() => _PatientStep8ScreenState();
@@ -35,7 +32,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
   bool isSaving = false;
 
   final TextEditingController clinicianNotesController =
-  TextEditingController();
+      TextEditingController();
 
   @override
   void initState() {
@@ -55,9 +52,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Formdan çık'),
-          content: const Text(
-            'Formdan çıkmak istediğinize emin misiniz?',
-          ),
+          content: const Text('Formdan çıkmak istediğinize emin misiniz?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -86,7 +81,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
         MaterialPageRoute(
           builder: (context) => const MainScreen(isClinician: true),
         ),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -97,7 +92,9 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
         isSaving = true;
       });
 
-      widget.formData.clinicianNotes = clinicianNotesController.text.trim();
+      final formDataToSave = widget.formData.copyWith(
+        clinicianNotes: clinicianNotesController.text.trim(),
+      );
 
       final auth = context.read<AuthProvider>();
       final kullaniciId = int.tryParse(auth.user?.id ?? '');
@@ -115,8 +112,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
         return;
       }
 
-      final clinician =
-      await _meetingService.getClinicianByUserId(kullaniciId);
+      final clinician = await _meetingService.getClinicianByUserId(kullaniciId);
 
       final int? klinisyenId = clinician?['klinisyenId'] as int?;
 
@@ -135,9 +131,8 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
       }
 
       final result = await patientService.registerPatient(
-        widget.formData,
+        formDataToSave,
         klinisyenId: klinisyenId,
-        kullaniciId: kullaniciId,
       );
 
       if (!mounted) return;
@@ -156,7 +151,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
         MaterialPageRoute(
           builder: (context) => const RegistrationSuccessScreen(),
         ),
-            (route) => false,
+        (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
@@ -218,10 +213,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
         elevation: 0,
         surfaceTintColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: kTextDark,
-          ),
+          icon: const Icon(Icons.arrow_back, color: kTextDark),
           onPressed: _showExitFormDialog,
         ),
       ),
@@ -305,10 +297,7 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                         const SizedBox(height: 24),
                         const Divider(color: kBorderColor, height: 1),
                         const SizedBox(height: 24),
-                        const Text(
-                          'KLİNİSYEN NOTLARI',
-                          style: labelStyle,
-                        ),
+                        const Text('KLİNİSYEN NOTLARI', style: labelStyle),
                         const SizedBox(height: 10),
                         TextField(
                           controller: clinicianNotesController,
@@ -376,8 +365,8 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           onPressed: isSaving
                               ? null
                               : () {
-                            Navigator.pop(context);
-                          },
+                                  Navigator.pop(context);
+                                },
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(54),
                             side: const BorderSide(color: kBorderColor),
@@ -413,13 +402,13 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           ),
                           child: isSaving
                               ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : const Text('Kaydı Tamamla'),
                         ),
                       ),
@@ -443,8 +432,8 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                             color: isActive
                                 ? kPrimary
                                 : (isDone
-                                ? kPrimary.withOpacity(0.1)
-                                : Colors.white),
+                                      ? kPrimary.withOpacity(0.1)
+                                      : Colors.white),
                             border: Border.all(
                               color: (isActive || isDone)
                                   ? kPrimary
@@ -455,20 +444,20 @@ class _PatientStep8ScreenState extends State<PatientStep8Screen> {
                           child: Center(
                             child: isDone
                                 ? const Icon(
-                              Icons.check,
-                              size: 16,
-                              color: kPrimary,
-                            )
+                                    Icons.check,
+                                    size: 16,
+                                    color: kPrimary,
+                                  )
                                 : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isActive
-                                    ? Colors.white
-                                    : kTextHint,
-                              ),
-                            ),
+                                    '${index + 1}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isActive
+                                          ? Colors.white
+                                          : kTextHint,
+                                    ),
+                                  ),
                           ),
                         );
                       }),

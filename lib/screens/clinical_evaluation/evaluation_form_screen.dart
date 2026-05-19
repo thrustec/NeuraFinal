@@ -308,6 +308,10 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
     }
     if ((patient.bakiciKisi ?? '').trim().isNotEmpty) {
       _caregiverCtrl.text = patient.bakiciKisi!;
+    } else {
+      // No degerlendirmeler row yet: derive caregiver presence from emergency contact.
+      _caregiverCtrl.text =
+          (patient.acilKisiAdi ?? '').trim().isNotEmpty ? 'Var' : 'Yok';
     }
     if (patient.sigaraDurumId != null) {
       _sigaraDurumId = patient.sigaraDurumId;
@@ -2383,7 +2387,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                 children: [
                   Expanded(
                     child: _scoreBox(
-                      label: 'Mini Mental Test Score',
+                      label: 'MİNİ MENTAL TEST SKORU',
                       hint: '0 – 20',
                       controller: _miniMentalScoreCtrl,
                     ),
@@ -2391,7 +2395,7 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: _scoreBox(
-                      label: 'UPDRS Engine Score',
+                      label: 'UPDRS MOTOR SKORU',
                       hint: '0 – 100',
                       controller: _updrsEngineScoreCtrl,
                     ),
@@ -2400,27 +2404,27 @@ class _EvaluationFormScreenState extends State<EvaluationFormScreen> {
               ),
               const SizedBox(height: 18),
               _scoreBox(
-                label: 'ALSFRS-R Score',
+                label: 'ALSFRS-R SKORU',
                 hint: '0 – 48',
                 controller: _alsfrsScoreCtrl,
               ),
               const SizedBox(height: 18),
               _scoreBox(
-                label: 'Total Number of Attacks',
-                hint: 'Enter number',
+                label: 'TOPLAM ATAK SAYISI',
+                hint: 'Sayı giriniz',
                 controller: _totalAttackCountCtrl,
               ),
               const SizedBox(height: 18),
               _scoreBox(
-                label: 'SARA Score',
-                hint: 'Enter number',
+                label: 'SARA SKORU',
+                hint: 'Sayı giriniz',
                 controller: _saraScoreCtrl,
               ),
             ],
           ),
         ),
         const SizedBox(height: 22),
-        _label('Klinik Tip'),
+        _label('KLİNİK TİP'),
         _field(controller: _clinicTypeCtrl, hint: 'Klinik tip girin'),
         const SizedBox(height: 16),
         _expandCard(

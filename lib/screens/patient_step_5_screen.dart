@@ -7,10 +7,7 @@ import 'main_screen.dart';
 class PatientStep5Screen extends StatefulWidget {
   final PatientFormData formData;
 
-  const PatientStep5Screen({
-    super.key,
-    required this.formData,
-  });
+  const PatientStep5Screen({super.key, required this.formData});
 
   @override
   State<PatientStep5Screen> createState() => _PatientStep5ScreenState();
@@ -26,9 +23,8 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
   static const Color kBorderColor = Color(0xFFE2E8F0);
 
   final TextEditingController complaintHistoryController =
-  TextEditingController();
-  final TextEditingController complaintDateController =
-  TextEditingController();
+      TextEditingController();
+  final TextEditingController complaintDateController = TextEditingController();
   final TextEditingController medicationsController = TextEditingController();
 
   List<Map<String, dynamic>> diseases = [];
@@ -46,8 +42,9 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
     medicationsController.text = widget.formData.medications;
 
     selectedDiagnosisId = widget.formData.diagnosisId;
-    selectedDiagnosis =
-    widget.formData.diagnosis.isEmpty ? null : widget.formData.diagnosis;
+    selectedDiagnosis = widget.formData.diagnosis.isEmpty
+        ? null
+        : widget.formData.diagnosis;
 
     _loadDiseases();
   }
@@ -58,9 +55,7 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Formdan çık'),
-          content: const Text(
-            'Formdan çıkmak istediğinize emin misiniz?',
-          ),
+          content: const Text('Formdan çıkmak istediğinize emin misiniz?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -89,7 +84,7 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
         MaterialPageRoute(
           builder: (context) => const MainScreen(isClinician: true),
         ),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -155,7 +150,7 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
     if (picked != null) {
       setState(() {
         complaintDateController.text =
-        "${picked.day.toString().padLeft(2, '0')}/"
+            "${picked.day.toString().padLeft(2, '0')}/"
             "${picked.month.toString().padLeft(2, '0')}/"
             "${picked.year}";
       });
@@ -297,8 +292,9 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                           controller: complaintHistoryController,
                           maxLines: 4,
                           style: const TextStyle(color: kTextDark),
-                          decoration:
-                          inputDecoration('Şikayet geçmişini giriniz'),
+                          decoration: inputDecoration(
+                            'Şikayet geçmişini giriniz',
+                          ),
                         ),
                         const SizedBox(height: 20),
                         const Text(
@@ -325,77 +321,72 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                         const SizedBox(height: 10),
                         isLoadingDiseases
                             ? Container(
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: kInputFill,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: kPrimary,
-                            ),
-                          ),
-                        )
-                            : DropdownButtonFormField<int>(
-                          value: selectedDiagnosisId,
-                          decoration: inputDecoration(
-                            diseases.isEmpty
-                                ? 'Tanı bulunamadı'
-                                : 'Tanı seçiniz',
-                          ),
-                          icon: const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: kTextGrey,
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          dropdownColor: Colors.white,
-                          items: diseases.map((disease) {
-                            final id = disease['hastalikId'] as int;
-                            final name =
-                                disease['hastalikAdi']?.toString() ?? '';
-
-                            return DropdownMenuItem<int>(
-                              value: id,
-                              child: Text(
-                                name,
-                                style: const TextStyle(
-                                  color: kTextDark,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: kInputFill,
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: kPrimary,
+                                  ),
+                                ),
+                              )
+                            : DropdownButtonFormField<int>(
+                                value: selectedDiagnosisId,
+                                decoration: inputDecoration(
+                                  diseases.isEmpty
+                                      ? 'Tanı bulunamadı'
+                                      : 'Tanı seçiniz',
+                                ),
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: kTextGrey,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                dropdownColor: Colors.white,
+                                items: diseases.map((disease) {
+                                  final id = disease['hastalikId'] as int;
+                                  final name =
+                                      disease['hastalikAdi']?.toString() ?? '';
+
+                                  return DropdownMenuItem<int>(
+                                    value: id,
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(color: kTextDark),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value == null) return;
+
+                                  final selected = diseases.firstWhere(
+                                    (disease) => disease['hastalikId'] == value,
+                                  );
+
+                                  setState(() {
+                                    selectedDiagnosisId = value;
+                                    selectedDiagnosis =
+                                        selected['hastalikAdi']?.toString() ??
+                                        '';
+                                  });
+
+                                  widget.formData.diagnosisId = value;
+                                  widget.formData.diagnosis =
+                                      selectedDiagnosis ?? '';
+                                },
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value == null) return;
-
-                            final selected = diseases.firstWhere(
-                                  (disease) =>
-                              disease['hastalikId'] == value,
-                            );
-
-                            setState(() {
-                              selectedDiagnosisId = value;
-                              selectedDiagnosis =
-                                  selected['hastalikAdi']?.toString() ??
-                                      '';
-                            });
-
-                            widget.formData.diagnosisId = value;
-                            widget.formData.diagnosis =
-                                selectedDiagnosis ?? '';
-                          },
-                        ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'KULLANILAN İLAÇLAR',
-                          style: labelStyle,
-                        ),
+                        const Text('KULLANILAN İLAÇLAR', style: labelStyle),
                         const SizedBox(height: 10),
                         TextField(
                           controller: medicationsController,
                           maxLines: 3,
                           style: const TextStyle(color: kTextDark),
-                          decoration:
-                          inputDecoration('Kullanılan ilaçları giriniz'),
+                          decoration: inputDecoration(
+                            'Kullanılan ilaçları giriniz',
+                          ),
                         ),
                       ],
                     ),
@@ -443,22 +434,21 @@ class _PatientStep5ScreenState extends State<PatientStep5Screen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            widget.formData.complaintHistory =
-                                complaintHistoryController.text.trim();
-                            widget.formData.complaintDate =
-                                complaintDateController.text.trim();
-                            widget.formData.diagnosis =
-                                selectedDiagnosis ?? '';
-                            widget.formData.diagnosisId =
-                                selectedDiagnosisId;
-                            widget.formData.medications =
-                                medicationsController.text.trim();
+                            final updatedFormData = widget.formData.copyWith(
+                              complaintHistory: complaintHistoryController.text
+                                  .trim(),
+                              complaintDate: complaintDateController.text
+                                  .trim(),
+                              diagnosis: selectedDiagnosis ?? '',
+                              diagnosisId: selectedDiagnosisId,
+                              medications: medicationsController.text.trim(),
+                            );
 
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => PatientStep6Screen(
-                                  formData: widget.formData,
+                                  formData: updatedFormData,
                                 ),
                               ),
                             );

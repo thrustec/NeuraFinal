@@ -51,6 +51,7 @@ class PatientService {
     final select = Uri.encodeComponent(
       '*, '
       'kullanicilar(ad,soyad,eposta), '
+      'hastaliklar(hastalikAdi), '
       'cinsiyetler(cinsiyetAdi), '
       'medeniDurumlar(medeniDurumAdi), '
       'egitimDurumlari(egitimDurumAdi), '
@@ -126,6 +127,7 @@ class PatientService {
       final select = Uri.encodeComponent(
         '*, '
         'kullanicilar(ad,soyad,eposta), '
+        'hastaliklar(hastalikAdi), '
         'cinsiyetler(cinsiyetAdi), '
         'medeniDurumlar(medeniDurumAdi), '
         'egitimDurumlari(egitimDurumAdi), '
@@ -249,6 +251,13 @@ class PatientService {
       flat['eposta'] = k['eposta'];
     }
 
+    // Direct hastaliklar join on hastalar.hastalikId — provides hastalikAdi
+    // even when no degerlendirmeler row exists yet (e.g. newly registered patient).
+    final directHastalik = raw['hastaliklar'];
+    if (directHastalik is Map) {
+      flat['hastalikAdi'] = directHastalik['hastalikAdi'];
+    }
+
     // lookup tablolar
     final c = raw['cinsiyetler'];
     if (c is Map) flat['cinsiyetAdi'] = c['cinsiyetAdi'];
@@ -262,19 +271,22 @@ class PatientService {
     final mes = raw['meslekler'];
     if (mes is Map) flat['meslekAdi'] = mes['meslekAdi'];
 
-    // degerlendirmeler → en son kaydın hastalıkAdı ve klinisyenNotlari
+    // degerlendirmeler → en son kaydın hastalikAdi ve klinisyenNotlari
+    // Overrides direct join values where evaluation data is more specific.
     final degList = raw['degerlendirmeler'];
     if (degList is List && degList.isNotEmpty) {
       final son = degList.first as Map<String, dynamic>;
       final h = son['hastaliklar'];
       if (h is Map) flat['hastalikAdi'] = h['hastalikAdi'];
       flat['klinisyenNotlari'] = son['klinisyenNotlari'];
-      flat['baslangicTarihi'] = son['baslangicTarihi'];
+      // Only override patient-level baslangicTarihi when the evaluation has a real value.
+      if (son['baslangicTarihi'] != null) flat['baslangicTarihi'] = son['baslangicTarihi'];
       flat['bakiciKisi'] = son['bakiciKisi'];
     }
 
     // İç içe nesneleri temizle
     flat.remove('kullanicilar');
+    flat.remove('hastaliklar');
     flat.remove('cinsiyetler');
     flat.remove('medeniDurumlar');
     flat.remove('egitimDurumlari');
