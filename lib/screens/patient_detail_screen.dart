@@ -102,36 +102,46 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
     setState(() => _kaydediliyor = true);
 
     try {
-      final data = {
-        'boy':             double.tryParse(_boyCtrl.text),
-        'kilo':            double.tryParse(_kiloCtrl.text),
-        'klinisyenNotlari': _klinisyenNotlariCtrl.text.trim(),
+      // boy/kilo → hastalar tablosuna
+      final hastaData = {
+        'boy':  double.tryParse(_boyCtrl.text),
+        'kilo': double.tryParse(_kiloCtrl.text),
       };
+      await PatientService.hastaGuncelle(_hasta.hastaId, hastaData);
 
-      final basarili =
-      await PatientService.hastaGuncelle(_hasta.hastaId, data);
-
-      if (basarili) {
-        setState(() {
-          _hasta = _hasta.copyWith(
-            boy:             double.tryParse(_boyCtrl.text),
-            kilo:            double.tryParse(_kiloCtrl.text),
-            klinisyenNotlari: _klinisyenNotlariCtrl.text.trim(),
-          );
-          _duzenleniyor = false;
-          _kaydediliyor = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('Klinik bilgiler güncellendi'),
-            backgroundColor: const Color(0xFF16A34A),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8)),
-          ));
-          Navigator.pop(context, true);
-        }
+      // klinisyenNotlari → degerlendirmeler tablosuna (en son kayıt)
+      final note = _klinisyenNotlariCtrl.text.trim();
+      bool notKaydedildi = false;
+      if (note.isNotEmpty) {
+        notKaydedildi = await PatientService.updateLatestEvaluationNote(
+            _hasta.hastaId, note);
       }
+
+      if (!mounted) return;
+      setState(() {
+        _hasta = _hasta.copyWith(
+          boy:              double.tryParse(_boyCtrl.text),
+          kilo:             double.tryParse(_kiloCtrl.text),
+          klinisyenNotlari: note,
+        );
+        _duzenleniyor = false;
+        _kaydediliyor = false;
+      });
+
+      String mesaj = 'Klinik bilgiler güncellendi';
+      if (note.isNotEmpty && !notKaydedildi) {
+        mesaj = 'Boy/kilo güncellendi; not kaydedilemedi (değerlendirme kaydı yok)';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(mesaj),
+        backgroundColor: notKaydedildi || note.isEmpty
+            ? const Color(0xFF16A34A)
+            : const Color(0xFFD97706),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ));
+      Navigator.pop(context, true);
     } catch (e) {
       setState(() => _kaydediliyor = false);
       if (mounted) {
@@ -173,7 +183,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
           create: (_) => EvaluationProvider(
-            doctorId: context.read<AuthProvider>().user?.klinisyenId ?? 0,
+            doctorId: context.read<AuthProvider>().kullaniciId,
           ),
           child: EvaluationListScreen(
             hastaId: _hasta.hastaId,
@@ -371,6 +381,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
             onTap: () {
               final provider = context.read<EvaluationProvider>();
               provider.clearSelection();
+              provider.setFilterHastaId(_hasta.hastaId);
 
               Navigator.push(
                 context,
