@@ -220,18 +220,22 @@ class EvaluationProvider extends ChangeNotifier {
 
   Future<bool> delete(int id) async {
     try {
+      listStatus = LoadStatus.loading;
       listError = null;
+      notifyListeners();
 
       await _service.delete(id);
-      _store.removeWhere((e) => e.id == id);
+      _store.removeWhere((e) => e.id == id || e.degerlendirmeId == id);
 
-      if (selected?.id == id) {
+      if (selected?.id == id || selected?.degerlendirmeId == id) {
         selected = null;
       }
 
+      listStatus = LoadStatus.success;
       notifyListeners();
       return true;
     } catch (e) {
+      listStatus = LoadStatus.error;
       listError = 'Silme başarısız: $e';
       notifyListeners();
       return false;

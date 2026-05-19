@@ -235,7 +235,7 @@ class _EvaluationListScreenState extends State<EvaluationListScreen> {
 
     return patient_model.Patient(
       hastaId: ev.hastaId as int? ?? 0,
-      kullaniciId: ev.hastaId as int? ?? 0,
+      kullaniciId: ev.hastaKullaniciId ?? 0,
       ad: ad,
       soyad: soyad,
       tani: (ev.hastalikAdi ?? ev.diagnosis ?? 'Tanı Yok').toString(),

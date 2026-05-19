@@ -3,6 +3,7 @@ class Evaluation {
   final int degerlendirmeId;
   final int doctorId;
   final int hastaId;
+  final int? hastaKullaniciId;
   final String degerlendirmeTarihi;
 
   final String? hastaAdSoyad;
@@ -28,6 +29,7 @@ class Evaluation {
     required this.degerlendirmeId,
     required this.doctorId,
     required this.hastaId,
+    this.hastaKullaniciId,
     required this.degerlendirmeTarihi,
     this.hastaAdSoyad,
     this.sigaraDurumId,
@@ -238,6 +240,7 @@ class Evaluation {
           (json['klinisyenId'] ?? json['doctorId'] ?? json['doctor_id'] ?? 0)
               as int,
       hastaId: (json['hastaId'] ?? json['hasta_id'] ?? 0) as int,
+      hastaKullaniciId: json['hastalar']?['kullaniciId'] as int?,
       degerlendirmeTarihi:
           (json['degerlendirmeTarihi'] ?? json['degerlendirme_tarihi'] ?? '')
               .toString(),
