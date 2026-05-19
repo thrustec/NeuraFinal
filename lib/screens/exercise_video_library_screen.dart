@@ -425,51 +425,76 @@ class _VideoKarti extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  color: _kategoriArkaplan(video.kisaKategori),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                ),
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Icon(
-                        _kategoriIkon(video.kisaKategori),
-                        size: 56,
-                        color: _kategoriRenk(video.kisaKategori).withOpacity(0.15),
-                      ),
-                    ),
-                    Center(
-                      child: Container(
-                        width: 50, height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: SizedBox(
+                  height: 140,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Thumbnail varsa göster, yoksa renkli placeholder
+                      if (video.thumbnailUrl != null && video.thumbnailUrl!.isNotEmpty)
+                        Image.network(
+                          video.thumbnailUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: _kategoriArkaplan(video.kisaKategori),
+                            child: Center(
+                              child: Icon(
+                                _kategoriIkon(video.kisaKategori),
+                                size: 56,
+                                color: _kategoriRenk(video.kisaKategori).withOpacity(0.15),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          color: _kategoriArkaplan(video.kisaKategori),
+                          child: Center(
+                            child: Icon(
+                              _kategoriIkon(video.kisaKategori),
+                              size: 56,
+                              color: _kategoriRenk(video.kisaKategori).withOpacity(0.15),
+                            ),
+                          ),
                         ),
-                        child: Icon(Icons.play_arrow_rounded, color: _kategoriRenk(video.kisaKategori), size: 30),
-                      ),
-                    ),
-                    Positioned(
-                      right: 12, bottom: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.75),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.access_time, size: 12, color: Colors.white),
-                            const SizedBox(width: 4),
-                            Text(video.formatliSure, style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
-                          ],
+                      // Oynat butonu
+                      Center(
+                        child: Container(
+                          width: 50, height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 30),
                         ),
                       ),
-                    ),
-                  ],
+                      // Süre etiketi
+                      Positioned(
+                        right: 12, bottom: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.75),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.access_time, size: 12, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text(
+                                video.formatliSure,
+                                style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Padding(
