@@ -26,9 +26,13 @@ import 'empatica_screen.dart';
 import '../services/notification_service.dart';
 
 // ── Hasta Empatica Sayfası (alt bar index 2) ─────────────────────────────────
-// kullaniciId → hastaId çekip kendi EmpaticaScreen'ini açar.
+// kullaniciId → hastaId + hastalık bilgisi çekip kendi EmpaticaScreen'ini açar.
 class _HastaEmpaticaPage extends StatefulWidget {
-  const _HastaEmpaticaPage();
+  final VoidCallback onBack;
+
+  const _HastaEmpaticaPage({
+    required this.onBack,
+  });
 
   @override
   State<_HastaEmpaticaPage> createState() => _HastaEmpaticaPageState();
@@ -60,14 +64,26 @@ class _HastaEmpaticaPageState extends State<_HastaEmpaticaPage> {
       _yukleniyor = true;
       _hata = null;
     });
+
     try {
       final auth = context.read<AuthProvider>();
       final kullaniciId = int.tryParse(auth.user?.id ?? '');
-      if (kullaniciId == null) throw Exception('Kullanici bilgisi yok.');
+
+      if (kullaniciId == null) {
+        throw Exception('Kullanıcı bilgisi yok.');
+      }
+
+      final select = Uri.encodeComponent(
+        'hastaId,hastaliklar(hastalikAdi)',
+      );
 
       final res = await http.get(
         Uri.parse(
-            '$_sbUrl/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
+          '$_sbUrl/hastalar'
+              '?kullaniciId=eq.$kullaniciId'
+              '&select=$select'
+              '&limit=1',
+        ),
         headers: {
           'apikey': _sbKey,
           'Authorization': 'Bearer $_sbKey',
@@ -75,12 +91,26 @@ class _HastaEmpaticaPageState extends State<_HastaEmpaticaPage> {
         },
       );
 
-      if (res.statusCode != 200) throw Exception('Hasta bilgisi alınamadı.');
-      final list = jsonDecode(res.body) as List;
-      if (list.isEmpty) throw Exception('Hasta kaydı bulunamadı.');
+      if (res.statusCode != 200) {
+        throw Exception('Hasta bilgisi alınamadı.');
+      }
 
-      final hastaId =
-      (list.first as Map<String, dynamic>)['hastaId'] as int;
+      final list = jsonDecode(res.body) as List;
+
+      if (list.isEmpty) {
+        throw Exception('Hasta kaydı bulunamadı.');
+      }
+
+      final data = list.first as Map<String, dynamic>;
+
+      final hastaId = data['hastaId'] as int;
+
+      final hastalikData = data['hastaliklar'];
+      final String? hastalikAdi = hastalikData is Map<String, dynamic>
+          ? hastalikData['hastalikAdi']?.toString()
+          : null;
+
+      if (!mounted) return;
 
       setState(() {
         _hasta = Patient(
@@ -88,10 +118,13 @@ class _HastaEmpaticaPageState extends State<_HastaEmpaticaPage> {
           kullaniciId: kullaniciId,
           ad: auth.user?.ad ?? '',
           soyad: auth.user?.soyad ?? '',
+          hastalikAdi: hastalikAdi,
         );
         _yukleniyor = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _hata = e.toString();
         _yukleniyor = false;
@@ -103,8 +136,10 @@ class _HastaEmpaticaPageState extends State<_HastaEmpaticaPage> {
   Widget build(BuildContext context) {
     if (_yukleniyor) {
       return const Center(
-          child: CircularProgressIndicator(color: _kPrimary));
+        child: CircularProgressIndicator(color: _kPrimary),
+      );
     }
+
     if (_hata != null || _hasta == null) {
       return Center(
         child: Column(
@@ -112,24 +147,29 @@ class _HastaEmpaticaPageState extends State<_HastaEmpaticaPage> {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 12),
-            Text(_hata ?? 'Bilinmeyen hata',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF64748B))),
+            Text(
+              _hata ?? 'Bilinmeyen hata',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF64748B)),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _yukle,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: _kPrimary, foregroundColor: Colors.white),
+                backgroundColor: _kPrimary,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Tekrar Dene'),
             ),
           ],
         ),
       );
     }
-    // EmpaticaScreen zaten kendi Scaffold'ını içeriyor,
-    // ana Scaffold'a gömülü olduğu için appBar çakışmasını önlemek için
-    // EmpaticaScreen'i doğrudan döndürüyoruz.
-    return EmpaticaScreen(hasta: _hasta!);
+
+    return EmpaticaScreen(
+      hasta: _hasta!,
+      onBack: widget.onBack,
+    );
   }
 }
 
@@ -137,7 +177,11 @@ class _HastaEmpaticaPageState extends State<_HastaEmpaticaPage> {
 
 class MainScreen extends StatefulWidget {
   final bool isClinician;
-  const MainScreen({super.key, required this.isClinician});
+
+  const MainScreen({
+    super.key,
+    required this.isClinician,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -145,6 +189,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  int _previousIndex = 0;
+
   bool _isDarkMode = false;
   int _unreadNotificationCount = 0;
 
@@ -196,9 +242,20 @@ class _MainScreenState extends State<MainScreen> {
     ]
         : [
       const PatientHome(),
-      const HastaEgzersizScreen(),
-      // ── DEĞİŞİKLİK: "Gelişim" yerine hasta Empatica sayfası ──
-      const _HastaEmpaticaPage(),
+      HastaEgzersizScreen(
+        onBack: () {
+          setState(() {
+            _selectedIndex = _previousIndex;
+          });
+        },
+      ),
+      _HastaEmpaticaPage(
+        onBack: () {
+          setState(() {
+            _selectedIndex = _previousIndex;
+          });
+        },
+      ),
     ];
 
     return Scaffold(
@@ -210,15 +267,20 @@ class _MainScreenState extends State<MainScreen> {
         title: Text(
           _getTitle(_selectedIndex, widget.isClinician),
           style: const TextStyle(
-              color: kTextDark, fontWeight: FontWeight.bold, fontSize: 18),
+            color: kTextDark,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         actions: [
           Stack(
             alignment: Alignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined,
-                    color: kTextDark),
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  color: kTextDark,
+                ),
                 onPressed: () async {
                   final userId = int.tryParse(u?.id ?? '');
                   if (userId == null) return;
@@ -240,7 +302,9 @@ class _MainScreenState extends State<MainScreen> {
                   top: 6,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 5, vertical: 2),
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(999),
@@ -266,23 +330,28 @@ class _MainScreenState extends State<MainScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.event_note_outlined, color: kTextDark),
-            onPressed: () async { // ── async yaptık ──
+            onPressed: () async {
               if (widget.isClinician) {
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ClinicianAgenda()));
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ClinicianAgenda(),
+                  ),
+                );
               } else {
-                // ── YENİ: Gerçek hastaId'yi asenkron çekiyoruz ──
                 final kullaniciId = int.tryParse(u?.id ?? '0') ?? 0;
                 int realHastaId = 0;
 
                 try {
                   final res = await http.get(
-                    Uri.parse('https://griteunvazwekosffmjo.supabase.co/rest/v1/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
+                    Uri.parse(
+                      'https://griteunvazwekosffmjo.supabase.co/rest/v1/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1',
+                    ),
                     headers: {
-                      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU',
-                      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU',
+                      'apikey':
+                      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU',
+                      'Authorization':
+                      'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU',
                       'Accept-Profile': 'neura',
                     },
                   );
@@ -290,7 +359,9 @@ class _MainScreenState extends State<MainScreen> {
                   if (res.statusCode == 200) {
                     final list = jsonDecode(res.body) as List;
                     if (list.isNotEmpty) {
-                      realHastaId = (list.first as Map<String, dynamic>)['hastaId'] as int;
+                      realHastaId =
+                      (list.first as Map<String, dynamic>)['hastaId']
+                      as int;
                     }
                   }
                 } catch (e) {
@@ -300,19 +371,21 @@ class _MainScreenState extends State<MainScreen> {
                 if (!context.mounted) return;
 
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => PatientAgendaScreen(
-                          patient: sila.Patient(
-                            hastaId: realHastaId, // Artık veritabanından gelen 30 gidiyor!
-                            kullaniciId: kullaniciId,
-                            ad: u?.ad ?? '',
-                            soyad: u?.soyad ?? '',
-                            tani: '',
-                            durum: 'Aktif Hasta',
-                            degerlendirmeler: [],
-                          ),
-                        )));
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PatientAgendaScreen(
+                      patient: sila.Patient(
+                        hastaId: realHastaId,
+                        kullaniciId: kullaniciId,
+                        ad: u?.ad ?? '',
+                        soyad: u?.soyad ?? '',
+                        tani: '',
+                        durum: 'Aktif Hasta',
+                        degerlendirmeler: const [],
+                      ),
+                    ),
+                  ),
+                );
               }
             },
           ),
@@ -320,23 +393,26 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
 
-      // ── DRAWER ──────────────────────────────────────────────
       drawer: Drawer(
         backgroundColor: Colors.white,
         child: Column(
           children: [
-            // Profil başlığı
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(
-                  top: 60, bottom: 24, left: 20, right: 20),
+                top: 60,
+                bottom: 24,
+                left: 20,
+                right: 20,
+              ),
               decoration: BoxDecoration(
                 color: primaryColor,
                 boxShadow: [
                   BoxShadow(
-                      color: primaryColor.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
+                    color: primaryColor.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
@@ -345,44 +421,56 @@ class _MainScreenState extends State<MainScreen> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle),
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
                     child: CircleAvatar(
                       radius: 32,
                       backgroundColor: Colors.white,
                       child: u?.ad.isNotEmpty == true
-                          ? Text(u!.ad[0].toUpperCase(),
-                          style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor))
-                          : const Icon(Icons.person,
-                          size: 36, color: kTextGrey),
+                          ? Text(
+                        u!.ad[0].toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      )
+                          : const Icon(
+                        Icons.person,
+                        size: 36,
+                        color: kTextGrey,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     u?.fullName ?? 'Kullanıcı',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12)),
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Text(
                       widget.isClinician
                           ? 'Klinisyen Hesabı'
                           : 'Hasta Hesabı',
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600),
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -395,80 +483,112 @@ class _MainScreenState extends State<MainScreen> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  // ── Profilim ──────────────────────────────
                   ListTile(
                     leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: Icon(Icons.person_outline,
-                            color: primaryColor, size: 20)),
-                    title: const Text('Profilim',
-                        style: TextStyle(
-                            color: kTextDark,
-                            fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.person_outline,
+                        color: primaryColor,
+                        size: 20,
+                      ),
+                    ),
+                    title: const Text(
+                      'Profilim',
+                      style: TextStyle(
+                        color: kTextDark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFFCBD5E1),
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => widget.isClinician
-                                  ? const KlinisyenProfilScreen()
-                                  : const HastaProfilScreen()));
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => widget.isClinician
+                              ? const KlinisyenProfilScreen()
+                              : const HastaProfilScreen(),
+                        ),
+                      );
                     },
                   ),
 
-                  // ── Ayarlar ───────────────────────────────
                   ListTile(
                     leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                            color: kTextGrey.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.settings_outlined,
-                            color: kTextGrey, size: 20)),
-                    title: const Text('Ayarlar',
-                        style: TextStyle(
-                            color: kTextDark,
-                            fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: kTextGrey.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.settings_outlined,
+                        color: kTextGrey,
+                        size: 20,
+                      ),
+                    ),
+                    title: const Text(
+                      'Ayarlar',
+                      style: TextStyle(
+                        color: kTextDark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFFCBD5E1),
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const AyarlarScreen()));
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AyarlarScreen(),
+                        ),
+                      );
                     },
                   ),
 
                   const SizedBox(height: 4),
 
-                  // ── Yardım ve Destek ──────────────────────
                   ListTile(
                     leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                            color: kTextGrey.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.help_outline,
-                            color: kTextGrey, size: 20)),
-                    title: const Text('Yardım ve Destek',
-                        style: TextStyle(
-                            color: kTextDark,
-                            fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: kTextGrey.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.help_outline,
+                        color: kTextGrey,
+                        size: 20,
+                      ),
+                    ),
+                    title: const Text(
+                      'Yardım ve Destek',
+                      style: TextStyle(
+                        color: kTextDark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFFCBD5E1),
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                              const YardimDestekScreen()));
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const YardimDestekScreen(),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -477,23 +597,31 @@ class _MainScreenState extends State<MainScreen> {
 
             const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-            // ── Çıkış Yap ────────────────────────────────────
             SafeArea(
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 8),
+                  horizontal: 24,
+                  vertical: 8,
+                ),
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.logout,
-                      color: Colors.red, size: 20),
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.logout,
+                    color: Colors.red,
+                    size: 20,
+                  ),
                 ),
-                title: const Text('Çıkış Yap',
-                    style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold)),
+                title: const Text(
+                  'Çıkış Yap',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 onTap: () async {
                   await auth.logout();
                   if (context.mounted) {
@@ -508,67 +636,85 @@ class _MainScreenState extends State<MainScreen> {
 
       body: pages[_selectedIndex],
 
-      // ── BOTTOM NAV ───────────────────────────────────────────
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -4))
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -4),
+            ),
           ],
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: (i) => setState(() => _selectedIndex = i),
+          onTap: (i) {
+            if (i == _selectedIndex) return;
+
+            setState(() {
+              _previousIndex = _selectedIndex;
+              _selectedIndex = i;
+            });
+          },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: primaryColor,
           unselectedItemColor: const Color(0xFF94A3B8),
           selectedFontSize: 11,
           unselectedFontSize: 11,
-          selectedLabelStyle:
-          const TextStyle(fontWeight: FontWeight.bold, height: 1.5),
-          unselectedLabelStyle:
-          const TextStyle(fontWeight: FontWeight.w500, height: 1.5),
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            height: 1.5,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            height: 1.5,
+          ),
           elevation: 0,
           items: widget.isClinician
               ? const [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home_rounded),
-                label: 'Ana Sayfa'),
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_rounded),
+              label: 'Ana Sayfa',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.people_alt_outlined),
-                activeIcon: Icon(Icons.people_alt),
-                label: 'Hastalar'),
+              icon: Icon(Icons.people_alt_outlined),
+              activeIcon: Icon(Icons.people_alt),
+              label: 'Hastalar',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.person_add_outlined),
-                activeIcon: Icon(Icons.person_add),
-                label: 'Kayıt'),
+              icon: Icon(Icons.person_add_outlined),
+              activeIcon: Icon(Icons.person_add),
+              label: 'Kayıt',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.compare_arrows_outlined),
-                activeIcon: Icon(Icons.compare_arrows),
-                label: 'Karşılaştır'),
+              icon: Icon(Icons.compare_arrows_outlined),
+              activeIcon: Icon(Icons.compare_arrows),
+              label: 'Karşılaştır',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.bar_chart_outlined),
-                activeIcon: Icon(Icons.bar_chart),
-                label: 'Raporlar'),
+              icon: Icon(Icons.bar_chart_outlined),
+              activeIcon: Icon(Icons.bar_chart),
+              label: 'Raporlar',
+            ),
           ]
               : const [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home_rounded),
-                label: 'Ana Sayfa'),
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_rounded),
+              label: 'Ana Sayfa',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.fitness_center_outlined),
-                activeIcon: Icon(Icons.fitness_center),
-                label: 'Egzersiz'),
-            // ── DEĞİŞİKLİK: Gelişim → Empatica ──────────
+              icon: Icon(Icons.fitness_center_outlined),
+              activeIcon: Icon(Icons.fitness_center),
+              label: 'Egzersiz',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.monitor_heart_outlined),
-                activeIcon: Icon(Icons.monitor_heart),
-                label: 'Empatica'),
+              icon: Icon(Icons.monitor_heart_outlined),
+              activeIcon: Icon(Icons.monitor_heart),
+              label: 'Empatica',
+            ),
           ],
         ),
       ),
@@ -598,7 +744,6 @@ class _MainScreenState extends State<MainScreen> {
         case 1:
           return 'Egzersizlerim';
         case 2:
-        // ── DEĞİŞİKLİK: başlık da güncellendi ──
           return 'Empatica';
         default:
           return 'NeuraApp';

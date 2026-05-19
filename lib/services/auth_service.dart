@@ -132,10 +132,14 @@ class AuthService {
       final token = authData['access_token'] as String? ?? '';
 
       // 2. kullanicilar tablosundan kullanıcıyı bul
+      // DÜZELTME: avatarUrl da çekiliyor.
       final userRes = await http
           .get(
         Uri.parse(
-            '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId,ad,soyad,eposta,rolId'),
+          '$_baseUrl/rest/v1/kullanicilar'
+              '?eposta=eq.$eposta'
+              '&select=kullaniciId,ad,soyad,eposta,rolId,avatarUrl',
+        ),
         headers: _restGetHeaders(token),
       )
           .timeout(const Duration(seconds: 30));
@@ -160,7 +164,10 @@ class AuthService {
         final clinRes = await http
             .get(
           Uri.parse(
-              '$_baseUrl/rest/v1/klinisyenler?kullaniciId=eq.$kullaniciId&select=klinisyenId,unvan'),
+            '$_baseUrl/rest/v1/klinisyenler'
+                '?kullaniciId=eq.$kullaniciId'
+                '&select=klinisyenId,unvan',
+          ),
           headers: _restGetHeaders(token),
         )
             .timeout(const Duration(seconds: 30));
@@ -171,21 +178,22 @@ class AuthService {
           final list = jsonDecode(clinRes.body) as List;
           if (list.isNotEmpty) {
             final c = list.first as Map<String, dynamic>;
-            unvan       = c['unvan'] as String?;
+            unvan = c['unvan'] as String?;
             klinisyenId = c['klinisyenId'] as int?;
           }
         }
       }
 
       return UserModel.fromJson({
-        'id':          kullaniciId.toString(),
-        'ad':          user['ad'] ?? '',
-        'soyad':       user['soyad'] ?? '',
-        'eposta':      user['eposta'] ?? eposta,
-        'rolId':       rolId,
-        'rolAdi':      rolAdi,
-        'token':       token,
-        'unvan':       unvan,
+        'id': kullaniciId.toString(),
+        'ad': user['ad'] ?? '',
+        'soyad': user['soyad'] ?? '',
+        'eposta': user['eposta'] ?? eposta,
+        'rolId': rolId,
+        'rolAdi': rolAdi,
+        'token': token,
+        'unvan': unvan,
+        'avatarUrl': user['avatarUrl'],
         'klinisyenId': klinisyenId,
       });
     } on SocketException {
@@ -249,12 +257,12 @@ class AuthService {
           Uri.parse('$_baseUrl/rest/v1/kullanicilar'),
           headers: _restHeaders(token),
           body: jsonEncode({
-            'ad':       ad,
-            'soyad':    soyad,
-            'eposta':   eposta,
+            'ad': ad,
+            'soyad': soyad,
+            'eposta': eposta,
             'sifreHash': sifre,
-            'rolId':    rolId,
-            'aktifMi':  true,
+            'rolId': rolId,
+            'aktifMi': true,
           }),
         )
             .timeout(const Duration(seconds: 30));
@@ -269,7 +277,6 @@ class AuthService {
       }
 
       // ADIM 3: Klinisyen ise klinisyenler tablosuna ekle
-      // FIX: Dönen klinisyenId'yi yakala ve UserModel'e geçir
       int? yeniKlinisyenId;
       if (rolId == _rolIdKlinisyen && kullaniciId != null) {
         final clinRes = await http
@@ -315,15 +322,15 @@ class AuthService {
       }
 
       return UserModel.fromJson({
-        'id':          (kullaniciId ?? authData['user']?['id'] ?? '').toString(),
-        'ad':          ad,
-        'soyad':       soyad,
-        'eposta':      eposta,
-        'rolId':       rolId,
-        'rolAdi':      rolAdi,
-        'token':       token,
-        'unvan':       unvan,
-        'klinisyenId': yeniKlinisyenId, // FIX: artık session'a yazılıyor
+        'id': (kullaniciId ?? authData['user']?['id'] ?? '').toString(),
+        'ad': ad,
+        'soyad': soyad,
+        'eposta': eposta,
+        'rolId': rolId,
+        'rolAdi': rolAdi,
+        'token': token,
+        'unvan': unvan,
+        'klinisyenId': yeniKlinisyenId,
       });
     } on SocketException {
       throw Exception('BAĞLANTI_HATASI');
@@ -340,7 +347,10 @@ class AuthService {
       final res = await http
           .get(
         Uri.parse(
-            '$_baseUrl/rest/v1/kullanicilar?eposta=eq.$eposta&select=kullaniciId'),
+          '$_baseUrl/rest/v1/kullanicilar'
+              '?eposta=eq.$eposta'
+              '&select=kullaniciId',
+        ),
         headers: _restGetHeaders(token),
       )
           .timeout(const Duration(seconds: 10));

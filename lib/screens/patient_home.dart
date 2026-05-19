@@ -1,35 +1,271 @@
-// lib/screens/patient_home.dart
-
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../models/patient_model.dart';
-import 'patient_agenda_screen.dart';
-import 'telerehab_patient_screen.dart';
-import 'notifications_screen.dart';
-import 'hasta_egzersiz_screen.dart';
-import 'empatica_screen.dart';
 import '../models/patient.dart' as sila;
+import '../models/patient_model.dart' as patient_model;
+import 'telerehab_patient_screen.dart';
+import 'hasta_egzersiz_screen.dart';
+import 'patient_agenda_screen.dart';
+import 'notifications_screen.dart';
+import 'empatica_screen.dart';
+import '../services/supabase_service.dart';
 
-const String _kSbUrl = 'https://griteunvazwekosffmjo.supabase.co/rest/v1';
-const String _kSbKey =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.'
-    'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyaXRldW52YXp3ZWtvc2ZmbWpvIiwi'
-    'cm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTA3OTksImV4cCI6MjA5MTE2Njc5OX0.'
-    'q67C45Tve77Sj9hP0NRpXXIaSS1esajX3IE-TBZ-wIU';
-
-Map<String, String> _sbHeaders() => {
-  'apikey': _kSbKey,
-  'Authorization': 'Bearer $_kSbKey',
-  'Accept-Profile': 'neura',
-};
-
-class PatientHome extends StatelessWidget {
+class PatientHome extends StatefulWidget {
   const PatientHome({super.key});
 
+  @override
+  State<PatientHome> createState() => _PatientHomeState();
+}
+
+class _PatientHomeState extends State<PatientHome> {
   static const Color _primaryBlue = Color(0xFF2563EB);
+
+  bool _isLoadingTodayMeetings = true;
+  List<Map<String, dynamic>> _todayMeetings = [];
+
+  bool _isLoadingTodayExercises = true;
+  List<Map<String, dynamic>> _todayExercises = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodayMeetings();
+    _loadTodayExercises();
+  }
+
+  Future<int?> _getCurrentPatientId() async {
+    final auth = context.read<AuthProvider>();
+    final kullaniciId = int.tryParse(auth.user?.id ?? '');
+
+    if (kullaniciId == null) {
+      return null;
+    }
+
+    final patientResponse = await SupabaseService.client
+        .schema('neura')
+        .from('hastalar')
+        .select('hastaId')
+        .eq('kullaniciId', kullaniciId)
+        .maybeSingle();
+
+    if (patientResponse == null) {
+      return null;
+    }
+
+    return patientResponse['hastaId'] as int?;
+  }
+
+  Future<void> _loadTodayMeetings() async {
+    try {
+      final hastaId = await _getCurrentPatientId();
+
+      if (hastaId == null) {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingTodayMeetings = false;
+          _todayMeetings = [];
+        });
+        return;
+      }
+
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final tomorrowStart = todayStart.add(const Duration(days: 1));
+
+      final meetingsResponse = await SupabaseService.client
+          .schema('neura')
+          .from('toplantilar')
+          .select(
+        'toplantiId, hastaId, baslik, baslangicZamani, bitisZamani, durum',
+      )
+          .eq('hastaId', hastaId)
+          .gte('baslangicZamani', todayStart.toIso8601String())
+          .lt('baslangicZamani', tomorrowStart.toIso8601String())
+          .neq('durum', 'İptal Edildi')
+          .order('baslangicZamani', ascending: true);
+
+      if (!mounted) return;
+
+      setState(() {
+        _todayMeetings =
+        List<Map<String, dynamic>>.from(meetingsResponse);
+        _isLoadingTodayMeetings = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingTodayMeetings = false;
+        _todayMeetings = [];
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Bugünkü toplantılar yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadTodayExercises() async {
+    try {
+      final hastaId = await _getCurrentPatientId();
+
+      if (hastaId == null) {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingTodayExercises = false;
+          _todayExercises = [];
+        });
+        return;
+      }
+
+      final now = DateTime.now();
+      final todayText =
+          '${now.year.toString().padLeft(4, '0')}-'
+          '${now.month.toString().padLeft(2, '0')}-'
+          '${now.day.toString().padLeft(2, '0')}';
+
+      final exercisesResponse = await SupabaseService.client
+          .schema('neura')
+          .from('egzersizAtalari')
+          .select(
+        'egzersizAtamaId, hastaId, egzersizAdi, atamaTarihi, tamamlandiMi',
+      )
+          .eq('hastaId', hastaId)
+          .eq('atamaTarihi', todayText)
+          .order('egzersizAtamaId', ascending: true);
+
+      if (!mounted) return;
+
+      setState(() {
+        _todayExercises =
+        List<Map<String, dynamic>>.from(exercisesResponse);
+        _isLoadingTodayExercises = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingTodayExercises = false;
+        _todayExercises = [];
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Bugünkü egzersizler yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openPatientAgenda() async {
+    final auth = context.read<AuthProvider>();
+    final user = auth.user;
+    final hastaId = await _getCurrentPatientId();
+
+    if (!mounted) return;
+
+    if (user == null || hastaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ajanda bilgileri açılırken hata oluştu.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PatientAgendaScreen(
+          patient: sila.Patient(
+            hastaId: hastaId,
+            kullaniciId: int.tryParse(user.id) ?? 0,
+            ad: user.ad,
+            soyad: user.soyad,
+            tani: '',
+            durum: 'Aktif Hasta',
+            degerlendirmeler: const [],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEmpatica(AuthProvider auth) async {
+    final user = auth.user;
+    final kullaniciId = int.tryParse(user?.id ?? '');
+
+    if (!mounted) return;
+
+    if (user == null || kullaniciId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kullanıcı bilgisi alınamadı.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final patientResponse = await SupabaseService.client
+          .schema('neura')
+          .from('hastalar')
+          .select(
+        'hastaId, hastaliklar(hastalikAdi)',
+      )
+          .eq('kullaniciId', kullaniciId)
+          .maybeSingle();
+
+      if (!mounted) return;
+
+      if (patientResponse == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hasta bilgisi bulunamadı.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      final int hastaId = patientResponse['hastaId'] as int;
+
+      final hastalikData = patientResponse['hastaliklar'];
+      final String? hastalikAdi = hastalikData is Map<String, dynamic>
+          ? hastalikData['hastalikAdi']?.toString()
+          : null;
+
+      final hasta = patient_model.Patient(
+        hastaId: hastaId,
+        kullaniciId: kullaniciId,
+        ad: user.ad,
+        soyad: user.soyad,
+        hastalikAdi: hastalikAdi,
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmpaticaScreen(hasta: hasta),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Empatica bilgileri açılırken hata oluştu: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +276,6 @@ class PatientHome extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 1. HOŞGELDİN KARTI ────────────────────────────────────
           _buildWelcomeCard(
             auth.user?.fullName ?? 'Değerli Hastamız',
             auth.user?.avatarUrl,
@@ -48,21 +283,18 @@ class PatientHome extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // ── 2. YAKLAŞAN PLANLARIM ──────────────────────────────────
-          _buildSectionHeader('Yaklaşan Planlarım'),
+          _buildSectionHeader('Günün Toplantıları'),
           const SizedBox(height: 12),
-          _buildNextAppointmentCard(context, auth),
+          _buildTodayMeetingsCard(context),
 
           const SizedBox(height: 24),
 
-          // ── 3. BUGÜNKÜ GÖREVLERİM ─────────────────────────────────
-          _buildSectionHeader('Bugünkü Görevlerim'),
+          _buildSectionHeader('Günün Görevleri'),
           const SizedBox(height: 12),
           _buildDailyExerciseCard(context),
 
           const SizedBox(height: 28),
 
-          // ── 4. HIZLI İŞLEMLER (Grid) ──────────────────────────────
           _buildSectionHeader('Hızlı İşlemler'),
           const SizedBox(height: 12),
           _buildQuickActionsGrid(context, auth),
@@ -70,8 +302,6 @@ class PatientHome extends StatelessWidget {
       ),
     );
   }
-
-  // ── HOŞGELDİN KARTI ───────────────────────────────────────────────────────
 
   Widget _buildWelcomeCard(String userName, String? avatarUrl) {
     return Container(
@@ -95,7 +325,6 @@ class PatientHome extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Sol: metin
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,8 +345,8 @@ class PatientHome extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -125,27 +354,34 @@ class PatientHome extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.monitor_heart,
-                          color: Colors.white, size: 14),
+                      Icon(
+                        Icons.monitor_heart,
+                        color: Colors.white,
+                        size: 14,
+                      ),
                       SizedBox(width: 6),
-                      Text('Hasta',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        'Hasta',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          // Sağ: avatar
           const SizedBox(width: 16),
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.5), width: 2),
+                color: Colors.white.withValues(alpha: 0.5),
+                width: 2,
+              ),
             ),
             child: avatarUrl != null && avatarUrl.isNotEmpty
                 ? CircleAvatar(
@@ -173,8 +409,6 @@ class PatientHome extends StatelessWidget {
     );
   }
 
-  // ── BÖLÜM BAŞLIĞI ─────────────────────────────────────────────────────────
-
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
@@ -186,12 +420,139 @@ class PatientHome extends StatelessWidget {
     );
   }
 
-  // ── YAKLAŞAN RANDEVU KARTI ────────────────────────────────────────────────
-
-  Widget _buildNextAppointmentCard(
-      BuildContext context, AuthProvider auth) {
+  Widget _buildTodayMeetingsCard(BuildContext context) {
     return InkWell(
-      onTap: () => _navigateToAgenda(context, auth),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const TelerehabPatientScreen(),
+        ),
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.video_camera_front_outlined,
+                color: Color(0xFFEA580C),
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _isLoadingTodayMeetings
+                  ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Toplantılar yükleniyor...',
+                  style: TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 13,
+                  ),
+                ),
+              )
+                  : _todayMeetings.isEmpty
+                  ? const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Telerehab Toplantıları',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Mevcut toplantı yok',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              )
+                  : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Telerehab Toplantıları',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ..._todayMeetings.map((meeting) {
+                    final startTime = DateTime.tryParse(
+                      meeting['baslangicZamani']?.toString() ?? '',
+                    );
+
+                    final String hourText = startTime == null
+                        ? '--:--'
+                        : '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        '• $hourText',
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Color(0xFFCBD5E1),
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDailyExerciseCard(BuildContext context) {
+    final int totalExercises = _todayExercises.length;
+    final int completedExercises = _todayExercises
+        .where((exercise) => exercise['tamamlandiMi'] == true)
+        .length;
+
+    final String exerciseNames = _todayExercises
+        .map((exercise) => exercise['egzersizAdi']?.toString() ?? '')
+        .where((name) => name.trim().isNotEmpty)
+        .join(', ');
+
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HastaEgzersizScreen(),
+        ),
+      ),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -205,111 +566,119 @@ class PatientHome extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
+                color: const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.calendar_month_outlined,
-                  color: _primaryBlue, size: 28),
+              child: const Icon(
+                Icons.fitness_center,
+                color: Color(0xFF16A34A),
+                size: 28,
+              ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
+            Expanded(
+              child: _isLoadingTodayExercises
+                  ? const Text(
+                'Egzersizler yükleniyor...',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                ),
+              )
+                  : _todayExercises.isEmpty
+                  ? const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Klinik Değerlendirme',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: Color(0xFF1E293B))),
+                  Text(
+                    'Egzersizlerim',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
                   SizedBox(height: 4),
-                  Text('Yarın, 14:30 - Dr. Akhan',
-                      style: TextStyle(
-                          color: Color(0xFF64748B), fontSize: 13)),
+                  Text(
+                    'Bugün için atanmış egzersiz yok',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              )
+                  : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Egzersizlerim',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    exerciseNames,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '($completedExercises/$totalExercises) tamamlandı',
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios,
-                color: Color(0xFFCBD5E1), size: 16),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: _primaryBlue,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.play_arrow,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ── GÜNLÜK GÖREV KARTI ────────────────────────────────────────────────────
-
-  Widget _buildDailyExerciseCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.swap_calls_outlined,
-                color: Color(0xFF16A34A), size: 28),
-          ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Günlük Telerehabilisasyon',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: Color(0xFF1E293B))),
-                SizedBox(height: 4),
-                Text('Henüz tamamlanmadı (0/3)',
-                    style: TextStyle(
-                        color: Color(0xFF64748B), fontSize: 13)),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const TelerehabPatientScreen())),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                  color: _primaryBlue, shape: BoxShape.circle),
-              child: const Icon(Icons.play_arrow,
-                  color: Colors.white, size: 20),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── HIZLI İŞLEMLER — 3 KOLONLU GRİD ──────────────────────────────────────
-
-  Widget _buildQuickActionsGrid(BuildContext context, AuthProvider auth) {
+  Widget _buildQuickActionsGrid(
+      BuildContext context,
+      AuthProvider auth,
+      ) {
     final items = [
       _QuickActionItem(
         icon: Icons.video_camera_front_outlined,
         label: 'Toplantılar',
         color: Colors.purple,
         onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const TelerehabPatientScreen())),
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TelerehabPatientScreen(),
+          ),
+        ),
       ),
       _QuickActionItem(
         icon: Icons.monitor_heart_outlined,
         label: 'Empatica',
         color: const Color(0xFF0F766E),
-        onTap: () => _navigateToEmpatica(context, auth),
+        onTap: () => _openEmpatica(auth),
       ),
       _QuickActionItem(
         icon: Icons.notifications_outlined,
@@ -318,27 +687,31 @@ class PatientHome extends StatelessWidget {
         onTap: () {
           final userId = int.tryParse(auth.user?.id ?? '');
           if (userId == null) return;
+
           Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) =>
-                      NotificationsScreen(kullaniciId: userId)));
+            context,
+            MaterialPageRoute(
+              builder: (_) => NotificationsScreen(kullaniciId: userId),
+            ),
+          );
         },
       ),
       _QuickActionItem(
         icon: Icons.event_note_outlined,
         label: 'Ajanda',
         color: const Color(0xFF2563EB),
-        onTap: () => _navigateToAgenda(context, auth),
+        onTap: _openPatientAgenda,
       ),
       _QuickActionItem(
         icon: Icons.fitness_center_outlined,
         label: 'Egzersiz',
         color: const Color(0xFF8B5CF6),
         onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const HastaEgzersizScreen())),
+          context,
+          MaterialPageRoute(
+            builder: (_) => const HastaEgzersizScreen(),
+          ),
+        ),
       ),
     ];
 
@@ -353,14 +726,14 @@ class PatientHome extends StatelessWidget {
 
         return Padding(
           padding: EdgeInsets.only(
-              bottom: rowIndex < rowCount - 1 ? 12 : 0),
+            bottom: rowIndex < rowCount - 1 ? 12 : 0,
+          ),
           child: Row(
             children: [
               for (int i = 0; i < rowItems.length; i++) ...[
                 Expanded(child: _buildGridTile(rowItems[i])),
                 if (i < rowItems.length - 1) const SizedBox(width: 12),
               ],
-              // Son satırda eksik hücreleri boş Expanded ile doldur
               for (int i = rowItems.length; i < crossAxisCount; i++) ...[
                 const SizedBox(width: 12),
                 const Expanded(child: SizedBox()),
@@ -392,9 +765,10 @@ class PatientHome extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                      color: item.color.withValues(alpha: 0.12),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4)),
+                    color: item.color.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Icon(item.icon, color: item.color, size: 24),
@@ -414,100 +788,7 @@ class PatientHome extends StatelessWidget {
       ),
     );
   }
-
-  // ── EMPATİCA NAVİGASYON ───────────────────────────────────────────────────
-
-  Future<void> _navigateToEmpatica(
-      BuildContext context, AuthProvider auth) async {
-    final kullaniciId = int.tryParse(auth.user?.id ?? '');
-    if (kullaniciId == null) return;
-
-    try {
-      final res = await http.get(
-        Uri.parse(
-            '$_kSbUrl/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
-        headers: _sbHeaders(),
-      );
-
-      if (res.statusCode != 200) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Hasta bilgisi alınamadı.')));
-        }
-        return;
-      }
-
-      final list = jsonDecode(res.body) as List;
-      if (list.isEmpty) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Hasta kaydı bulunamadı.')));
-        }
-        return;
-      }
-
-      final hastaId =
-      (list.first as Map<String, dynamic>)['hastaId'] as int;
-      final hasta = Patient(
-        hastaId: hastaId,
-        kullaniciId: kullaniciId,
-        ad: auth.user?.ad ?? '',
-        soyad: auth.user?.soyad ?? '',
-      );
-
-      if (context.mounted) {
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => EmpaticaScreen(hasta: hasta)));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Hata: $e')));
-      }
-    }
-  }
-  // ── YENİ: AJANDAYA DOĞRU ID İLE GİTMEK İÇİN METOT ──
-  Future<void> _navigateToAgenda(BuildContext context, AuthProvider auth) async {
-    final kullaniciId = int.tryParse(auth.user?.id ?? '');
-    if (kullaniciId == null) return;
-
-    try {
-      final res = await http.get(
-        Uri.parse('$_kSbUrl/hastalar?kullaniciId=eq.$kullaniciId&select=hastaId&limit=1'),
-        headers: _sbHeaders(),
-      );
-
-      if (res.statusCode != 200) return;
-      final list = jsonDecode(res.body) as List;
-      if (list.isEmpty) return;
-
-      final hastaId = (list.first as Map<String, dynamic>)['hastaId'] as int;
-
-      if (context.mounted) {
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => PatientAgendaScreen(
-                  patient: sila.Patient(
-                    hastaId: hastaId, // İşte gerçek 30 değeri!
-                    kullaniciId: kullaniciId,
-                    ad: auth.user?.ad ?? '',
-                    soyad: auth.user?.soyad ?? '',
-                    tani: '',
-                    durum: 'Aktif Hasta',
-                    degerlendirmeler: const [],
-                  ),
-                )));
-      }
-    } catch (e) {
-      debugPrint('Ajanda yönlendirme hatası: $e');
-    }
-  }
 }
-
-// ── Veri modeli ───────────────────────────────────────────────────────────────
 
 class _QuickActionItem {
   final IconData icon;

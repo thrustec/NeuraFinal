@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/patient_form_data.dart';
 import 'patient_step_7_screen.dart';
+import 'main_screen.dart';
+import '../services/supabase_service.dart';
 
 class PatientStep6Screen extends StatefulWidget {
   final PatientFormData formData;
@@ -15,21 +17,27 @@ class PatientStep6Screen extends StatefulWidget {
 }
 
 class _PatientStep6ScreenState extends State<PatientStep6Screen> {
-  // NeuraApp Tasarım Sistemi Renkleri
   static const Color kBackground = Color(0xFFF8F9FC);
-  static const Color kPrimary = Color(0xFF124153); // HASTA SAYFASI
-  static const Color kTextDark = Color(0xFF1E293B);
+  static const Color kPrimary = Color(0xFF124153);
+  static const Color kTextDark = Color(0xFF124153);
   static const Color kTextGrey = Color(0xFF64748B);
   static const Color kTextHint = Color(0xFF94A3B8);
   static const Color kInputFill = Color(0xFFF1F5F9);
   static const Color kBorderColor = Color(0xFFE2E8F0);
 
+  List<Map<String, dynamic>> smokingOptions = [];
+
+  int? selectedSmokingStatusId;
   String? smokingStatus;
   String? exerciseStatus;
+
+  bool isLoadingSmokingOptions = true;
 
   @override
   void initState() {
     super.initState();
+
+    selectedSmokingStatusId = widget.formData.smokingStatusId;
 
     smokingStatus = widget.formData.smokingStatus.isEmpty
         ? null
@@ -38,30 +46,122 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
     exerciseStatus = widget.formData.exerciseStatus.isEmpty
         ? null
         : widget.formData.exerciseStatus;
+
+    _loadSmokingOptions();
   }
 
-  int? mapSmokingToId(String? value) {
-    if (value == 'Yok') return 1;
-    if (value == 'Var') return 2;
-    if (value == 'Bırakmış') return 3;
-    return null;
+  Future<void> _loadSmokingOptions() async {
+    try {
+      final response = await SupabaseService.client
+          .schema('neura')
+          .from('sigaraDurumu')
+          .select('sigaraDurumId, sigaraDurumAdi')
+          .order('sigaraDurumId', ascending: true);
+
+      if (!mounted) return;
+
+      final loadedSmokingOptions =
+      List<Map<String, dynamic>>.from(response);
+
+      String? loadedSmokingStatus = smokingStatus;
+
+      if (selectedSmokingStatusId != null && loadedSmokingStatus == null) {
+        final matchedStatus = loadedSmokingOptions.where(
+              (item) => item['sigaraDurumId'] == selectedSmokingStatusId,
+        );
+
+        if (matchedStatus.isNotEmpty) {
+          loadedSmokingStatus =
+              matchedStatus.first['sigaraDurumAdi']?.toString();
+        }
+      }
+
+      setState(() {
+        smokingOptions = loadedSmokingOptions;
+        smokingStatus = loadedSmokingStatus;
+        isLoadingSmokingOptions = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoadingSmokingOptions = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sigara kullanım seçenekleri yüklenemedi: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
-  // NeuraApp Seçim Kutucuğu (Chip/Radio Alternatifi)
-  Widget selectionTile({
+  Future<void> _showExitDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Formdan çık'),
+          content: const Text(
+            'Formdan çıkmak istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Forma devam et'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Formdan çık'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(isClinician: true),
+        ),
+            (route) => false,
+      );
+    }
+  }
+
+  Widget smokingSelectionTile({
     required String title,
-    required String value,
-    required String? groupValue,
-    required ValueChanged<String?> onChanged,
+    required int value,
   }) {
-    final bool isSelected = value == groupValue;
+    final bool isSelected = value == selectedSmokingStatusId;
 
     return InkWell(
-      onTap: () => onChanged(value),
+      onTap: () {
+        setState(() {
+          selectedSmokingStatusId = value;
+          smokingStatus = title;
+        });
+
+        widget.formData.smokingStatusId = value;
+        widget.formData.smokingStatus = title;
+      },
       borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? kPrimary : Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -84,7 +184,59 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
           style: TextStyle(
             color: isSelected ? Colors.white : kTextDark,
             fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontWeight:
+            isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget exerciseSelectionTile({
+    required String title,
+    required String value,
+  }) {
+    final bool isSelected = value == exerciseStatus;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          exerciseStatus = value;
+        });
+
+        widget.formData.exerciseStatus = value;
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? kPrimary : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? kPrimary : kBorderColor,
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+            BoxShadow(
+              color: kPrimary.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            )
+          ]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : kTextDark,
+            fontSize: 14,
+            fontWeight:
+            isSelected ? FontWeight.bold : FontWeight.w500,
           ),
         ),
       ),
@@ -102,13 +254,29 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      // AppBar ve BottomNavigationBar kurallar gereği silindi.
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: kTextDark,
+          ),
+          onPressed: _showExitDialog,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  24,
+                  20,
+                  20,
+                ),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -181,77 +349,64 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const Divider(color: kBorderColor, height: 1),
+                        const Divider(
+                          color: kBorderColor,
+                          height: 1,
+                        ),
                         const SizedBox(height: 24),
 
-                        const Text('SİGARA KULLANIMI', style: labelStyle),
+                        const Text(
+                          'SİGARA KULLANIMI',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 12),
-                        Wrap(
+                        isLoadingSmokingOptions
+                            ? Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: kInputFill,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: kPrimary,
+                            ),
+                          ),
+                        )
+                            : Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children: [
-                            selectionTile(
-                              title: 'Yok',
-                              value: 'Yok',
-                              groupValue: smokingStatus,
-                              onChanged: (value) {
-                                setState(() {
-                                  smokingStatus = value;
-                                  widget.formData.smokingStatusId =
-                                      mapSmokingToId(value);
-                                });
-                              },
-                            ),
-                            selectionTile(
-                              title: 'Var',
-                              value: 'Var',
-                              groupValue: smokingStatus,
-                              onChanged: (value) {
-                                setState(() {
-                                  smokingStatus = value;
-                                  widget.formData.smokingStatusId =
-                                      mapSmokingToId(value);
-                                });
-                              },
-                            ),
-                            selectionTile(
-                              title: 'Bırakmış',
-                              value: 'Bırakmış',
-                              groupValue: smokingStatus,
-                              onChanged: (value) {
-                                setState(() {
-                                  smokingStatus = value;
-                                  widget.formData.smokingStatusId =
-                                      mapSmokingToId(value);
-                                });
-                              },
-                            ),
-                          ],
+                          children: smokingOptions.map((item) {
+                            final int id =
+                            item['sigaraDurumId'] as int;
+                            final String name =
+                                item['sigaraDurumAdi']?.toString() ?? '';
+
+                            return smokingSelectionTile(
+                              title: name,
+                              value: id,
+                            );
+                          }).toList(),
                         ),
 
                         const SizedBox(height: 32),
 
-                        const Text('DÜZENLİ EGZERSİZ ALIŞKANLIĞI', style: labelStyle),
+                        const Text(
+                          'DÜZENLİ EGZERSİZ ALIŞKANLIĞI',
+                          style: labelStyle,
+                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
                           children: [
-                            selectionTile(
+                            exerciseSelectionTile(
                               title: 'Var',
                               value: 'Var',
-                              groupValue: exerciseStatus,
-                              onChanged: (value) {
-                                setState(() => exerciseStatus = value);
-                              },
                             ),
-                            selectionTile(
+                            exerciseSelectionTile(
                               title: 'Yok',
                               value: 'Yok',
-                              groupValue: exerciseStatus,
-                              onChanged: (value) {
-                                setState(() => exerciseStatus = value);
-                              },
                             ),
                           ],
                         ),
@@ -272,7 +427,12 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
                   ),
                 ],
               ),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                24,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -285,7 +445,9 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
                           },
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(54),
-                            side: const BorderSide(color: kBorderColor),
+                            side: const BorderSide(
+                              color: kBorderColor,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -306,8 +468,7 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
                             widget.formData.smokingStatus =
                                 smokingStatus ?? '';
                             widget.formData.smokingStatusId =
-                                mapSmokingToId(smokingStatus);
-
+                                selectedSmokingStatusId;
                             widget.formData.exerciseStatus =
                                 exerciseStatus ?? '';
 
@@ -337,53 +498,6 @@ class _PatientStep6ScreenState extends State<PatientStep6Screen> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(8, (index) {
-                        final bool isActive = index == 5;
-                        final bool isDone = index < 5;
-
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isActive
-                                ? kPrimary
-                                : (isDone
-                                ? kPrimary.withOpacity(0.1)
-                                : Colors.white),
-                            border: Border.all(
-                              color: (isActive || isDone)
-                                  ? kPrimary
-                                  : kBorderColor,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Center(
-                            child: isDone
-                                ? const Icon(
-                              Icons.check,
-                              size: 16,
-                              color: kPrimary,
-                            )
-                                : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isActive ? Colors.white : kTextHint,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
                   ),
                 ],
               ),
