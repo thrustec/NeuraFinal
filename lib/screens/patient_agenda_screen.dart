@@ -403,7 +403,7 @@ class _PatientAgendaScreenState extends State<PatientAgendaScreen> {
                     const SizedBox(height: 12),
                     if (currentEvents.isEmpty)
                       _emptyCard(
-                        'Bu gün için gönderilmiş telerehab talebiniz yok.',
+                        'Bu gün için belirlenmiş bir etkinliğiniz yok.',
                       )
                     else
                       ...currentEvents.map(_eventCard),
